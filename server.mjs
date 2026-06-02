@@ -14,7 +14,6 @@ const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
-const CATEGORY_FILE = join(import.meta.dirname, "catalog", "category-map.json");
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
@@ -35,7 +34,6 @@ let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
 await mkdir(UPLOAD_DIR, { recursive: true });
 await mkdir(ORDER_DIR, { recursive: true });
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
-const categoryData = JSON.parse((await readFile(CATEGORY_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const catalogByHandle = new Map(catalogData.products.map((product) => [
   product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-"),
   product,
@@ -340,56 +338,6 @@ async function handleCatalogPrice(req, res) {
   return json(res, 200, { unitPrice: quote.unitPrice, totalPrice: Number((quote.unitPrice * quantity).toFixed(2)), squareFeetEach: input.squareFeetEach }, corsHeaders(req));
 }
 
-async function handleCreateCollections(req, res, url) {
-  if (url.searchParams.get("key") !== "ea184168bcb74547ba6c745ff913406c") return json(res, 404, { error: "Not found." });
-  const productIds = new Map();
-  let after = null;
-  do {
-    const productData = await shopifyGraphql(`query CatalogProducts($after: String) {
-      products(first: 250, after: $after) {
-        nodes { id handle }
-        pageInfo { hasNextPage endCursor }
-      }
-    }`, { after });
-    for (const product of productData.products.nodes) {
-      const catalogProduct = catalogByHandle.get(product.handle);
-      if (catalogProduct) productIds.set(Number(catalogProduct.id), product.id);
-    }
-    after = productData.products.pageInfo.hasNextPage ? productData.products.pageInfo.endCursor : null;
-  } while (after);
-  const results = [];
-  for (const category of categoryData.categories) {
-    const products = category.productIds.map((id) => productIds.get(Number(id))).filter(Boolean);
-    if (!products.length) continue;
-    const existing = await shopifyGraphql(`query ExistingCollection($handle: String!) {
-      collectionByHandle(handle: $handle) { id title handle }
-    }`, { handle: category.handle });
-    if (existing.collectionByHandle) {
-      if (category.handle === "banners") {
-        const data = await shopifyGraphql(`mutation AddCollectionProducts($id: ID!, $productIds: [ID!]!) {
-          collectionAddProducts(id: $id, productIds: $productIds) {
-            userErrors { field message }
-          }
-        }`, { id: existing.collectionByHandle.id, productIds: products });
-        const errors = data.collectionAddProducts.userErrors || [];
-        results.push({ handle: category.handle, status: errors.length ? "error" : "updated", products: products.length, errors });
-      } else {
-        results.push({ handle: category.handle, status: "exists", products: products.length });
-      }
-      continue;
-    }
-    const data = await shopifyGraphql(`mutation CreateCollection($input: CollectionInput!) {
-      collectionCreate(input: $input) {
-        collection { id title handle }
-        userErrors { field message }
-      }
-    }`, { input: { title: category.title, handle: category.handle, products } });
-    const errors = data.collectionCreate.userErrors || [];
-    results.push({ handle: category.handle, status: errors.length ? "error" : "created", products: products.length, errors });
-  }
-  return json(res, 200, { matchedProducts: productIds.size, results });
-}
-
 function buildAttributes(formData, artworkUrls) {
   return [
     attribute("Banner Size", field(formData, "banner_size")),
@@ -647,7 +595,6 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
-    if (req.method === "POST" && url.pathname === "/internal/create-collections") return await handleCreateCollections(req, res, url);
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
