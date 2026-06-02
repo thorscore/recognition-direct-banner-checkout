@@ -143,6 +143,7 @@ function buildAttributes(formData, artworkUrls) {
     attribute("Total Square Footage", field(formData, "total_square_footage")),
     attribute("Material", "13oz vinyl"),
     attribute("Included Finishing", "Hemmed with grommets every 2 ft"),
+    attribute("Delivery Method", field(formData, "delivery_method") === "pickup" ? "Pickup at La Mesa Street Side Pickup" : "Ship"),
     attribute("Banner Type", field(formData, "banner_type")),
     attribute("Sport", field(formData, "sport")),
     attribute("League Name", field(formData, "league_name")),
@@ -203,6 +204,8 @@ async function handleCheckout(req, res) {
   const unitPrice = Number((squareFeetEach * 2.5).toFixed(2));
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
   const unitLabel = units === "inches" ? "in" : "ft";
+  const isPickup = field(formData, "delivery_method") === "pickup";
+  const deliveryMethod = isPickup ? "Pickup at La Mesa Street Side Pickup" : "Ship";
 
   const artworkUrls = {
     youthArtwork: await saveUpload(formData.get("youth_artwork")),
@@ -225,6 +228,7 @@ async function handleCheckout(req, res) {
     quantity,
     unitPrice,
     totalPrice,
+    deliveryMethod,
     attributes,
     artworkUrls,
   };
@@ -237,20 +241,21 @@ async function handleCheckout(req, res) {
 
   const draftOrder = await createDraftOrder({
     email,
-    note: `Recognition Direct banner configuration ${orderRecord.id}`,
-    tags: ["custom-banner", "proof-required"],
+    note: `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    tags: ["custom-banner", "proof-required", isPickup ? "pickup-la-mesa" : "ship"],
     allowDiscountCodesInCheckout: true,
     lineItems: [{
       title: "Custom 13oz Vinyl Banner",
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: true,
+      requiresShipping: !isPickup,
       taxable: true,
       customAttributes: attributes,
     }],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
+      { key: "Delivery Method", value: deliveryMethod },
     ],
   });
 
@@ -283,6 +288,7 @@ async function handleMockCheckout(res, url) {
       <body><div class="box"><h1>Mock Shopify Checkout</h1><p>Local verification only. Production redirects to Shopify payment.</p>
       <dl><dt>Item</dt><dd>Custom 13oz Vinyl Banner</dd><dt>Quantity</dt><dd>${order.quantity}</dd>
       <dt>Unit price</dt><dd>$${order.unitPrice.toFixed(2)}</dd><dt>Total</dt><dd>$${order.totalPrice.toFixed(2)}</dd>
+      <dt>Delivery method</dt><dd>${escapeHtml(order.deliveryMethod || "Ship")}</dd>
       <dt>Email</dt><dd>${escapeHtml(order.email)}</dd></dl></div></body></html>`);
   } catch {
     json(res, 404, { error: "Not found." });
