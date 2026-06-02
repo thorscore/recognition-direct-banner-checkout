@@ -11,7 +11,6 @@ const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET || "";
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
-const CATALOG_MIGRATION_KEY = "catalog-migration-2026-06-02-banner-batch";
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
@@ -196,116 +195,6 @@ async function createDraftOrder(input) {
   return result.draftOrder;
 }
 
-async function findProductByHandle(handle) {
-  const query = `#graphql
-    query FindProductByHandle($handle: String!) {
-      productByHandle(handle: $handle) {
-        id
-        title
-        handle
-      }
-    }`;
-  return (await shopifyGraphql(query, { handle })).productByHandle;
-}
-
-async function createCatalogProduct(product) {
-  const handle = product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-");
-  const existing = await findProductByHandle(handle);
-  if (existing) return { status: "skipped", title: existing.title, handle, id: existing.id };
-
-  const descriptionHtml = [...(product.feature || []), ...(product.description || [])]
-    .filter(Boolean)
-    .map((section) => section.html || "")
-    .join("\n");
-  const metafields = [
-    { namespace: "recognition_direct", key: "source_url", type: "single_line_text_field", value: `https://recognition-direct.bs.run${product.url}` },
-    { namespace: "recognition_direct", key: "catalog_item_id", type: "single_line_text_field", value: String(product.id) },
-    { namespace: "recognition_direct", key: "minimum_price", type: "number_decimal", value: Number(product.minimum || 0).toFixed(2) },
-    { namespace: "recognition_direct", key: "sqft_rate", type: "number_decimal", value: Number(product.sqft || 0).toFixed(2) },
-    { namespace: "recognition_direct", key: "configurable", type: "boolean", value: String(Boolean(product.attrs?.attrs?.length)) },
-  ];
-  const media = (product.images || [])
-    .map((image) => image.s1000 || image.s400 || image.s200)
-    .filter(Boolean)
-    .slice(0, 5)
-    .map((originalSource) => ({ originalSource, mediaContentType: "IMAGE", alt: product.title }));
-  const mutation = `#graphql
-    mutation CreateCatalogProduct($product: ProductCreateInput!, $media: [CreateMediaInput!]) {
-      productCreate(product: $product, media: $media) {
-        product {
-          id
-          title
-          handle
-          variants(first: 1) {
-            nodes { id }
-          }
-        }
-        userErrors { field message }
-      }
-    }`;
-  const data = await shopifyGraphql(mutation, {
-    product: {
-      title: product.title,
-      handle,
-      descriptionHtml,
-      vendor: "Recognition Direct",
-      productType: "Custom Print Product",
-      status: "DRAFT",
-      tags: ["catalog-migration", "recognition-direct-catalog", "configuration-required"],
-      metafields,
-    },
-    media,
-  });
-  const result = data.productCreate;
-  if (result.userErrors?.length) throw new Error(result.userErrors.map((error) => error.message).join(" "));
-  const created = result.product;
-  const variantId = created?.variants?.nodes?.[0]?.id;
-  if (!created?.id || !variantId) throw new Error(`Shopify did not create a default variant for ${product.title}.`);
-
-  const updateMutation = `#graphql
-    mutation SetCatalogVariantPrice($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants { id price }
-        userErrors { field message }
-      }
-    }`;
-  const priceResult = (await shopifyGraphql(updateMutation, {
-    productId: created.id,
-    variants: [{ id: variantId, price: Number(product.minimum || 0).toFixed(2) }],
-  })).productVariantsBulkUpdate;
-  if (priceResult.userErrors?.length) throw new Error(priceResult.userErrors.map((error) => error.message).join(" "));
-  return { status: "created", title: created.title, handle: created.handle, id: created.id };
-}
-
-async function handleCatalogMigration(req, res, filename = "catalog-banner-batch.json") {
-  if (req.headers["x-catalog-migration-key"] !== CATALOG_MIGRATION_KEY) {
-    return json(res, 403, { error: "Migration key is not valid." });
-  }
-  const catalog = JSON.parse((await readFile(join(PUBLIC_DIR, filename), "utf8")).replace(/^\uFEFF/, ""));
-  const url = new URL(req.url || "/", APP_BASE_URL);
-  const offset = Math.max(0, Number.parseInt(url.searchParams.get("offset") || "0", 10));
-  const limit = Math.min(25, Math.max(1, Number.parseInt(url.searchParams.get("limit") || "25", 10)));
-  const selectedProducts = catalog.products.slice(offset, offset + limit);
-  const results = [];
-  for (const product of selectedProducts) {
-    try {
-      results.push(await createCatalogProduct(product));
-    } catch (error) {
-      results.push({ status: "error", title: product.title, handle: product.url, error: error.message });
-    }
-  }
-  return json(res, 200, {
-    created: results.filter((result) => result.status === "created").length,
-    skipped: results.filter((result) => result.status === "skipped").length,
-    errors: results.filter((result) => result.status === "error").length,
-    offset,
-    limit,
-    total: catalog.products.length,
-    nextOffset: offset + selectedProducts.length < catalog.products.length ? offset + selectedProducts.length : null,
-    results,
-  });
-}
-
 async function handleCheckout(req, res) {
   const origin = req.headers.origin || "";
   if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
@@ -433,12 +322,6 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "GET" && url.pathname === "/assets/full-color-banner-eye.png") {
       return await servePublicFile(res, "full-color-banner-eye.png", "image/png");
-    }
-    if (req.method === "POST" && url.pathname === "/api/admin/catalog-migrate-banner-batch") {
-      return await handleCatalogMigration(req, res);
-    }
-    if (req.method === "POST" && url.pathname === "/api/admin/catalog-migrate") {
-      return await handleCatalogMigration(req, res, "catalog-inventory.json");
     }
     if (req.method === "GET" && url.pathname.startsWith("/uploads/")) return await handleUpload(req, res, url.pathname);
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
