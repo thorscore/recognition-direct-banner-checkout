@@ -276,13 +276,17 @@ async function createCatalogProduct(product) {
   return { status: "created", title: created.title, handle: created.handle, id: created.id };
 }
 
-async function handleCatalogMigration(req, res) {
+async function handleCatalogMigration(req, res, filename = "catalog-banner-batch.json") {
   if (req.headers["x-catalog-migration-key"] !== CATALOG_MIGRATION_KEY) {
     return json(res, 403, { error: "Migration key is not valid." });
   }
-  const catalog = JSON.parse((await readFile(join(PUBLIC_DIR, "catalog-banner-batch.json"), "utf8")).replace(/^\uFEFF/, ""));
+  const catalog = JSON.parse((await readFile(join(PUBLIC_DIR, filename), "utf8")).replace(/^\uFEFF/, ""));
+  const url = new URL(req.url || "/", APP_BASE_URL);
+  const offset = Math.max(0, Number.parseInt(url.searchParams.get("offset") || "0", 10));
+  const limit = Math.min(25, Math.max(1, Number.parseInt(url.searchParams.get("limit") || "25", 10)));
+  const selectedProducts = catalog.products.slice(offset, offset + limit);
   const results = [];
-  for (const product of catalog.products) {
+  for (const product of selectedProducts) {
     try {
       results.push(await createCatalogProduct(product));
     } catch (error) {
@@ -293,6 +297,10 @@ async function handleCatalogMigration(req, res) {
     created: results.filter((result) => result.status === "created").length,
     skipped: results.filter((result) => result.status === "skipped").length,
     errors: results.filter((result) => result.status === "error").length,
+    offset,
+    limit,
+    total: catalog.products.length,
+    nextOffset: offset + selectedProducts.length < catalog.products.length ? offset + selectedProducts.length : null,
     results,
   });
 }
@@ -427,6 +435,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "POST" && url.pathname === "/api/admin/catalog-migrate-banner-batch") {
       return await handleCatalogMigration(req, res);
+    }
+    if (req.method === "POST" && url.pathname === "/api/admin/catalog-migrate") {
+      return await handleCatalogMigration(req, res, "catalog-inventory.json");
     }
     if (req.method === "GET" && url.pathname.startsWith("/uploads/")) return await handleUpload(req, res, url.pathname);
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
