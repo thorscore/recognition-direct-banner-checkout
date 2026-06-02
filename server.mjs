@@ -342,12 +342,20 @@ async function handleCatalogPrice(req, res) {
 
 async function handleCreateCollections(req, res, url) {
   if (url.searchParams.get("key") !== "ea184168bcb74547ba6c745ff913406c") return json(res, 404, { error: "Not found." });
-  const productData = await shopifyGraphql(`query CatalogProducts {
-    products(first: 250) {
-      nodes { id metafield(namespace: "recognition_direct", key: "catalog_id") { value } }
+  const productIds = new Map();
+  let after = null;
+  do {
+    const productData = await shopifyGraphql(`query CatalogProducts($after: String) {
+      products(first: 250, after: $after) {
+        nodes { id metafield(namespace: "recognition_direct", key: "catalog_id") { value } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }`, { after });
+    for (const product of productData.products.nodes) {
+      if (product.metafield?.value) productIds.set(Number(product.metafield.value), product.id);
     }
-  }`);
-  const productIds = new Map(productData.products.nodes.map((product) => [Number(product.metafield?.value), product.id]));
+    after = productData.products.pageInfo.hasNextPage ? productData.products.pageInfo.endCursor : null;
+  } while (after);
   const results = [];
   for (const category of categoryData.categories) {
     const products = category.productIds.map((id) => productIds.get(Number(id))).filter(Boolean);
