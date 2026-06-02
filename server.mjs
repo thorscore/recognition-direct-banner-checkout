@@ -11,6 +11,7 @@ const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET || "";
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
+const TEMPLATE_ASSIGNMENT_KEY = "catalog-template-assignment-2026-06-02";
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
@@ -199,6 +200,55 @@ async function createDraftOrder(input) {
   if (result.userErrors?.length) throw new Error(result.userErrors.map((error) => error.message).join(" "));
   if (!result.draftOrder?.invoiceUrl) throw new Error("Shopify did not return a secure checkout URL.");
   return result.draftOrder;
+}
+
+async function findProductByHandle(handle) {
+  const query = `#graphql
+    query FindProductByHandle($handle: String!) {
+      productByHandle(handle: $handle) { id title handle }
+    }`;
+  return (await shopifyGraphql(query, { handle })).productByHandle;
+}
+
+async function assignCatalogTemplate(req, res) {
+  if (req.headers["x-template-assignment-key"] !== TEMPLATE_ASSIGNMENT_KEY) {
+    return json(res, 403, { error: "Template assignment key is not valid." });
+  }
+  const url = new URL(req.url || "/", APP_BASE_URL);
+  const offset = Math.max(0, Number.parseInt(url.searchParams.get("offset") || "0", 10));
+  const limit = Math.min(25, Math.max(1, Number.parseInt(url.searchParams.get("limit") || "25", 10)));
+  const selectedProducts = catalogData.products.slice(offset, offset + limit);
+  const mutation = `#graphql
+    mutation AssignCatalogTemplate($product: ProductUpdateInput!) {
+      productUpdate(product: $product) {
+        product { id handle templateSuffix }
+        userErrors { field message }
+      }
+    }`;
+  const results = [];
+  for (const source of selectedProducts) {
+    const handle = source.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-");
+    try {
+      const product = await findProductByHandle(handle);
+      if (!product?.id) throw new Error("Shopify draft product was not found.");
+      const result = (await shopifyGraphql(mutation, {
+        product: { id: product.id, templateSuffix: "catalog-configurator" },
+      })).productUpdate;
+      if (result.userErrors?.length) throw new Error(result.userErrors.map((error) => error.message).join(" "));
+      results.push({ status: "updated", title: source.title, handle });
+    } catch (error) {
+      results.push({ status: "error", title: source.title, handle, error: error.message });
+    }
+  }
+  return json(res, 200, {
+    updated: results.filter((result) => result.status === "updated").length,
+    errors: results.filter((result) => result.status === "error").length,
+    offset,
+    limit,
+    total: catalogData.products.length,
+    nextOffset: offset + selectedProducts.length < catalogData.products.length ? offset + selectedProducts.length : null,
+    results,
+  });
 }
 
 async function handleCheckout(req, res) {
@@ -418,6 +468,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/admin/catalog-assign-template") return await assignCatalogTemplate(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
