@@ -280,7 +280,7 @@ async function handleCatalogMigration(req, res) {
   if (req.headers["x-catalog-migration-key"] !== CATALOG_MIGRATION_KEY) {
     return json(res, 403, { error: "Migration key is not valid." });
   }
-  const catalog = JSON.parse(await readFile(join(PUBLIC_DIR, "catalog-banner-batch.json"), "utf8"));
+  const catalog = JSON.parse((await readFile(join(PUBLIC_DIR, "catalog-banner-batch.json"), "utf8")).replace(/^\uFEFF/, ""));
   const results = [];
   for (const product of catalog.products) {
     try {
