@@ -1,0 +1,546 @@
+﻿{
+    "generatedAt":  "2026-06-02T14:19:46.6358524-07:00",
+    "categories":  [
+                       {
+                           "id":  5,
+                           "title":  "Real Estate Products",
+                           "handle":  "real-estate",
+                           "url":  "/real-estate",
+                           "productIds":  [
+                                              16,
+                                              47,
+                                              48,
+                                              210
+                                          ]
+                       },
+                       {
+                           "id":  7,
+                           "title":  "Signicade A-Frames",
+                           "handle":  "signicade-a-frame",
+                           "url":  "/signicade-a-frame",
+                           "productIds":  [
+                                              53,
+                                              56,
+                                              218
+                                          ]
+                       },
+                       {
+                           "id":  9,
+                           "title":  "Wall Art",
+                           "handle":  "wall-art",
+                           "url":  "/wall-art",
+                           "productIds":  [
+                                              5,
+                                              6,
+                                              81,
+                                              82,
+                                              83,
+                                              84,
+                                              236
+                                          ]
+                       },
+                       {
+                           "id":  11,
+                           "title":  "Step and Repeat Backdrop",
+                           "handle":  "step-and-repeat-backdrop",
+                           "url":  "/step-and-repeat-backdrop",
+                           "productIds":  [
+                                              18
+                                          ]
+                       },
+                       {
+                           "id":  12,
+                           "title":  "A Frame and Sign Holders",
+                           "handle":  "a-frame-and-sign-holders",
+                           "url":  "/a-frame-and-sign-holders",
+                           "productIds":  [
+                                              49,
+                                              51,
+                                              52,
+                                              82
+                                          ]
+                       },
+                       {
+                           "id":  14,
+                           "title":  "Standing Displays",
+                           "handle":  "standing-displays",
+                           "url":  "/standing-displays",
+                           "productIds":  [
+                                              52
+                                          ]
+                       },
+                       {
+                           "id":  16,
+                           "title":  "SEG Products",
+                           "handle":  "seg-products",
+                           "url":  "/seg-products",
+                           "productIds":  [
+                                              116,
+                                              117,
+                                              118,
+                                              119,
+                                              120,
+                                              121,
+                                              205,
+                                              236
+                                          ]
+                       },
+                       {
+                           "id":  17,
+                           "title":  "Table Throw",
+                           "handle":  "table-throw",
+                           "url":  "/table-throw",
+                           "productIds":  [
+                                              29,
+                                              75,
+                                              206,
+                                              207,
+                                              208,
+                                              209,
+                                              228
+                                          ]
+                       },
+                       {
+                           "id":  18,
+                           "title":  "Adhesive Products",
+                           "handle":  "adhesive-products",
+                           "url":  "/adhesive-products",
+                           "productIds":  [
+                                              7,
+                                              10,
+                                              20,
+                                              36,
+                                              85,
+                                              86,
+                                              87,
+                                              88,
+                                              89,
+                                              90,
+                                              99,
+                                              107
+                                          ]
+                       },
+                       {
+                           "id":  19,
+                           "title":  "Rigid Signs and Magnets",
+                           "handle":  "rigid-signs-and-magnets",
+                           "url":  "/rigid-signs-and-magnets",
+                           "productIds":  [
+                                              13,
+                                              14,
+                                              17,
+                                              19,
+                                              33,
+                                              38,
+                                              40,
+                                              81,
+                                              108
+                                          ]
+                       },
+                       {
+                           "id":  20,
+                           "title":  "Reflective Products",
+                           "handle":  "reflective-products",
+                           "url":  "/reflective-products",
+                           "productIds":  [
+                                              90,
+                                              91,
+                                              92,
+                                              93,
+                                              94,
+                                              95
+                                          ]
+                       },
+                       {
+                           "id":  21,
+                           "title":  "Dry Erase Products",
+                           "handle":  "dry-erase-products",
+                           "url":  "/dry-erase-products",
+                           "productIds":  [
+                                              99,
+                                              101,
+                                              102,
+                                              103,
+                                              104,
+                                              105
+                                          ]
+                       },
+                       {
+                           "id":  22,
+                           "title":  "Econo Flag Hardware",
+                           "handle":  "econo-flag-hardware",
+                           "url":  "/econo-flag-hardware",
+                           "productIds":  [
+                                              123,
+                                              124
+                                          ]
+                       },
+                       {
+                           "id":  23,
+                           "title":  "Teardrop Flag Hardware",
+                           "handle":  "teardrop-flag-hardware",
+                           "url":  "/teardrop-flag-hardware",
+                           "productIds":  [
+                                              126,
+                                              127,
+                                              128,
+                                              129,
+                                              130,
+                                              227
+                                          ]
+                       },
+                       {
+                           "id":  24,
+                           "title":  "Feather Angled Flag Hardware",
+                           "handle":  "feather-angled-flag-hardware",
+                           "url":  "/feather-angled-flag-hardware",
+                           "productIds":  [
+                                              125,
+                                              126,
+                                              127,
+                                              128,
+                                              129,
+                                              130
+                                          ]
+                       },
+                       {
+                           "id":  25,
+                           "title":  "Rectangle Flag Hardware",
+                           "handle":  "rectangle-flag-hardware",
+                           "url":  "/rectangle-flag-hardware",
+                           "productIds":  [
+                                              126,
+                                              127,
+                                              128,
+                                              129,
+                                              131
+                                          ]
+                       },
+                       {
+                           "id":  26,
+                           "title":  "Custom Pole Flag Hardware",
+                           "handle":  "custom-pole-flag-hardware",
+                           "url":  "/custom-pole-flag-hardware",
+                           "productIds":  [
+                                              132
+                                          ]
+                       },
+                       {
+                           "id":  27,
+                           "title":  "Flag Hardware Only",
+                           "handle":  "flag-hardware",
+                           "url":  "/flag-hardware",
+                           "productIds":  [
+
+                                          ]
+                       },
+                       {
+                           "id":  28,
+                           "title":  "Banner Stand Hardware Only",
+                           "handle":  "banner-stand-hardware",
+                           "url":  "/banner-stand-hardware",
+                           "productIds":  [
+                                              133,
+                                              134,
+                                              135,
+                                              136,
+                                              137,
+                                              138,
+                                              139
+                                          ]
+                       },
+                       {
+                           "id":  29,
+                           "title":  "Hardware Only",
+                           "handle":  "hardware-only",
+                           "url":  "/hardware-only",
+                           "productIds":  [
+
+                                          ]
+                       },
+                       {
+                           "id":  30,
+                           "title":  "Tradeshow Hardware Only",
+                           "handle":  "tradeshow-hardware",
+                           "url":  "/tradeshow-hardware",
+                           "productIds":  [
+                                              135,
+                                              141,
+                                              142,
+                                              143,
+                                              144,
+                                              145,
+                                              146,
+                                              147,
+                                              148,
+                                              149,
+                                              150,
+                                              202
+                                          ]
+                       },
+                       {
+                           "id":  31,
+                           "title":  "Event Tent Hardware Only",
+                           "handle":  "event-tent-hardware",
+                           "url":  "/event-tent-hardware",
+                           "productIds":  [
+                                              70,
+                                              71,
+                                              72,
+                                              73,
+                                              122
+                                          ]
+                       },
+                       {
+                           "id":  32,
+                           "title":  "Material",
+                           "handle":  "material",
+                           "url":  "/material",
+                           "productIds":  [
+                                              152,
+                                              153,
+                                              154,
+                                              155,
+                                              157,
+                                              158,
+                                              159,
+                                              163
+                                          ]
+                       },
+                       {
+                           "id":  33,
+                           "title":  "Channel Letter",
+                           "handle":  "channel-letter",
+                           "url":  "/channel-letter",
+                           "productIds":  [
+                                              30,
+                                              164,
+                                              165,
+                                              166,
+                                              167
+                                          ]
+                       },
+                       {
+                           "id":  36,
+                           "title":  "Request Sample Kit",
+                           "handle":  "sample",
+                           "url":  "/sample",
+                           "productIds":  [
+
+                                          ]
+                       },
+                       {
+                           "id":  38,
+                           "title":  "Product Design Templates",
+                           "handle":  "design-templates",
+                           "url":  "/design-templates",
+                           "productIds":  [
+
+                                          ]
+                       },
+                       {
+                           "id":  39,
+                           "title":  "10\u0027 x 10\u0027 Custom Booth",
+                           "handle":  "10x10-custom-booth",
+                           "url":  "/10x10-custom-booth",
+                           "productIds":  [
+                                              168,
+                                              169,
+                                              170,
+                                              171,
+                                              172,
+                                              173,
+                                              174,
+                                              175,
+                                              176,
+                                              177,
+                                              178,
+                                              179,
+                                              180,
+                                              181,
+                                              182,
+                                              183,
+                                              184,
+                                              185,
+                                              186,
+                                              187
+                                          ]
+                       },
+                       {
+                           "id":  40,
+                           "title":  "10\u0027 x 20\u0027 Custom Booth",
+                           "handle":  "10x20-custom-booth",
+                           "url":  "/10x20-custom-booth",
+                           "productIds":  [
+                                              188,
+                                              189,
+                                              190,
+                                              191,
+                                              192,
+                                              193,
+                                              194,
+                                              195,
+                                              196,
+                                              197
+                                          ]
+                       },
+                       {
+                           "id":  41,
+                           "title":  "20\u0027 x 20\u0027 Custom Booth",
+                           "handle":  "20x20-custom-booth",
+                           "url":  "/20x20-custom-booth",
+                           "productIds":  [
+                                              151,
+                                              198
+                                          ]
+                       },
+                       {
+                           "id":  48,
+                           "title":  "Banners",
+                           "handle":  "banners",
+                           "url":  "/banners",
+                           "productIds":  [
+                                              2,
+                                              8,
+                                              12,
+                                              15,
+                                              31,
+                                              76,
+                                              77,
+                                              78,
+                                              79,
+                                              241
+                                          ]
+                       },
+                       {
+                           "id":  49,
+                           "title":  "Advertising Flags",
+                           "handle":  "advertising-flags",
+                           "url":  "/advertising-flags",
+                           "productIds":  [
+                                              1,
+                                              4,
+                                              34,
+                                              41,
+                                              42,
+                                              43,
+                                              250
+                                          ]
+                       },
+                       {
+                           "id":  50,
+                           "title":  "Banner Stands",
+                           "handle":  "banner-stands",
+                           "url":  "/banner-stands",
+                           "productIds":  [
+                                              3,
+                                              11,
+                                              18,
+                                              37,
+                                              39,
+                                              44,
+                                              45
+                                          ]
+                       },
+                       {
+                           "id":  52,
+                           "title":  "Real Estate Hardware Only",
+                           "handle":  "real-estate-hardware-only",
+                           "url":  "/real-estate-hardware-only",
+                           "productIds":  [
+                                              211,
+                                              212,
+                                              213
+                                          ]
+                       },
+                       {
+                           "id":  53,
+                           "title":  "Signicade A-Frame Hardware Only",
+                           "handle":  "signicade-a-frame-hardware-only",
+                           "url":  "/signicade-a-frame-hardware-only",
+                           "productIds":  [
+                                              214,
+                                              215,
+                                              216
+                                          ]
+                       },
+                       {
+                           "id":  54,
+                           "title":  "A Frame and Sign Holders Hardware",
+                           "handle":  "a-frame-and-sign-holders-hardware",
+                           "url":  "/a-frame-and-sign-holders-hardware",
+                           "productIds":  [
+                                              219,
+                                              220,
+                                              221,
+                                              225
+                                          ]
+                       },
+                       {
+                           "id":  55,
+                           "title":  "Trade Show Products",
+                           "handle":  "trade-show-products",
+                           "url":  "/trade-show-products",
+                           "productIds":  [
+                                              67,
+                                              116,
+                                              117,
+                                              118,
+                                              119,
+                                              120,
+                                              121,
+                                              140,
+                                              217,
+                                              222,
+                                              223,
+                                              224
+                                          ]
+                       },
+                       {
+                           "id":  56,
+                           "title":  "Template User Guide",
+                           "handle":  "template-user-guide",
+                           "url":  "/template-user-guide",
+                           "productIds":  [
+
+                                          ]
+                       },
+                       {
+                           "id":  59,
+                           "title":  "Custom Event Tents",
+                           "handle":  "custom-event-tents",
+                           "url":  "/custom-event-tents",
+                           "productIds":  [
+                                              35,
+                                              68,
+                                              69,
+                                              237,
+                                              238,
+                                              239,
+                                              240
+                                          ]
+                       },
+                       {
+                           "id":  60,
+                           "title":  "Wall Murals",
+                           "handle":  "wall-murals",
+                           "url":  "/wall-murals",
+                           "productIds":  [
+                                              7,
+                                              242
+                                          ]
+                       },
+                       {
+                           "id":  63,
+                           "title":  "Free Same Day Turnaround Products",
+                           "handle":  "free-sameday-products",
+                           "url":  "/free-sameday-products",
+                           "productIds":  [
+                                              14,
+                                              33,
+                                              201,
+                                              231
+                                          ]
+                       }
+                   ]
+}
