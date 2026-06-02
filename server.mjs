@@ -214,6 +214,7 @@ async function createCatalogProduct(product) {
   if (existing) return { status: "skipped", title: existing.title, handle, id: existing.id };
 
   const descriptionHtml = [...(product.feature || []), ...(product.description || [])]
+    .filter(Boolean)
     .map((section) => section.html || "")
     .join("\n");
   const metafields = [
