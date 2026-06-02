@@ -365,7 +365,17 @@ async function handleCreateCollections(req, res, url) {
       collectionByHandle(handle: $handle) { id title handle }
     }`, { handle: category.handle });
     if (existing.collectionByHandle) {
-      results.push({ handle: category.handle, status: "exists", products: products.length });
+      if (category.handle === "banners") {
+        const data = await shopifyGraphql(`mutation AddCollectionProducts($id: ID!, $productIds: [ID!]!) {
+          collectionAddProducts(id: $id, productIds: $productIds) {
+            userErrors { field message }
+          }
+        }`, { id: existing.collectionByHandle.id, productIds: products });
+        const errors = data.collectionAddProducts.userErrors || [];
+        results.push({ handle: category.handle, status: errors.length ? "error" : "updated", products: products.length, errors });
+      } else {
+        results.push({ handle: category.handle, status: "exists", products: products.length });
+      }
       continue;
     }
     const data = await shopifyGraphql(`mutation CreateCollection($input: CollectionInput!) {
