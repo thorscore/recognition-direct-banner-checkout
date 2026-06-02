@@ -12,16 +12,18 @@ const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
 const DATA_DIR = join(import.meta.dirname, "data");
+const PUBLIC_DIR = join(import.meta.dirname, "public");
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const ALLOWED_ORIGINS = new Set(
-  (process.env.ALLOWED_ORIGINS || "https://recognition-direct.com,https://www.recognition-direct.com,http://localhost:4173")
+  (process.env.ALLOWED_ORIGINS || "https://recognition-direct.com,https://www.recognition-direct.com,https://recognition-direct.bs.run,http://localhost:4173")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean),
 );
+ALLOWED_ORIGINS.add(APP_BASE_URL);
 const ALLOWED_FILE_EXTENSIONS = new Set([".pdf", ".ai", ".eps", ".psd", ".jpg", ".jpeg", ".png"]);
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
@@ -284,6 +286,16 @@ async function handleUpload(req, res, pathname) {
   }
 }
 
+async function servePublicFile(res, name, contentType) {
+  try {
+    const bytes = await readFile(join(PUBLIC_DIR, name));
+    res.writeHead(200, { "Content-Type": contentType });
+    res.end(bytes);
+  } catch {
+    json(res, 404, { error: "Not found." });
+  }
+}
+
 async function handleMockCheckout(res, url) {
   const id = url.searchParams.get("id") || "";
   try {
@@ -305,6 +317,12 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
+    if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
+      return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
+    }
+    if (req.method === "GET" && url.pathname === "/assets/full-color-banner-eye.png") {
+      return await servePublicFile(res, "full-color-banner-eye.png", "image/png");
+    }
     if (req.method === "GET" && url.pathname.startsWith("/uploads/")) return await handleUpload(req, res, url.pathname);
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);

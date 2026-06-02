@@ -12,7 +12,7 @@ services:
       - key: APP_BASE_URL
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://recognition-direct.com,https://www.recognition-direct.com
+        value: https://recognition-direct.com,https://www.recognition-direct.com,https://recognition-direct.bs.run
       - key: SHOPIFY_SHOP
         value: f375fe-2d
       - key: SHOPIFY_CLIENT_ID

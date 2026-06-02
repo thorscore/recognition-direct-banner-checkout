@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Custom 13oz Vinyl Banner | Recognition Direct</title>
+    <style>
+      :root {
+        --ink: #172232;
+        --muted: #657083;
+        --line: #d8dee8;
+        --page: #f5f7fa;
+        --panel: #fff;
+        --accent: #c6262e;
+        --accent-dark: #991b22;
+        --blue: #2250b9;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: var(--page); font: 15px/1.5 Arial, sans-serif; }
+      header { background: #fff; border-bottom: 1px solid var(--line); }
+      .nav { display: flex; align-items: center; justify-content: space-between; max-width: 1180px; margin: auto; padding: 17px 22px; }
+      .brand { color: var(--ink); font-size: 21px; font-weight: 800; text-decoration: none; }
+      .nav a:not(.brand) { color: var(--muted); text-decoration: none; }
+      .sale { background: var(--blue); color: #fff; padding: 8px 18px; text-align: center; font-size: 13px; font-weight: 700; }
+      main { max-width: 1180px; margin: auto; padding: 26px 22px 48px; }
+      h1 { margin: 0 0 7px; font-size: 34px; line-height: 1.1; }
+      h2 { margin: 0 0 16px; font-size: 21px; }
+      h3 { margin: 22px 0 11px; font-size: 15px; }
+      p { margin: 0 0 13px; }
+      .muted { color: var(--muted); }
+      .hero { width: 100%; margin: 20px 0; border: 1px solid var(--line); border-radius: 7px; display: block; }
+      .layout { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 16px; align-items: start; }
+      .panel { padding: 19px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+      fieldset { margin: 0; padding: 0; border: 0; }
+      legend { margin-bottom: 10px; font-weight: 700; }
+      label, .label { display: block; margin-bottom: 5px; color: #344055; font-size: 13px; font-weight: 700; }
+      input, select, textarea { width: 100%; min-height: 42px; border: 1px solid #b9c3d2; border-radius: 4px; background: #fff; padding: 9px 10px; color: var(--ink); font: inherit; }
+      textarea { min-height: 80px; resize: vertical; }
+      input[type="radio"] { width: auto; min-height: 0; }
+      input[type="file"] { padding: 7px; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+      .full { grid-column: 1 / -1; }
+      .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .tab, .choice { display: flex; align-items: center; gap: 8px; min-height: 42px; margin: 0; border: 1px solid #b9c3d2; border-radius: 4px; padding: 9px 10px; cursor: pointer; }
+      .price { margin-top: 16px; border-radius: 7px; background: var(--ink); padding: 16px; color: #fff; }
+      .price small { color: #d7dde8; font-weight: 700; text-transform: uppercase; }
+      .total { margin: 5px 0 10px; font-size: 45px; font-weight: 800; line-height: 1; }
+      .summary { display: grid; gap: 8px; margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px; }
+      .row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
+      .row strong { color: var(--ink); text-align: right; }
+      .section { display: none; }
+      .section.active { display: block; }
+      .note { color: var(--muted); font-size: 13px; }
+      .limit { color: var(--accent); font-size: 13px; font-weight: 700; }
+      button { width: 100%; min-height: 48px; border: 0; border-radius: 4px; background: var(--accent); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+      button:hover { background: var(--accent-dark); }
+      .details { margin-top: 18px; padding: 19px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
+      .details ul { margin: 7px 0 17px; padding-left: 19px; }
+      footer { padding: 24px; background: #fff; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: 13px; }
+      @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+      @media (max-width: 540px) { main { padding: 20px 14px 34px; } .grid, .tabs { grid-template-columns: 1fr; } h1 { font-size: 29px; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav">
+        <a class="brand" href="https://recognition-direct.bs.run/">Recognition Direct</a>
+        <a href="https://recognition-direct.bs.run/banners">Shop All Banners</a>
+      </div>
+      <div class="sale">FULL COLOR BANNER SALE</div>
+    </header>
+    <main>
+      <h1>Custom 13oz Vinyl Banner</h1>
+      <p class="muted">Premium full-color vinyl banner with free hemming and grommets every 2 ft. Configure your banner, upload artwork when ready, and pay securely through checkout.</p>
+      <img class="hero" src="/assets/full-color-banner-eye.png" alt="Full color banner promotional graphic with a rainbow iris eye">
+
+      <form class="layout" action="/api/banner-checkout" method="post" enctype="multipart/form-data">
+        <section class="panel">
+          <h2>Build Your Banner</h2>
+          <fieldset>
+            <legend>Banner details</legend>
+            <div class="grid">
+              <div><label for="width">Width</label><input id="width" name="width" type="number" min="1" max="145" step=".25" value="5" required></div>
+              <div><label for="height">Height</label><input id="height" name="height" type="number" min="1" max="10" step=".25" value="3" required></div>
+              <div><label for="units">Unit</label><select id="units" name="units"><option value="feet">Feet</option><option value="inches">Inches</option></select></div>
+              <div><label for="quantity">Quantity</label><input id="quantity" name="order_quantity" type="number" min="1" step="1" value="1" required></div>
+              <div class="full"><label for="material">Material</label><select id="material" disabled><option>13oz matte vinyl</option></select></div>
+            </div>
+          </fieldset>
+          <aside class="price" aria-live="polite">
+            <small>Estimated banner price</small>
+            <div class="total" data-total>$37.50</div>
+            <p class="note">Based on $2.50 per sq ft. You will receive a proof before production.</p>
+          </aside>
+          <div class="summary" aria-live="polite">
+            <div class="row"><span>Square footage each</span><strong data-each>15.00 sq ft</strong></div>
+            <div class="row"><span>Included finishing</span><strong>Hemmed + grommets every 2 ft</strong></div>
+            <div class="row"><span>Maximum size</span><strong>145 ft wide x 10 ft tall</strong></div>
+            <div class="row"><span>Estimated total sq ft</span><strong data-area>15.00 sq ft</strong></div>
+            <div class="row"><span>Estimated unit price</span><strong data-unit>$37.50</strong></div>
+            <p class="limit" data-limit></p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Design Details</h2>
+          <fieldset>
+            <legend>Banner type</legend>
+            <div class="tabs">
+              <label class="tab"><input type="radio" name="banner_type" value="Youth Sports Banner" checked> Youth Sports Banner</label>
+              <label class="tab"><input type="radio" name="banner_type" value="Standard Banner"> Standard Banner</label>
+            </div>
+          </fieldset>
+
+          <div class="section active" data-youth>
+            <h3>Youth sports banner details</h3>
+            <p class="note">Answer as many details as you can. Print-ready artwork is optional.</p>
+            <div class="grid">
+              <div class="full"><label for="youth-artwork">Print-ready artwork</label><input id="youth-artwork" name="youth_artwork" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png"></div>
+              <div><label for="sport">Sport</label><input id="sport" name="sport"></div>
+              <div><label for="league">League name</label><input id="league" name="league_name"></div>
+              <div><label for="age">Age group</label><input id="age" name="age_group"></div>
+              <div><label for="team">Team name</label><input id="team" name="team_name"></div>
+              <div><label for="colors">Team colors</label><input id="colors" name="team_colors"></div>
+              <div class="full"><label for="players">Players names and numbers</label><textarea id="players" name="players" placeholder="AYSO does not allow numbers on banners."></textarea></div>
+              <div><label for="coaches">Coaches names</label><input id="coaches" name="coaches"></div>
+              <div><label for="volunteers">Team parents / volunteers</label><input id="volunteers" name="volunteers"></div>
+              <div><label for="ideas">Design ideas</label><input id="ideas" name="youth_design_ideas"></div>
+              <div><label for="idea-image">Design idea image</label><input id="idea-image" name="youth_idea_image" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png"></div>
+            </div>
+          </div>
+
+          <div class="section" data-standard>
+            <h3>Standard banner details</h3>
+            <div class="grid">
+              <div class="full"><label for="description">Banner description</label><textarea id="description" name="banner_description" placeholder="Tell us what the banner should say and how it will be used."></textarea></div>
+              <div><label for="standard-artwork">Print-ready artwork</label><input id="standard-artwork" name="standard_artwork" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png"></div>
+              <div><label for="standard-image">Example or design element</label><input id="standard-image" name="standard_idea_image" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png"></div>
+            </div>
+          </div>
+
+          <h3>Delivery method</h3>
+          <div class="grid">
+            <label class="choice full"><input type="radio" name="delivery_method" value="ship" checked> Ship</label>
+            <label class="choice"><input type="radio" name="delivery_method" value="pickup-la-mesa"> Pickup at La Mesa</label>
+            <label class="choice"><input type="radio" name="delivery_method" value="pickup-pine-valley"> Pickup at Pine Valley</label>
+          </div>
+          <p class="note">Pickup orders are labeled for the selected location and skip the shipping-address step at checkout.</p>
+
+          <div class="grid">
+            <div><label for="need-by">Need-by date</label><input id="need-by" name="need_by" type="date"></div>
+            <div><label for="email">Email</label><input id="email" name="email" type="email" required></div>
+            <div><label for="phone">Phone</label><input id="phone" name="phone" type="tel"></div>
+            <div class="full"><label for="notes">Notes</label><textarea id="notes" name="notes" placeholder="Tell us about placement, deadline, special finishing, or artwork questions."></textarea></div>
+          </div>
+          <button type="submit">Continue to Secure Checkout</button>
+          <p class="note">Accepted artwork: PDF, AI, EPS, PSD, JPG, PNG. You can place your order before the proof; a proof will be sent before production.</p>
+        </section>
+      </form>
+
+      <section class="details">
+        <h2>13oz Vinyl Banner Details</h2>
+        <p>Premium heavyweight 13oz scrim vinyl looks great indoors and is designed to stand up to outdoor use.</p>
+        <h3>Included</h3>
+        <ul><li>Full-color UV printing</li><li>Free hemming and grommets every 2 ft</li><li>Maximum single-piece size: 10 ft x 145 ft</li></ul>
+        <h3>Artwork setup</h3>
+        <ul><li>Preferred formats: PDF or JPG</li><li>CMYK color space recommended</li><li>150 dpi is suitable for large-format raster artwork</li><li>Do not include crop marks or bleeds</li></ul>
+      </section>
+    </main>
+    <footer>Recognition Direct &middot; 8680 Troy St, Spring Valley, CA 91977 &middot; 619.465.0055</footer>
+    <script>
+      const form = document.querySelector("form");
+      const width = document.querySelector("#width");
+      const height = document.querySelector("#height");
+      const units = document.querySelector("#units");
+      const quantity = document.querySelector("#quantity");
+      const total = document.querySelector("[data-total]");
+      const each = document.querySelector("[data-each]");
+      const area = document.querySelector("[data-area]");
+      const unitPrice = document.querySelector("[data-unit]");
+      const limit = document.querySelector("[data-limit]");
+      function money(value) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value); }
+      function calculate() {
+        const w = Math.max(0, Number(width.value) || 0);
+        const h = Math.max(0, Number(height.value) || 0);
+        const q = Math.max(1, Math.floor(Number(quantity.value) || 1));
+        const isInches = units.value === "inches";
+        const sqft = isInches ? w * h / 144 : w * h;
+        const price = sqft * 2.5;
+        const tooLarge = w > (isInches ? 1740 : 145) || h > (isInches ? 120 : 10);
+        each.textContent = sqft.toFixed(2) + " sq ft";
+        area.textContent = (sqft * q).toFixed(2) + " sq ft";
+        unitPrice.textContent = money(price);
+        total.textContent = money(price * q);
+        limit.textContent = tooLarge ? "Maximum banner size is 145 ft wide x 10 ft tall." : "";
+      }
+      [width, height, units, quantity].forEach((input) => input.addEventListener("input", calculate));
+      document.querySelectorAll('input[name="banner_type"]').forEach((radio) => radio.addEventListener("change", () => {
+        const youth = document.querySelector('input[name="banner_type"]:checked').value === "Youth Sports Banner";
+        document.querySelector("[data-youth]").classList.toggle("active", youth);
+        document.querySelector("[data-standard]").classList.toggle("active", !youth);
+      }));
+      form.addEventListener("submit", (event) => {
+        calculate();
+        if (limit.textContent) { event.preventDefault(); alert(limit.textContent); }
+      });
+      calculate();
+    </script>
+  </body>
+</html>
