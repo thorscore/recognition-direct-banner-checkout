@@ -209,7 +209,7 @@ async function findProductByHandle(handle) {
 }
 
 async function createCatalogProduct(product) {
-  const handle = product.url.replace(/^\/+/, "").split("?")[0];
+  const handle = product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-");
   const existing = await findProductByHandle(handle);
   if (existing) return { status: "skipped", title: existing.title, handle, id: existing.id };
 
