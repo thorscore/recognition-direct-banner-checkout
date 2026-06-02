@@ -14,6 +14,7 @@ const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
+const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -41,6 +42,13 @@ const catalogByHandle = new Map(catalogData.products.map((product) => [
 function json(res, status, payload, headers = {}) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", ...headers });
   res.end(JSON.stringify(payload));
+}
+
+function corsHeaders(req) {
+  const origin = req.headers.origin || "";
+  return origin && ALLOWED_ORIGINS.has(origin)
+    ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" }
+    : {};
 }
 
 function html(res, status, markup) {
@@ -148,6 +156,186 @@ function deliveryMethodLabel(value) {
   if (value === "pickup-la-mesa") return "Pickup at La Mesa Street Side Pickup";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
   return "Ship";
+}
+
+function productHandle(value) {
+  return cleanText(value, 255).replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-");
+}
+
+function defaultCatalogValues(product) {
+  return Object.fromEntries((product.attrs?.attrs || []).flatMap((attr) => {
+    const selected = (attr.options || []).find((option) => option.default === true);
+    return selected ? [[attr.key, selected.key]] : [];
+  }));
+}
+
+function sizeParts(value) {
+  const [width, height] = String(value || "0x0").split("x").map((part) => Number(part) || 0);
+  return { width, height, area: width * height, shortSide: Math.min(width, height), longSide: Math.max(width, height) };
+}
+
+function matchesCatalogRule(values, rule) {
+  if (rule.op === "group") return matchesCatalogRules(values, rule.value || []);
+  const actual = String(values[rule.key] ?? "");
+  const expected = String(rule.value ?? "");
+  if (rule.op === "=") return actual === expected;
+  if (rule.op === "!=") return actual !== expected;
+  const size = sizeParts(actual);
+  const number = Number(expected);
+  if (rule.op === "area<") return size.area < number;
+  if (rule.op === "area>") return size.area > number;
+  if (rule.op === "ss<") return size.shortSide < number;
+  if (rule.op === "ss>") return size.shortSide > number;
+  if (rule.op === "ls<") return size.longSide < number;
+  if (rule.op === "ls>") return size.longSide > number;
+  return true;
+}
+
+function matchesCatalogRules(values, rules) {
+  return (rules || []).reduce((result, rule, index) => {
+    const matches = matchesCatalogRule(values, rule);
+    if (index === 0) return rule.logic === "and_not" ? !matches : matches;
+    if (rule.logic === "or") return result || matches;
+    if (rule.logic === "and_not") return result && !matches;
+    return result && matches;
+  }, true);
+}
+
+function applyCatalogActions(product, sourceValues) {
+  const values = { ...sourceValues };
+  for (let pass = 0; pass < 10; pass += 1) {
+    let changed = false;
+    for (const attr of product.attrs?.attrs || []) {
+      for (const action of attr.action || []) {
+        if (action.type !== "change" || !matchesCatalogRules(values, action.match)) continue;
+        for (const change of action.change || []) {
+          if (String(values[change.key] ?? "") === String(change.value ?? "")) continue;
+          values[change.key] = change.value;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+  return values;
+}
+
+function catalogOptions(formData) {
+  try {
+    return JSON.parse(field(formData, "catalog_options", 20_000) || "{}");
+  } catch {
+    throw new Error("Product options could not be read.");
+  }
+}
+
+function selectedCatalogAttributes(product, values) {
+  const labels = new Set();
+  return (product.attrs?.attrs || []).flatMap((attr) => {
+    if (attr.component === "size" || attr.component === "hidden") return [];
+    const label = attr.label || attr.key;
+    if (labels.has(label)) return [];
+    labels.add(label);
+    const selected = (attr.options || []).find((option) => String(option.key) === String(values[attr.key]));
+    return selected?.label ? [attribute(label, selected.label)] : [];
+  }).filter(Boolean);
+}
+
+function cookieHeader(response) {
+  const cookies = typeof response.headers.getSetCookie === "function"
+    ? response.headers.getSetCookie()
+    : [response.headers.get("set-cookie") || ""];
+  return cookies.map((cookie) => cookie.split(";")[0]).filter(Boolean).join("; ");
+}
+
+function cookieValue(cookie, name) {
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function oldCatalogVersion(markup) {
+  const encoded = markup.match(/data-page="([^"]+)"/)?.[1];
+  if (!encoded) throw new Error("Old catalog session could not be prepared.");
+  const payload = JSON.parse(decodeURIComponent(Buffer.from(encoded, "base64").toString("utf8")));
+  return payload.version || payload.props?.version;
+}
+
+async function quoteCatalogProduct(product, quantity, values) {
+  const pageResponse = await fetch(`${OLD_CATALOG_BASE_URL}${product.url}`);
+  if (!pageResponse.ok) throw new Error(`Old catalog session failed (${pageResponse.status}).`);
+  const markup = await pageResponse.text();
+  const cookie = cookieHeader(pageResponse);
+  const xsrfToken = cookieValue(cookie, "XSRF-TOKEN");
+  const version = oldCatalogVersion(markup);
+  const response = await fetch(`${OLD_CATALOG_BASE_URL}/item/quote`, {
+    method: "POST",
+    headers: {
+      "Accept": "text/html, application/xhtml+xml",
+      "Content-Type": "application/json",
+      "Cookie": cookie,
+      "Referer": `${OLD_CATALOG_BASE_URL}${product.url}`,
+      "X-Inertia": "true",
+      "X-Inertia-Version": version,
+      "X-Requested-With": "XMLHttpRequest",
+      "X-XSRF-TOKEN": xsrfToken,
+    },
+    body: JSON.stringify({ id: product.id, quantity: String(quantity), values }),
+  });
+  if (!response.ok) throw new Error(`Old catalog quote failed (${response.status}).`);
+  const payload = await response.json();
+  const quote = payload.props?.quoteResult?.quote?.[0];
+  if (!quote || !Number.isFinite(Number(quote.unit_price))) throw new Error("Select valid product options to calculate the price.");
+  return { unitPrice: Number(quote.unit_price), quoteResult: payload.props.quoteResult };
+}
+
+function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
+  let values = { ...defaultCatalogValues(product), ...rawValues };
+  const hasSize = (product.attrs?.attrs || []).some((attr) => attr.component === "size");
+  if (hasSize) {
+    const width = readPositiveNumber(formData.get("width"), "Width");
+    const height = readPositiveNumber(formData.get("height"), "Height");
+    const units = field(formData, "units") === "inches" ? "inches" : "feet";
+    const inchesWide = units === "inches" ? width : width * 12;
+    const inchesHigh = units === "inches" ? height : height * 12;
+    values._size = `${inchesWide}x${inchesHigh}`;
+    values = applyCatalogActions(product, values);
+    return { values, width, height, units, squareFeetEach: (inchesWide * inchesHigh) / 144 };
+  }
+  return { values: applyCatalogActions(product, values), width: 0, height: 0, units: "feet", squareFeetEach: 0 };
+}
+
+async function handleCatalogProduct(req, res, url) {
+  const product = catalogByHandle.get(productHandle(url.searchParams.get("handle")));
+  if (!product) return json(res, 404, { error: "This catalog product is not configured." }, corsHeaders(req));
+  const labels = new Set();
+  const attrs = (product.attrs?.attrs || [])
+    .filter((attr) => attr.component !== "size" && attr.component !== "hidden")
+    .filter((attr) => {
+      const label = attr.label || attr.key;
+      if (labels.has(label)) return false;
+      labels.add(label);
+      return true;
+    })
+    .map((attr) => ({
+      key: attr.key,
+      label: attr.label || attr.key,
+      component: attr.component || "select",
+      options: (attr.options || [])
+        .filter((option) => option.visible !== false && option.label)
+        .map((option) => ({ key: option.key, label: option.label || option.key, default: option.default === true })),
+    }));
+  return json(res, 200, { id: product.id, title: product.title, attrs }, corsHeaders(req));
+}
+
+async function handleCatalogPrice(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+  const formData = await requestFormData(req);
+  const product = catalogByHandle.get(productHandle(formData.get("product_handle")));
+  if (!product) throw new Error("This catalog product is not configured.");
+  const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
+  const input = buildCatalogQuoteInput(product, quantity, catalogOptions(formData), formData);
+  const quote = await quoteCatalogProduct(product, quantity, input.values);
+  return json(res, 200, { unitPrice: quote.unitPrice, totalPrice: Number((quote.unitPrice * quantity).toFixed(2)), squareFeetEach: input.squareFeetEach }, corsHeaders(req));
 }
 
 function buildAttributes(formData, artworkUrls) {
@@ -285,18 +473,14 @@ async function handleCatalogCheckout(req, res) {
   if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
 
   const formData = await requestFormData(req);
-  const productHandle = field(formData, "product_handle", 255).replace(/-+/g, "-");
-  const product = catalogByHandle.get(productHandle);
+  const handle = productHandle(formData.get("product_handle"));
+  const product = catalogByHandle.get(handle);
   if (!product) throw new Error("This catalog product is not configured.");
 
   const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
-  const minimumPrice = Number(product.minimum || 0);
-  const squareFootRate = Number(product.sqft || 0);
-  const width = squareFootRate > 0 ? readPositiveNumber(formData.get("width"), "Width") : 0;
-  const height = squareFootRate > 0 ? readPositiveNumber(formData.get("height"), "Height") : 0;
-  const units = field(formData, "units") === "inches" ? "inches" : "feet";
-  const squareFeetEach = squareFootRate > 0 ? (units === "inches" ? (width * height) / 144 : width * height) : 0;
-  const unitPrice = Number(Math.max(minimumPrice, squareFeetEach * squareFootRate).toFixed(2));
+  const input = buildCatalogQuoteInput(product, quantity, catalogOptions(formData), formData);
+  const { values, width, height, units, squareFeetEach } = input;
+  const { unitPrice } = await quoteCatalogProduct(product, quantity, values);
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
   const isPickup = deliveryMethod !== "Ship";
@@ -308,9 +492,9 @@ async function handleCatalogCheckout(req, res) {
   const attributes = [
     attribute("Configured Product", product.title),
     attribute("Original Catalog URL", `https://recognition-direct.bs.run${product.url}`),
-    attribute("Banner Size", squareFootRate > 0 ? `${width} ${unitLabel} x ${height} ${unitLabel}` : ""),
-    attribute("Square Footage Each", squareFootRate > 0 ? `${squareFeetEach.toFixed(2)} sq ft` : ""),
-    attribute("Square Foot Rate", squareFootRate > 0 ? `$${squareFootRate.toFixed(2)}` : ""),
+    attribute("Product Size", squareFeetEach > 0 ? `${width} ${unitLabel} x ${height} ${unitLabel}` : ""),
+    attribute("Square Footage Each", squareFeetEach > 0 ? `${squareFeetEach.toFixed(2)} sq ft` : ""),
+    ...selectedCatalogAttributes(product, values),
     attribute("Delivery Method", deliveryMethod),
     attribute("Need-by Date", field(formData, "need_by")),
     attribute("Phone", field(formData, "phone")),
@@ -321,7 +505,7 @@ async function handleCatalogCheckout(req, res) {
   const orderRecord = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
-    productHandle,
+    productHandle: handle,
     productTitle: product.title,
     email,
     quantity,
@@ -341,7 +525,7 @@ async function handleCatalogCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["catalog-configuration", "proof-required", productHandle, isPickup ? field(formData, "delivery_method") : "ship"],
+    tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship"],
     allowDiscountCodesInCheckout: true,
     lineItems: [{
       title: product.title,
@@ -408,6 +592,9 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
+    if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
+    if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
