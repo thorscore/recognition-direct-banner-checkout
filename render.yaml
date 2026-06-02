@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: recognition-direct-banner-checkout
+    runtime: node
+    plan: starter
+    buildCommand: ""
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: APP_BASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://recognition-direct.com,https://www.recognition-direct.com
+      - key: SHOPIFY_SHOP
+        value: f375fe-2d
+      - key: SHOPIFY_CLIENT_ID
+        sync: false
+      - key: SHOPIFY_CLIENT_SECRET
+        sync: false
+      - key: SHOPIFY_API_VERSION
+        value: 2026-04
+      - key: MOCK_SHOPIFY
+        value: "false"
+    disk:
+      name: banner-artwork
+      mountPath: /opt/render/project/src/data
+      sizeGB: 5
