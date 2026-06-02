@@ -136,6 +136,12 @@ function attribute(key, value) {
   return value ? { key, value } : null;
 }
 
+function deliveryMethodLabel(value) {
+  if (value === "pickup-la-mesa") return "Pickup at La Mesa Street Side Pickup";
+  if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
+  return "Ship";
+}
+
 function buildAttributes(formData, artworkUrls) {
   return [
     attribute("Banner Size", field(formData, "banner_size")),
@@ -143,7 +149,7 @@ function buildAttributes(formData, artworkUrls) {
     attribute("Total Square Footage", field(formData, "total_square_footage")),
     attribute("Material", "13oz vinyl"),
     attribute("Included Finishing", "Hemmed with grommets every 2 ft"),
-    attribute("Delivery Method", field(formData, "delivery_method") === "pickup" ? "Pickup at La Mesa Street Side Pickup" : "Ship"),
+    attribute("Delivery Method", deliveryMethodLabel(field(formData, "delivery_method"))),
     attribute("Banner Type", field(formData, "banner_type")),
     attribute("Sport", field(formData, "sport")),
     attribute("League Name", field(formData, "league_name")),
@@ -204,8 +210,8 @@ async function handleCheckout(req, res) {
   const unitPrice = Number((squareFeetEach * 2.5).toFixed(2));
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
   const unitLabel = units === "inches" ? "in" : "ft";
-  const isPickup = field(formData, "delivery_method") === "pickup";
-  const deliveryMethod = isPickup ? "Pickup at La Mesa Street Side Pickup" : "Ship";
+  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const isPickup = deliveryMethod !== "Ship";
 
   const artworkUrls = {
     youthArtwork: await saveUpload(formData.get("youth_artwork")),
@@ -242,7 +248,7 @@ async function handleCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["custom-banner", "proof-required", isPickup ? "pickup-la-mesa" : "ship"],
+    tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship"],
     allowDiscountCodesInCheckout: true,
     lineItems: [{
       title: "Custom 13oz Vinyl Banner",
