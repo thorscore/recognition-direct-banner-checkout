@@ -347,12 +347,13 @@ async function handleCreateCollections(req, res, url) {
   do {
     const productData = await shopifyGraphql(`query CatalogProducts($after: String) {
       products(first: 250, after: $after) {
-        nodes { id metafield(namespace: "recognition_direct", key: "catalog_id") { value } }
+        nodes { id handle }
         pageInfo { hasNextPage endCursor }
       }
     }`, { after });
     for (const product of productData.products.nodes) {
-      if (product.metafield?.value) productIds.set(Number(product.metafield.value), product.id);
+      const catalogProduct = catalogByHandle.get(product.handle);
+      if (catalogProduct) productIds.set(Number(catalogProduct.id), product.id);
     }
     after = productData.products.pageInfo.hasNextPage ? productData.products.pageInfo.endCursor : null;
   } while (after);
