@@ -13,6 +13,7 @@ const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
+const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -31,6 +32,11 @@ let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
 
 await mkdir(UPLOAD_DIR, { recursive: true });
 await mkdir(ORDER_DIR, { recursive: true });
+const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const catalogByHandle = new Map(catalogData.products.map((product) => [
+  product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-"),
+  product,
+]));
 
 function json(res, status, payload, headers = {}) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", ...headers });
@@ -274,6 +280,91 @@ async function handleCheckout(req, res) {
   res.end();
 }
 
+async function handleCatalogCheckout(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const productHandle = field(formData, "product_handle", 255).replace(/-+/g, "-");
+  const product = catalogByHandle.get(productHandle);
+  if (!product) throw new Error("This catalog product is not configured.");
+
+  const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
+  const minimumPrice = Number(product.minimum || 0);
+  const squareFootRate = Number(product.sqft || 0);
+  const width = squareFootRate > 0 ? readPositiveNumber(formData.get("width"), "Width") : 0;
+  const height = squareFootRate > 0 ? readPositiveNumber(formData.get("height"), "Height") : 0;
+  const units = field(formData, "units") === "inches" ? "inches" : "feet";
+  const squareFeetEach = squareFootRate > 0 ? (units === "inches" ? (width * height) / 144 : width * height) : 0;
+  const unitPrice = Number(Math.max(minimumPrice, squareFeetEach * squareFootRate).toFixed(2));
+  const totalPrice = Number((unitPrice * quantity).toFixed(2));
+  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const isPickup = deliveryMethod !== "Ship";
+  const artworkUrl = await saveUpload(formData.get("artwork"));
+  const email = field(formData, "email", 320);
+  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+
+  const unitLabel = units === "inches" ? "in" : "ft";
+  const attributes = [
+    attribute("Configured Product", product.title),
+    attribute("Original Catalog URL", `https://recognition-direct.bs.run${product.url}`),
+    attribute("Banner Size", squareFootRate > 0 ? `${width} ${unitLabel} x ${height} ${unitLabel}` : ""),
+    attribute("Square Footage Each", squareFootRate > 0 ? `${squareFeetEach.toFixed(2)} sq ft` : ""),
+    attribute("Square Foot Rate", squareFootRate > 0 ? `$${squareFootRate.toFixed(2)}` : ""),
+    attribute("Delivery Method", deliveryMethod),
+    attribute("Need-by Date", field(formData, "need_by")),
+    attribute("Phone", field(formData, "phone")),
+    attribute("Notes", field(formData, "notes", 1500)),
+    attribute("Artwork", artworkUrl),
+  ].filter(Boolean);
+
+  const orderRecord = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    productHandle,
+    productTitle: product.title,
+    email,
+    quantity,
+    unitPrice,
+    totalPrice,
+    deliveryMethod,
+    attributes,
+    artworkUrl,
+  };
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+
+  if (MOCK_SHOPIFY) {
+    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
+    return res.end();
+  }
+
+  const draftOrder = await createDraftOrder({
+    email,
+    note: `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    tags: ["catalog-configuration", "proof-required", productHandle, isPickup ? field(formData, "delivery_method") : "ship"],
+    allowDiscountCodesInCheckout: true,
+    lineItems: [{
+      title: product.title,
+      quantity,
+      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+      requiresShipping: !isPickup,
+      taxable: true,
+      customAttributes: attributes,
+    }],
+    customAttributes: [
+      { key: "Configuration ID", value: orderRecord.id },
+      { key: "Proof Required", value: "Yes" },
+      { key: "Delivery Method", value: deliveryMethod },
+    ],
+  });
+
+  orderRecord.shopifyDraftOrderId = draftOrder.id;
+  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+  res.writeHead(303, { Location: draftOrder.invoiceUrl });
+  res.end();
+}
+
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -326,6 +417,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname.startsWith("/uploads/")) return await handleUpload(req, res, url.pathname);
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
