@@ -343,7 +343,7 @@ async function handleCatalogPrice(req, res) {
 async function handleCreateCollections(req, res, url) {
   if (url.searchParams.get("key") !== "ea184168bcb74547ba6c745ff913406c") return json(res, 404, { error: "Not found." });
   const productData = await shopifyGraphql(`query CatalogProducts {
-    products(first: 250, query: "tag:catalog-migration") {
+    products(first: 250) {
       nodes { id metafield(namespace: "recognition_direct", key: "catalog_id") { value } }
     }
   }`);
@@ -368,7 +368,7 @@ async function handleCreateCollections(req, res, url) {
     const errors = data.collectionCreate.userErrors || [];
     results.push({ handle: category.handle, status: errors.length ? "error" : "created", products: products.length, errors });
   }
-  return json(res, 200, { results });
+  return json(res, 200, { matchedProducts: productIds.size, results });
 }
 
 function buildAttributes(formData, artworkUrls) {
