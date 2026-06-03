@@ -144,20 +144,6 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
-async function shopifyRest(pathname, options = {}) {
-  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Access-Token": await getShopifyToken(),
-      ...(options.headers || {}),
-    },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
-  return payload;
-}
-
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -592,48 +578,6 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
-async function handleRepair13ozProduct(req, res, url) {
-  if (url.searchParams.get("key") !== "13oz-cache-refresh-2026-06-03") {
-    return json(res, 404, { error: "Not found." });
-  }
-
-  const list = await shopifyRest("/products.json?handle=13oz-vinyl-banner&fields=id,title,handle,template_suffix");
-  const product = list.products?.[0];
-  if (!product) return json(res, 404, { error: "Product not found." });
-
-  await shopifyRest(`/products/${product.id}.json`, {
-    method: "PUT",
-    body: JSON.stringify({
-      product: {
-        id: product.id,
-        template_suffix: null,
-      },
-    }),
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 1200));
-
-  const updated = await shopifyRest(`/products/${product.id}.json`, {
-    method: "PUT",
-    body: JSON.stringify({
-      product: {
-        id: product.id,
-        template_suffix: "catalog-configurator-v3",
-      },
-    }),
-  });
-
-  return json(res, 200, {
-    ok: true,
-    product: {
-      id: updated.product?.id,
-      title: updated.product?.title,
-      handle: updated.product?.handle,
-      template_suffix: updated.product?.template_suffix,
-    },
-  });
-}
-
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -690,7 +634,6 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
-    if (req.method === "POST" && url.pathname === "/internal/repair-13oz-product") return await handleRepair13ozProduct(req, res, url);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
