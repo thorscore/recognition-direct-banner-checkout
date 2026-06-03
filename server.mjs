@@ -202,6 +202,7 @@ function catalogDisplayTitle(product) {
 function catalogAttributeLabel(product, attr) {
   const handle = productHandle(product.url);
   if (handle === "coroplast" && attr.key === "hardware") return "Yard Stake";
+  if (!attr.label && ["flag_pole", "flag_pole_tab"].includes(attr.key)) return "Hardware";
   if (attr.key === "hardware" && attr.label && attr.label !== "Hardware") return attr.label;
   if (attr.key === "hardware") return "Package";
   return attr.label || attr.key;
@@ -421,11 +422,17 @@ async function handleCatalogProduct(req, res, url) {
       key: attr.key,
       label: catalogAttributeLabel(product, attr),
       component: attr.component || "select",
+      visible: attr.visible || null,
       options: (attr.options || [])
         .filter((option) => option.visible !== false && option.label)
         .filter((option) => option.component !== "option_group")
         .filter((option) => !catalogOptionIsHidden(product, attr, option))
-        .map((option) => ({ key: option.key, label: option.label || option.key, default: option.default === true })),
+        .map((option) => ({
+          key: option.key,
+          label: option.label || option.key,
+          default: option.default === true,
+          visible: option.visible || null,
+        })),
     }));
   return json(res, 200, {
     id: product.id,
