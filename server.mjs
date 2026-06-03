@@ -144,20 +144,6 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
-async function shopifyRest(pathname, options = {}) {
-  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Access-Token": await getShopifyToken(),
-      ...(options.headers || {}),
-    },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
-  return payload;
-}
-
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -564,68 +550,6 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
-async function handlePublishCatalogBatch(req, res, url) {
-  if (url.searchParams.get("key") !== "3f9933b1ce9c4de38412b186ccf28329") {
-    return json(res, 404, { error: "Not found." });
-  }
-
-  const catalogHandles = new Set(catalogData.products.map((product) => productHandle(product.url)));
-  const data = await shopifyGraphql(`
-    query CatalogProductsForPublish($query: String!) {
-      products(first: 250, query: $query) {
-        nodes {
-          id
-          title
-          handle
-          status
-        }
-      }
-    }
-  `, { query: "tag:catalog-migration" });
-
-  const candidates = data.products.nodes.filter((product) => catalogHandles.has(productHandle(product.handle)));
-  const limit = Math.max(1, Math.min(250, Number(url.searchParams.get("limit") || candidates.length)));
-  const selected = candidates.slice(0, limit);
-  const published = [];
-  const failed = [];
-
-  for (const product of selected) {
-    const numericId = product.id.split("/").pop();
-    try {
-      const restResult = await shopifyRest(`/products/${numericId}.json`, {
-        method: "PUT",
-        body: JSON.stringify({
-          product: {
-            id: Number(numericId),
-            status: "active",
-            published: true,
-            published_scope: "global",
-            template_suffix: "catalog-configurator",
-          },
-        }),
-      });
-      published.push({
-        id: restResult.product?.id,
-        title: restResult.product?.title,
-        handle: restResult.product?.handle,
-        status: restResult.product?.status,
-        published_at: restResult.product?.published_at,
-        template_suffix: restResult.product?.template_suffix,
-      });
-    } catch (error) {
-      failed.push({ title: product.title, handle: product.handle, error: error.message });
-    }
-  }
-
-  return json(res, 200, {
-    found: candidates.length,
-    selected: selected.length,
-    published: published.length,
-    failed,
-    sample: published.slice(0, 10),
-  });
-}
-
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -682,7 +606,6 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
-    if (req.method === "POST" && url.pathname === "/internal/publish-catalog-batch") return await handlePublishCatalogBatch(req, res, url);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
