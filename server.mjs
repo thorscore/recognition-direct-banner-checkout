@@ -550,6 +550,83 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
+async function handlePublishCatalogTestProduct(req, res, url) {
+  if (url.searchParams.get("key") !== "3f9933b1ce9c4de38412b186ccf28329") {
+    return json(res, 404, { error: "Not found." });
+  }
+
+  const handle = productHandle(url.searchParams.get("handle") || "mesh-banners");
+  const data = await shopifyGraphql(`
+    query ProductPublicationStatus($handle: String!) {
+      productByHandle(handle: $handle) {
+        id
+        title
+        handle
+        status
+        publishedOnCurrentPublication
+      }
+      publications(first: 20) {
+        nodes {
+          id
+          name
+        }
+      }
+    }
+  `, { handle });
+
+  if (!data.productByHandle) return json(res, 404, { error: `Product ${handle} was not found.` });
+  const onlineStore = data.publications.nodes.find((publication) => publication.name === "Online Store")
+    || data.publications.nodes.find((publication) => /online store/i.test(publication.name));
+  if (!onlineStore) return json(res, 500, { error: "Online Store publication was not found.", publications: data.publications.nodes });
+
+  const updateResult = await shopifyGraphql(`
+    mutation ActivateProduct($product: ProductUpdateInput!) {
+      productUpdate(product: $product) {
+        product {
+          id
+          title
+          handle
+          status
+          publishedOnCurrentPublication
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `, { product: { id: data.productByHandle.id, status: "ACTIVE", templateSuffix: "catalog-configurator" } });
+  const updateErrors = updateResult.productUpdate.userErrors || [];
+  if (updateErrors.length) return json(res, 422, { error: "Product update failed.", userErrors: updateErrors });
+
+  const publishResult = await shopifyGraphql(`
+    mutation PublishProduct($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) {
+        publishable {
+          ... on Product {
+            id
+            title
+            handle
+            status
+            publishedOnCurrentPublication
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `, { id: data.productByHandle.id, input: [{ publicationId: onlineStore.id }] });
+  const publishErrors = publishResult.publishablePublish.userErrors || [];
+  if (publishErrors.length) return json(res, 422, { error: "Product publish failed.", userErrors: publishErrors });
+
+  return json(res, 200, {
+    product: publishResult.publishablePublish.publishable,
+    publication: onlineStore,
+  });
+}
+
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -606,6 +683,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/internal/publish-catalog-test-product") return await handlePublishCatalogTestProduct(req, res, url);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
