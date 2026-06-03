@@ -171,6 +171,18 @@ function catalogPricingOverride(product) {
   return CATALOG_PRICE_OVERRIDES.get(handle) || null;
 }
 
+function catalogOptionIsHidden(product, attr, option) {
+  const handle = productHandle(product.url);
+  return handle === "standard-retractable" && attr.key === "led" && String(option.key) === "2";
+}
+
+function normalizeCatalogValues(product, sourceValues) {
+  const values = { ...sourceValues };
+  const handle = productHandle(product.url);
+  if (handle === "standard-retractable" && String(values.led) === "2") values.led = "1";
+  return values;
+}
+
 function defaultCatalogValues(product) {
   return Object.fromEntries((product.attrs?.attrs || []).flatMap((attr) => {
     const selected = (attr.options || []).find((option) => option.default === true);
@@ -310,7 +322,7 @@ function adjustedCatalogUnitPrice(product, input, quotedUnitPrice) {
 }
 
 function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
-  let values = { ...defaultCatalogValues(product), ...rawValues };
+  let values = normalizeCatalogValues(product, { ...defaultCatalogValues(product), ...rawValues });
   const hasSize = (product.attrs?.attrs || []).some((attr) => attr.component === "size");
   if (hasSize) {
     const width = readPositiveNumber(formData.get("width"), "Width");
@@ -319,10 +331,10 @@ function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
     const inchesWide = units === "inches" ? width : width * 12;
     const inchesHigh = units === "inches" ? height : height * 12;
     values._size = `${inchesWide}x${inchesHigh}`;
-    values = applyCatalogActions(product, values);
+    values = normalizeCatalogValues(product, applyCatalogActions(product, values));
     return { values, width, height, units, squareFeetEach: (inchesWide * inchesHigh) / 144 };
   }
-  return { values: applyCatalogActions(product, values), width: 0, height: 0, units: "feet", squareFeetEach: 0 };
+  return { values: normalizeCatalogValues(product, applyCatalogActions(product, values)), width: 0, height: 0, units: "feet", squareFeetEach: 0 };
 }
 
 async function handleCatalogProduct(req, res, url) {
@@ -346,6 +358,7 @@ async function handleCatalogProduct(req, res, url) {
       component: attr.component || "select",
       options: (attr.options || [])
         .filter((option) => option.visible !== false && option.label)
+        .filter((option) => !catalogOptionIsHidden(product, attr, option))
         .map((option) => ({ key: option.key, label: option.label || option.key, default: option.default === true })),
     }));
   return json(res, 200, {
