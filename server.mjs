@@ -368,6 +368,26 @@ function buildAttributes(formData, artworkUrls) {
   ].filter(Boolean);
 }
 
+function buildBannerDesignAttributes(formData, artworkUrls) {
+  return [
+    attribute("Banner Type", field(formData, "banner_type")),
+    attribute("Sport", field(formData, "sport")),
+    attribute("League Name", field(formData, "league_name")),
+    attribute("Age Group", field(formData, "age_group")),
+    attribute("Team Name", field(formData, "team_name")),
+    attribute("Team Colors", field(formData, "team_colors")),
+    attribute("Players Names and Numbers", field(formData, "players", 1500)),
+    attribute("Coaches Names", field(formData, "coaches")),
+    attribute("Team Parents / Volunteers", field(formData, "volunteers")),
+    attribute("Youth Design Ideas", field(formData, "youth_design_ideas", 1000)),
+    attribute("Banner Description", field(formData, "banner_description", 1500)),
+    attribute("Youth Print-ready Artwork", artworkUrls.youthArtwork),
+    attribute("Youth Design Idea Image", artworkUrls.youthIdeaImage),
+    attribute("Standard Print-ready Art File", artworkUrls.standardArtwork),
+    attribute("Standard Example / Banner Element", artworkUrls.standardIdeaImage),
+  ].filter(Boolean);
+}
+
 async function createDraftOrder(input) {
   const mutation = `#graphql
     mutation CreateBannerDraftOrder($input: DraftOrderInput!) {
@@ -486,6 +506,12 @@ async function handleCatalogCheckout(req, res) {
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
   const isPickup = deliveryMethod !== "Ship";
   const artworkUrl = await saveUpload(formData.get("artwork"));
+  const bannerArtworkUrls = {
+    youthArtwork: await saveUpload(formData.get("youth_artwork")),
+    youthIdeaImage: await saveUpload(formData.get("youth_idea_image")),
+    standardArtwork: await saveUpload(formData.get("standard_artwork")),
+    standardIdeaImage: await saveUpload(formData.get("standard_idea_image")),
+  };
   const email = field(formData, "email", 320);
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
@@ -501,6 +527,7 @@ async function handleCatalogCheckout(req, res) {
     attribute("Phone", field(formData, "phone")),
     attribute("Notes", field(formData, "notes", 1500)),
     attribute("Artwork", artworkUrl),
+    ...buildBannerDesignAttributes(formData, bannerArtworkUrls),
   ].filter(Boolean);
 
   const orderRecord = {
@@ -515,6 +542,7 @@ async function handleCatalogCheckout(req, res) {
     deliveryMethod,
     attributes,
     artworkUrl,
+    bannerArtworkUrls,
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
