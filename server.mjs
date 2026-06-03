@@ -28,6 +28,9 @@ const ALLOWED_ORIGINS = new Set(
 );
 ALLOWED_ORIGINS.add(APP_BASE_URL);
 const ALLOWED_FILE_EXTENSIONS = new Set([".pdf", ".ai", ".eps", ".psd", ".jpg", ".jpeg", ".png"]);
+const CATALOG_PRICE_OVERRIDES = new Map([
+  ["fabric-block-out", { squareFootRate: 3.98 }],
+]);
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
 let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
@@ -163,6 +166,11 @@ function productHandle(value) {
   return cleanText(value, 255).replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-");
 }
 
+function catalogPricingOverride(product) {
+  const handle = productHandle(product.url);
+  return CATALOG_PRICE_OVERRIDES.get(handle) || null;
+}
+
 function defaultCatalogValues(product) {
   return Object.fromEntries((product.attrs?.attrs || []).flatMap((attr) => {
     const selected = (attr.options || []).find((option) => option.default === true);
@@ -288,6 +296,19 @@ async function quoteCatalogProduct(product, quantity, values) {
   return { unitPrice: Number(quote.unit_price), quoteResult: payload.props.quoteResult };
 }
 
+function adjustedCatalogUnitPrice(product, input, quotedUnitPrice) {
+  const override = catalogPricingOverride(product);
+  if (!override?.squareFootRate || !input.squareFeetEach) return quotedUnitPrice;
+
+  const oldRate = Number(product.sqft || 0);
+  if (!oldRate) return quotedUnitPrice;
+
+  const minimum = Number(product.minimum || 0);
+  const oldBasePrice = Math.max(minimum, input.squareFeetEach * oldRate);
+  const newBasePrice = Math.max(minimum, input.squareFeetEach * override.squareFootRate);
+  return Number(Math.max(0, quotedUnitPrice - oldBasePrice + newBasePrice).toFixed(2));
+}
+
 function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
   let values = { ...defaultCatalogValues(product), ...rawValues };
   const hasSize = (product.attrs?.attrs || []).some((attr) => attr.component === "size");
@@ -309,6 +330,8 @@ async function handleCatalogProduct(req, res, url) {
   if (!product) return json(res, 404, { error: "This catalog product is not configured." }, corsHeaders(req));
   const labels = new Set();
   const hasCustomSize = (product.attrs?.attrs || []).some((attr) => attr.component === "size");
+  const override = catalogPricingOverride(product);
+  const squareFootRate = override?.squareFootRate || Number(product.sqft || 0);
   const attrs = (product.attrs?.attrs || [])
     .filter((attr) => attr.component !== "size" && attr.component !== "hidden")
     .filter((attr) => {
@@ -325,7 +348,7 @@ async function handleCatalogProduct(req, res, url) {
         .filter((option) => option.visible !== false && option.label)
         .map((option) => ({ key: option.key, label: option.label || option.key, default: option.default === true })),
     }));
-  return json(res, 200, { id: product.id, title: product.title, hasCustomSize, usesSquareFootPricing: Number(product.sqft || 0) > 0, attrs }, corsHeaders(req));
+  return json(res, 200, { id: product.id, title: product.title, hasCustomSize, usesSquareFootPricing: squareFootRate > 0, squareFootRate, attrs }, corsHeaders(req));
 }
 
 async function handleCatalogPrice(req, res) {
@@ -337,7 +360,8 @@ async function handleCatalogPrice(req, res) {
   const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
   const input = buildCatalogQuoteInput(product, quantity, catalogOptions(formData), formData);
   const quote = await quoteCatalogProduct(product, quantity, input.values);
-  return json(res, 200, { unitPrice: quote.unitPrice, totalPrice: Number((quote.unitPrice * quantity).toFixed(2)), squareFeetEach: input.squareFeetEach }, corsHeaders(req));
+  const unitPrice = adjustedCatalogUnitPrice(product, input, quote.unitPrice);
+  return json(res, 200, { unitPrice, totalPrice: Number((unitPrice * quantity).toFixed(2)), squareFeetEach: input.squareFeetEach }, corsHeaders(req));
 }
 
 function buildAttributes(formData, artworkUrls) {
@@ -502,7 +526,8 @@ async function handleCatalogCheckout(req, res) {
   const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
   const input = buildCatalogQuoteInput(product, quantity, catalogOptions(formData), formData);
   const { values, width, height, units, squareFeetEach } = input;
-  const { unitPrice } = await quoteCatalogProduct(product, quantity, values);
+  const quote = await quoteCatalogProduct(product, quantity, values);
+  const unitPrice = adjustedCatalogUnitPrice(product, input, quote.unitPrice);
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
   const isPickup = deliveryMethod !== "Ship";
