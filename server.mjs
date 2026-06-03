@@ -173,13 +173,13 @@ function catalogPricingOverride(product) {
 
 function catalogOptionIsHidden(product, attr, option) {
   const handle = productHandle(product.url);
-  return handle === "standard-retractable" && attr.key === "led" && String(option.key) === "2";
+  return ["standard-retractable", "deluxe-retractable"].includes(handle) && attr.key === "led" && String(option.key) === "2";
 }
 
 function normalizeCatalogValues(product, sourceValues) {
   const values = { ...sourceValues };
   const handle = productHandle(product.url);
-  if (handle === "standard-retractable" && String(values.led) === "2") values.led = "1";
+  if (["standard-retractable", "deluxe-retractable"].includes(handle) && String(values.led) === "2") values.led = "1";
   return values;
 }
 
