@@ -202,8 +202,42 @@ function catalogDisplayTitle(product) {
 function catalogAttributeLabel(product, attr) {
   const handle = productHandle(product.url);
   if (handle === "coroplast" && attr.key === "hardware") return "Yard Stake";
+  if (attr.key === "hardware" && attr.label && attr.label !== "Hardware") return attr.label;
   if (attr.key === "hardware") return "Package";
   return attr.label || attr.key;
+}
+
+function catalogSizeAttribute(product) {
+  return (product.attrs?.attrs || []).find((attr) => attr.component === "size") || null;
+}
+
+function catalogCustomSizeControl(product) {
+  const sizeAttr = catalogSizeAttribute(product);
+  const visibilityRule = (sizeAttr?.visible || []).find((rule) => rule.op === "=" && rule.key && rule.value);
+  if (!visibilityRule) return null;
+
+  const controller = (product.attrs?.attrs || []).find((attr) => attr.key === visibilityRule.key);
+  if (!controller?.options?.length) return null;
+
+  const presets = controller.options
+    .filter((option) => /^\d+(\.\d+)?x\d+(\.\d+)?$/.test(String(option.key || "")))
+    .map((option) => {
+      const [width, height] = String(option.key).split("x").map((part) => Number(part) || 0);
+      return {
+        key: option.key,
+        label: option.label || option.key,
+        width,
+        height,
+        default: option.default === true,
+      };
+    });
+
+  if (!presets.length) return null;
+  return {
+    key: controller.key,
+    customValue: visibilityRule.value,
+    presets,
+  };
 }
 
 function defaultCatalogValues(product) {
@@ -399,6 +433,7 @@ async function handleCatalogProduct(req, res, url) {
     usesSquareFootPricing: squareFootRate > 0,
     squareFootRate,
     minimumPrice: Number(product.minimum || 0),
+    customSizeControl: catalogCustomSizeControl(product),
     attrs,
   }, corsHeaders(req));
 }
