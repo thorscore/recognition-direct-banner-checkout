@@ -307,6 +307,7 @@ async function handleCatalogProduct(req, res, url) {
   const product = catalogByHandle.get(productHandle(url.searchParams.get("handle")));
   if (!product) return json(res, 404, { error: "This catalog product is not configured." }, corsHeaders(req));
   const labels = new Set();
+  const hasCustomSize = (product.attrs?.attrs || []).some((attr) => attr.component === "size");
   const attrs = (product.attrs?.attrs || [])
     .filter((attr) => attr.component !== "size" && attr.component !== "hidden")
     .filter((attr) => {
@@ -323,7 +324,7 @@ async function handleCatalogProduct(req, res, url) {
         .filter((option) => option.visible !== false && option.label)
         .map((option) => ({ key: option.key, label: option.label || option.key, default: option.default === true })),
     }));
-  return json(res, 200, { id: product.id, title: product.title, attrs }, corsHeaders(req));
+  return json(res, 200, { id: product.id, title: product.title, hasCustomSize, usesSquareFootPricing: Number(product.sqft || 0) > 0, attrs }, corsHeaders(req));
 }
 
 async function handleCatalogPrice(req, res) {
