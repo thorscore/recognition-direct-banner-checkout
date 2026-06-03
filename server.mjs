@@ -17,8 +17,9 @@ const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.jso
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
-const MAX_BODY_BYTES = 25 * 1024 * 1024;
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_FILE_MB = Number(process.env.MAX_FILE_MB || 100);
+const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
+const MAX_BODY_BYTES = (MAX_FILE_MB + 10) * 1024 * 1024;
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || "https://recognition-direct.com,https://www.recognition-direct.com,https://recognition-direct.bs.run,http://localhost:4173")
     .split(",")
@@ -99,7 +100,7 @@ async function requestFormData(req) {
 
 async function saveUpload(file) {
   if (!file || typeof file === "string" || file.size === 0) return "";
-  if (file.size > MAX_FILE_BYTES) throw new Error(`${file.name} exceeds the 20 MB artwork limit.`);
+  if (file.size > MAX_FILE_BYTES) throw new Error(`${file.name} exceeds the ${MAX_FILE_MB} MB artwork limit.`);
   const extension = extname(file.name).toLowerCase();
   if (!ALLOWED_FILE_EXTENSIONS.has(extension)) throw new Error(`${file.name} has an unsupported file type.`);
   const storedName = `${randomUUID()}${extension}`;
