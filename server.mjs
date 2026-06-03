@@ -348,7 +348,15 @@ async function handleCatalogProduct(req, res, url) {
         .filter((option) => option.visible !== false && option.label)
         .map((option) => ({ key: option.key, label: option.label || option.key, default: option.default === true })),
     }));
-  return json(res, 200, { id: product.id, title: product.title, hasCustomSize, usesSquareFootPricing: squareFootRate > 0, squareFootRate, attrs }, corsHeaders(req));
+  return json(res, 200, {
+    id: product.id,
+    title: product.title,
+    hasCustomSize,
+    usesSquareFootPricing: squareFootRate > 0,
+    squareFootRate,
+    minimumPrice: Number(product.minimum || 0),
+    attrs,
+  }, corsHeaders(req));
 }
 
 async function handleCatalogPrice(req, res) {
