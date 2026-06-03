@@ -564,70 +564,65 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
-async function handlePublishCatalogTestProduct(req, res, url) {
+async function handlePublishCatalogBatch(req, res, url) {
   if (url.searchParams.get("key") !== "3f9933b1ce9c4de38412b186ccf28329") {
     return json(res, 404, { error: "Not found." });
   }
 
-  const handle = productHandle(url.searchParams.get("handle") || "mesh-banners");
+  const catalogHandles = new Set(catalogData.products.map((product) => productHandle(product.url)));
   const data = await shopifyGraphql(`
-    query ProductPublicationStatus($handle: String!) {
-      productByHandle(handle: $handle) {
-        id
-        title
-        handle
-        status
-      }
-    }
-  `, { handle });
-
-  if (!data.productByHandle) return json(res, 404, { error: `Product ${handle} was not found.` });
-  const numericId = data.productByHandle.id.split("/").pop();
-
-  const updateResult = await shopifyGraphql(`
-    mutation ActivateProduct($product: ProductUpdateInput!) {
-      productUpdate(product: $product) {
-        product {
+    query CatalogProductsForPublish($query: String!) {
+      products(first: 250, query: $query) {
+        nodes {
           id
           title
           handle
           status
         }
-        userErrors {
-          field
-          message
-        }
       }
     }
-  `, { product: { id: data.productByHandle.id, status: "ACTIVE", templateSuffix: "catalog-configurator" } });
-  const updateErrors = updateResult.productUpdate.userErrors || [];
-  if (updateErrors.length) return json(res, 422, { error: "Product update failed.", userErrors: updateErrors });
+  `, { query: "tag:catalog-migration" });
 
-  const restResult = await shopifyRest(`/products/${numericId}.json`, {
-    method: "PUT",
-    body: JSON.stringify({
-      product: {
-        id: Number(numericId),
-        status: "active",
-        published: true,
-        published_scope: "global",
-        template_suffix: "catalog-configurator",
-      },
-    }),
-  });
+  const candidates = data.products.nodes.filter((product) => catalogHandles.has(productHandle(product.handle)));
+  const limit = Math.max(1, Math.min(250, Number(url.searchParams.get("limit") || candidates.length)));
+  const selected = candidates.slice(0, limit);
+  const published = [];
+  const failed = [];
+
+  for (const product of selected) {
+    const numericId = product.id.split("/").pop();
+    try {
+      const restResult = await shopifyRest(`/products/${numericId}.json`, {
+        method: "PUT",
+        body: JSON.stringify({
+          product: {
+            id: Number(numericId),
+            status: "active",
+            published: true,
+            published_scope: "global",
+            template_suffix: "catalog-configurator",
+          },
+        }),
+      });
+      published.push({
+        id: restResult.product?.id,
+        title: restResult.product?.title,
+        handle: restResult.product?.handle,
+        status: restResult.product?.status,
+        published_at: restResult.product?.published_at,
+        template_suffix: restResult.product?.template_suffix,
+      });
+    } catch (error) {
+      failed.push({ title: product.title, handle: product.handle, error: error.message });
+    }
+  }
 
   return json(res, 200, {
-    before: data.productByHandle,
-    after: updateResult.productUpdate.product,
-    restProduct: {
-      id: restResult.product?.id,
-      title: restResult.product?.title,
-      handle: restResult.product?.handle,
-      status: restResult.product?.status,
-      published_at: restResult.product?.published_at,
-      published_scope: restResult.product?.published_scope,
-      template_suffix: restResult.product?.template_suffix,
-    },
+    found: candidates.length,
+    selected: selected.length,
+    published: published.length,
+    failed,
+    sample: published.slice(0, 10),
   });
 }
 
@@ -687,7 +682,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
-    if (req.method === "POST" && url.pathname === "/internal/publish-catalog-test-product") return await handlePublishCatalogTestProduct(req, res, url);
+    if (req.method === "POST" && url.pathname === "/internal/publish-catalog-batch") return await handlePublishCatalogBatch(req, res, url);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
