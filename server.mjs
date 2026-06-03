@@ -578,6 +578,63 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
+async function handleRetargetCatalogTemplate(req, res, url) {
+  if (url.searchParams.get("key") !== "8b3057fb03fc4f778c03e09ad5f7e0f6") {
+    return json(res, 404, { error: "Not found." });
+  }
+
+  const data = await shopifyGraphql(`
+    query CatalogProductsForTemplateUpdate($query: String!) {
+      products(first: 250, query: $query) {
+        nodes {
+          id
+          title
+          handle
+          status
+        }
+      }
+    }
+  `, { query: "tag:catalog-migration" });
+
+  const updated = [];
+  const failed = [];
+  for (const product of data.products.nodes) {
+    try {
+      const result = await shopifyGraphql(`
+        mutation UpdateCatalogTemplate($product: ProductUpdateInput!) {
+          productUpdate(product: $product) {
+            product {
+              id
+              title
+              handle
+              templateSuffix
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `, { product: { id: product.id, templateSuffix: "catalog-configurator-v2" } });
+      const errors = result.productUpdate.userErrors || [];
+      if (errors.length) {
+        failed.push({ title: product.title, handle: product.handle, errors });
+      } else {
+        updated.push(result.productUpdate.product);
+      }
+    } catch (error) {
+      failed.push({ title: product.title, handle: product.handle, error: error.message });
+    }
+  }
+
+  return json(res, 200, {
+    found: data.products.nodes.length,
+    updated: updated.length,
+    failed,
+    sample: updated.slice(0, 10),
+  });
+}
+
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -634,6 +691,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/internal/retarget-catalog-template") return await handleRetargetCatalogTemplate(req, res, url);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
