@@ -173,6 +173,7 @@ function catalogPricingOverride(product) {
 
 function catalogAttributeIsHidden(product, attr) {
   const handle = productHandle(product.url);
+  if (handle === "coroplast" && attr.key === "hot_size") return true;
   return handle === "table-top-banner-stand" && attr.key === "lamination";
 }
 
@@ -188,7 +189,21 @@ function normalizeCatalogValues(product, sourceValues) {
   const handle = productHandle(product.url);
   if (["standard-retractable", "deluxe-retractable", "sd-retractable"].includes(handle) && String(values.led) === "2") values.led = "1";
   if (handle === "step-repeat-backdrop" && String(values.size) === "custom") values.size = "120x96";
+  if (handle === "coroplast") values.hot_size = "custom";
   return values;
+}
+
+function catalogDisplayTitle(product) {
+  const handle = productHandle(product.url);
+  if (handle === "coroplast") return "Coroplast / Yard Signs";
+  return product.title;
+}
+
+function catalogAttributeLabel(product, attr) {
+  const handle = productHandle(product.url);
+  if (handle === "coroplast" && attr.key === "hardware") return "Yard Stake";
+  if (attr.key === "hardware") return "Package";
+  return attr.label || attr.key;
 }
 
 function defaultCatalogValues(product) {
@@ -262,7 +277,7 @@ function selectedCatalogAttributes(product, values) {
   return (product.attrs?.attrs || []).flatMap((attr) => {
     if (catalogAttributeIsHidden(product, attr)) return [];
     if (attr.component === "size" || attr.component === "hidden") return [];
-    const label = attr.label || attr.key;
+    const label = catalogAttributeLabel(product, attr);
     if (labels.has(label)) return [];
     labels.add(label);
     const selected = (attr.options || []).find((option) => String(option.key) === String(values[attr.key]));
@@ -318,16 +333,22 @@ async function quoteCatalogProduct(product, quantity, values) {
 }
 
 function adjustedCatalogUnitPrice(product, input, quotedUnitPrice) {
+  let unitPrice = quotedUnitPrice;
+  const handle = productHandle(product.url);
+  if (handle === "coroplast" && String(input.values?.hardware || "") === "1") {
+    unitPrice = Number((unitPrice + 1.9).toFixed(2));
+  }
+
   const override = catalogPricingOverride(product);
-  if (!override?.squareFootRate || !input.squareFeetEach) return quotedUnitPrice;
+  if (!override?.squareFootRate || !input.squareFeetEach) return unitPrice;
 
   const oldRate = Number(product.sqft || 0);
-  if (!oldRate) return quotedUnitPrice;
+  if (!oldRate) return unitPrice;
 
   const minimum = Number(product.minimum || 0);
   const oldBasePrice = Math.max(minimum, input.squareFeetEach * oldRate);
   const newBasePrice = Math.max(minimum, input.squareFeetEach * override.squareFootRate);
-  return Number(Math.max(0, quotedUnitPrice - oldBasePrice + newBasePrice).toFixed(2));
+  return Number(Math.max(0, unitPrice - oldBasePrice + newBasePrice).toFixed(2));
 }
 
 function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
@@ -357,14 +378,14 @@ async function handleCatalogProduct(req, res, url) {
     .filter((attr) => attr.component !== "size" && attr.component !== "hidden")
     .filter((attr) => !catalogAttributeIsHidden(product, attr))
     .filter((attr) => {
-      const label = attr.label || attr.key;
+      const label = catalogAttributeLabel(product, attr);
       if (labels.has(label)) return false;
       labels.add(label);
       return true;
     })
     .map((attr) => ({
       key: attr.key,
-      label: attr.label || attr.key,
+      label: catalogAttributeLabel(product, attr),
       component: attr.component || "select",
       options: (attr.options || [])
         .filter((option) => option.visible !== false && option.label)
@@ -373,7 +394,7 @@ async function handleCatalogProduct(req, res, url) {
     }));
   return json(res, 200, {
     id: product.id,
-    title: product.title,
+    title: catalogDisplayTitle(product),
     hasCustomSize,
     usesSquareFootPricing: squareFootRate > 0,
     squareFootRate,
@@ -574,7 +595,7 @@ async function handleCatalogCheckout(req, res) {
 
   const unitLabel = units === "inches" ? "in" : "ft";
   const attributes = [
-    attribute("Configured Product", product.title),
+    attribute("Configured Product", catalogDisplayTitle(product)),
     attribute("Original Catalog URL", `https://recognition-direct.bs.run${product.url}`),
     attribute("Product Size", squareFeetEach > 0 ? `${width} ${unitLabel} x ${height} ${unitLabel}` : ""),
     attribute("Square Footage Each", squareFeetEach > 0 ? `${squareFeetEach.toFixed(2)} sq ft` : ""),
@@ -591,7 +612,7 @@ async function handleCatalogCheckout(req, res) {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
     productHandle: handle,
-    productTitle: product.title,
+    productTitle: catalogDisplayTitle(product),
     email,
     quantity,
     unitPrice,
@@ -614,7 +635,7 @@ async function handleCatalogCheckout(req, res) {
     tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship"],
     allowDiscountCodesInCheckout: true,
     lineItems: [{
-      title: product.title,
+      title: catalogDisplayTitle(product),
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
       requiresShipping: !isPickup,
