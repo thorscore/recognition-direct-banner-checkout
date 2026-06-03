@@ -144,6 +144,20 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
+async function shopifyRest(pathname, options = {}) {
+  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": await getShopifyToken(),
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
+  return payload;
+}
+
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -565,19 +579,11 @@ async function handlePublishCatalogTestProduct(req, res, url) {
         status
         publishedOnCurrentPublication
       }
-      publications(first: 20) {
-        nodes {
-          id
-          name
-        }
-      }
     }
   `, { handle });
 
   if (!data.productByHandle) return json(res, 404, { error: `Product ${handle} was not found.` });
-  const onlineStore = data.publications.nodes.find((publication) => publication.name === "Online Store")
-    || data.publications.nodes.find((publication) => /online store/i.test(publication.name));
-  if (!onlineStore) return json(res, 500, { error: "Online Store publication was not found.", publications: data.publications.nodes });
+  const numericId = data.productByHandle.id.split("/").pop();
 
   const updateResult = await shopifyGraphql(`
     mutation ActivateProduct($product: ProductUpdateInput!) {
@@ -599,31 +605,31 @@ async function handlePublishCatalogTestProduct(req, res, url) {
   const updateErrors = updateResult.productUpdate.userErrors || [];
   if (updateErrors.length) return json(res, 422, { error: "Product update failed.", userErrors: updateErrors });
 
-  const publishResult = await shopifyGraphql(`
-    mutation PublishProduct($id: ID!, $input: [PublicationInput!]!) {
-      publishablePublish(id: $id, input: $input) {
-        publishable {
-          ... on Product {
-            id
-            title
-            handle
-            status
-            publishedOnCurrentPublication
-          }
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `, { id: data.productByHandle.id, input: [{ publicationId: onlineStore.id }] });
-  const publishErrors = publishResult.publishablePublish.userErrors || [];
-  if (publishErrors.length) return json(res, 422, { error: "Product publish failed.", userErrors: publishErrors });
+  const restResult = await shopifyRest(`/products/${numericId}.json`, {
+    method: "PUT",
+    body: JSON.stringify({
+      product: {
+        id: Number(numericId),
+        status: "active",
+        published: true,
+        published_scope: "global",
+        template_suffix: "catalog-configurator",
+      },
+    }),
+  });
 
   return json(res, 200, {
-    product: publishResult.publishablePublish.publishable,
-    publication: onlineStore,
+    before: data.productByHandle,
+    after: updateResult.productUpdate.product,
+    restProduct: {
+      id: restResult.product?.id,
+      title: restResult.product?.title,
+      handle: restResult.product?.handle,
+      status: restResult.product?.status,
+      published_at: restResult.product?.published_at,
+      published_scope: restResult.product?.published_scope,
+      template_suffix: restResult.product?.template_suffix,
+    },
   });
 }
 
