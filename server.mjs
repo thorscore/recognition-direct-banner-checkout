@@ -144,6 +144,20 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
+async function shopifyRest(pathname, options = {}) {
+  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": await getShopifyToken(),
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
+  return payload;
+}
+
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -600,28 +614,22 @@ async function handleRetargetCatalogTemplate(req, res, url) {
   const failed = [];
   for (const product of data.products.nodes) {
     try {
-      const result = await shopifyGraphql(`
-        mutation UpdateCatalogTemplate($product: ProductUpdateInput!) {
-          productUpdate(product: $product) {
-            product {
-              id
-              title
-              handle
-              templateSuffix
-            }
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-      `, { product: { id: product.id, templateSuffix: "catalog-configurator-v2" } });
-      const errors = result.productUpdate.userErrors || [];
-      if (errors.length) {
-        failed.push({ title: product.title, handle: product.handle, errors });
-      } else {
-        updated.push(result.productUpdate.product);
-      }
+      const numericId = product.id.split("/").pop();
+      const result = await shopifyRest(`/products/${numericId}.json`, {
+        method: "PUT",
+        body: JSON.stringify({
+          product: {
+            id: Number(numericId),
+            template_suffix: "catalog-configurator-v2",
+          },
+        }),
+      });
+      updated.push({
+        id: result.product?.id,
+        title: result.product?.title,
+        handle: result.product?.handle,
+        template_suffix: result.product?.template_suffix,
+      });
     } catch (error) {
       failed.push({ title: product.title, handle: product.handle, error: error.message });
     }
