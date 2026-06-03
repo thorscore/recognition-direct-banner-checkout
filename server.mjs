@@ -577,7 +577,6 @@ async function handlePublishCatalogTestProduct(req, res, url) {
         title
         handle
         status
-        publishedOnCurrentPublication
       }
     }
   `, { handle });
@@ -593,7 +592,6 @@ async function handlePublishCatalogTestProduct(req, res, url) {
           title
           handle
           status
-          publishedOnCurrentPublication
         }
         userErrors {
           field
