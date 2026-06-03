@@ -617,9 +617,22 @@ async function handleRetargetCatalogTemplate(req, res, url) {
 
   const updated = [];
   const failed = [];
+  const resetFirst = url.searchParams.get("reset") === "1";
   for (const product of bannerProducts) {
     try {
       const numericId = product.id.split("/").pop();
+      if (resetFirst) {
+        await shopifyRest(`/products/${numericId}.json`, {
+          method: "PUT",
+          body: JSON.stringify({
+            product: {
+              id: Number(numericId),
+              template_suffix: null,
+            },
+          }),
+        });
+        await new Promise((resolve) => setTimeout(resolve, 900));
+      }
       const result = await shopifyRest(`/products/${numericId}.json`, {
         method: "PUT",
         body: JSON.stringify({
@@ -644,6 +657,7 @@ async function handleRetargetCatalogTemplate(req, res, url) {
   return json(res, 200, {
     found: data.products.nodes.length,
     targeted: bannerProducts.length,
+    resetFirst,
     updated: updated.length,
     failed,
     sample: updated.slice(0, 10),
