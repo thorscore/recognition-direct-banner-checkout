@@ -144,20 +144,6 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
-async function shopifyRest(pathname, options = {}) {
-  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Access-Token": await getShopifyToken(),
-      ...(options.headers || {}),
-    },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
-  return payload;
-}
-
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -592,78 +578,6 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
-async function handleRetargetCatalogTemplate(req, res, url) {
-  if (url.searchParams.get("key") !== "8b3057fb03fc4f778c03e09ad5f7e0f6") {
-    return json(res, 404, { error: "Not found." });
-  }
-
-  const data = await shopifyGraphql(`
-    query CatalogProductsForTemplateUpdate($query: String!) {
-      products(first: 250, query: $query) {
-        nodes {
-          id
-          title
-          handle
-          status
-        }
-      }
-    }
-  `, { query: "tag:catalog-migration" });
-
-  const bannerProducts = data.products.nodes.filter((product) => {
-    const label = `${product.title || ""} ${product.handle || ""}`.toLowerCase();
-    return label.includes("banner");
-  });
-
-  const updated = [];
-  const failed = [];
-  const resetFirst = url.searchParams.get("reset") === "1";
-  for (const product of bannerProducts) {
-    try {
-      const numericId = product.id.split("/").pop();
-      if (resetFirst) {
-        await shopifyRest(`/products/${numericId}.json`, {
-          method: "PUT",
-          body: JSON.stringify({
-            product: {
-              id: Number(numericId),
-              template_suffix: null,
-            },
-          }),
-        });
-        await new Promise((resolve) => setTimeout(resolve, 900));
-      }
-      const result = await shopifyRest(`/products/${numericId}.json`, {
-        method: "PUT",
-        body: JSON.stringify({
-          product: {
-            id: Number(numericId),
-            template_suffix: "catalog-configurator-v2",
-          },
-        }),
-      });
-      await new Promise((resolve) => setTimeout(resolve, 650));
-      updated.push({
-        id: result.product?.id,
-        title: result.product?.title,
-        handle: result.product?.handle,
-        template_suffix: result.product?.template_suffix,
-      });
-    } catch (error) {
-      failed.push({ title: product.title, handle: product.handle, error: error.message });
-    }
-  }
-
-  return json(res, 200, {
-    found: data.products.nodes.length,
-    targeted: bannerProducts.length,
-    resetFirst,
-    updated: updated.length,
-    failed,
-    sample: updated.slice(0, 10),
-  });
-}
-
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -720,7 +634,6 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
-    if (req.method === "POST" && url.pathname === "/internal/retarget-catalog-template") return await handleRetargetCatalogTemplate(req, res, url);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
