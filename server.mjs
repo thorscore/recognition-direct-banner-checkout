@@ -144,98 +144,6 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
-async function shopifyRest(pathname, options = {}) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": await getShopifyToken(),
-        ...(options.headers || {}),
-      },
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (response.ok) return payload;
-    if (response.status === 429 && attempt < 4) {
-      await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
-      continue;
-    }
-    throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
-  }
-}
-
-async function handleRemoveBannerCategoryHardware(req, res, url) {
-  if (url.searchParams.get("key") !== "remove-banner-hardware-2026-06-03") {
-    return json(res, 404, { error: "Not found." });
-  }
-
-  const targetHandles = new Set([
-    "double-sided-banner-tape-1-x-164",
-    "banner-a-frame-8ft-hardware-only",
-    "banner-a-frame-4ft-hardware-only",
-    "led-light-for-banner-stand",
-  ]);
-  const collections = await shopifyRest("/custom_collections.json?limit=250&handle=banners");
-  const banners = (collections.custom_collections || []).find((collection) => collection.handle === "banners");
-  if (!banners) throw new Error("Banners collection was not found.");
-
-  const productsByHandle = new Map();
-  let after = null;
-  const query = `#graphql
-    query ProductsByHandle($after: String) {
-      products(first: 250, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes { id title handle }
-      }
-    }
-  `;
-  do {
-    const data = await shopifyGraphql(query, { after });
-    for (const product of data.products.nodes) {
-      if (targetHandles.has(product.handle)) productsByHandle.set(product.handle, product);
-    }
-    after = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
-  } while (after && productsByHandle.size < targetHandles.size);
-
-  const collects = await shopifyRest(`/collects.json?collection_id=${banners.id}&limit=250`);
-  const removed = [];
-  for (const collect of collects.collects || []) {
-    const product = [...productsByHandle.values()].find((item) => Number(item.id.split("/").pop()) === Number(collect.product_id));
-    if (!product) continue;
-    await shopifyRest(`/collects/${collect.id}.json`, { method: "DELETE" });
-    await new Promise((resolve) => setTimeout(resolve, 650));
-    removed.push({ title: product.title, handle: product.handle });
-  }
-
-  const smartCollections = await shopifyRest("/smart_collections.json?limit=250&handle=banners");
-  const targetProducts = [];
-  const productQuery = `#graphql
-    query TargetProducts($after: String) {
-      products(first: 250, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes { id title handle tags }
-      }
-    }
-  `;
-  after = null;
-  do {
-    const data = await shopifyGraphql(productQuery, { after });
-    for (const product of data.products.nodes) {
-      if (targetHandles.has(product.handle)) targetProducts.push(product);
-    }
-    after = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
-  } while (after && targetProducts.length < targetHandles.size);
-
-  return json(res, 200, {
-    collection: banners.handle,
-    customCollectionId: banners.id,
-    smartCollections: smartCollections.smart_collections || [],
-    removedCount: removed.length,
-    removed,
-    targetProducts,
-  });
-}
-
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -713,7 +621,6 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
-    if (req.method === "GET" && url.pathname === "/internal/remove-banner-category-hardware") return await handleRemoveBannerCategoryHardware(req, res, url);
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
