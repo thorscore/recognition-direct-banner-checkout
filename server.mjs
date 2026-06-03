@@ -144,6 +144,68 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
+async function fetchAllShopifyProducts() {
+  const query = `#graphql
+    query ProductsForVisibilityAudit($after: String) {
+      products(first: 250, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          title
+          handle
+          status
+          tags
+          onlineStoreUrl
+        }
+      }
+    }
+  `;
+  const products = [];
+  let after = null;
+  do {
+    const data = await shopifyGraphql(query, { after });
+    products.push(...data.products.nodes);
+    after = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
+  } while (after);
+  return products;
+}
+
+function productHasTag(product, tag) {
+  return (product.tags || []).some((value) => value.toLowerCase() === tag.toLowerCase());
+}
+
+async function handleProductVisibilityAudit(req, res, url) {
+  if (url.searchParams.get("key") !== "visibility-audit-2026-06-03") {
+    return json(res, 404, { error: "Not found." });
+  }
+
+  const products = await fetchAllShopifyProducts();
+  const catalogProducts = products.filter((product) => productHasTag(product, "catalog-migration"));
+  const olderProducts = products.filter((product) => !productHasTag(product, "catalog-migration"));
+  const activeCatalogProducts = catalogProducts.filter((product) => product.status === "ACTIVE");
+  const activeOlderProducts = olderProducts.filter((product) => product.status === "ACTIVE");
+
+  const sample = (items) => items.slice(0, 75).map((product) => ({
+    title: product.title,
+    handle: product.handle,
+    status: product.status,
+    onlineStoreUrl: product.onlineStoreUrl,
+  }));
+
+  return json(res, 200, {
+    totalProducts: products.length,
+    newCatalogProducts: catalogProducts.length,
+    activeNewCatalogProducts: activeCatalogProducts.length,
+    oldProductsWithoutCatalogTag: olderProducts.length,
+    activeOldProductsThatWouldBeHidden: activeOlderProducts.length,
+    activeNewCatalogSamples: sample(activeCatalogProducts),
+    activeOldProductSamples: sample(activeOlderProducts),
+  });
+}
+
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -621,6 +683,7 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
+    if (req.method === "GET" && url.pathname === "/internal/product-visibility-audit") return await handleProductVisibilityAudit(req, res, url);
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
