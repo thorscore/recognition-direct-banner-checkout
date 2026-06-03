@@ -276,7 +276,7 @@ function selectedCatalogAttributes(product, values) {
   const labels = new Set();
   return (product.attrs?.attrs || []).flatMap((attr) => {
     if (catalogAttributeIsHidden(product, attr)) return [];
-    if (attr.component === "size" || attr.component === "hidden") return [];
+    if (attr.component === "size" || attr.component === "hidden" || attr.component === "price_break") return [];
     const label = catalogAttributeLabel(product, attr);
     if (labels.has(label)) return [];
     labels.add(label);
@@ -375,7 +375,7 @@ async function handleCatalogProduct(req, res, url) {
   const override = catalogPricingOverride(product);
   const squareFootRate = override?.squareFootRate || Number(product.sqft || 0);
   const attrs = (product.attrs?.attrs || [])
-    .filter((attr) => attr.component !== "size" && attr.component !== "hidden")
+    .filter((attr) => attr.component !== "size" && attr.component !== "hidden" && attr.component !== "price_break")
     .filter((attr) => !catalogAttributeIsHidden(product, attr))
     .filter((attr) => {
       const label = catalogAttributeLabel(product, attr);
