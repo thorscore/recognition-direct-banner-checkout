@@ -144,6 +144,22 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
+async function shopifyRest(pathname, options = {}) {
+  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": await getShopifyToken(),
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
+  }
+  return payload;
+}
+
 async function fetchAllShopifyProducts() {
   const query = `#graphql
     query ProductsForVisibilityAudit($after: String) {
@@ -203,6 +219,42 @@ async function handleProductVisibilityAudit(req, res, url) {
     activeOldProductsThatWouldBeHidden: activeOlderProducts.length,
     activeNewCatalogSamples: sample(activeCatalogProducts),
     activeOldProductSamples: sample(activeOlderProducts),
+  });
+}
+
+async function handleHideOldProducts(req, res, url) {
+  if (
+    url.searchParams.get("key") !== "visibility-audit-2026-06-03"
+    || url.searchParams.get("confirm") !== "hide-old-products"
+  ) {
+    return json(res, 404, { error: "Not found." });
+  }
+
+  const products = await fetchAllShopifyProducts();
+  const targets = products.filter((product) => (
+    product.status === "ACTIVE" && !productHasTag(product, "catalog-migration")
+  ));
+  const updated = [];
+  const errors = [];
+
+  for (const product of targets) {
+    const numericId = product.id.split("/").pop();
+    try {
+      await shopifyRest(`/products/${numericId}.json`, {
+        method: "PUT",
+        body: JSON.stringify({ product: { id: Number(numericId), status: "draft" } }),
+      });
+      updated.push({ title: product.title, handle: product.handle });
+    } catch (error) {
+      errors.push({ title: product.title, handle: product.handle, error: error.message });
+    }
+  }
+
+  return json(res, errors.length ? 207 : 200, {
+    updatedCount: updated.length,
+    errorCount: errors.length,
+    updated,
+    errors,
   });
 }
 
@@ -684,6 +736,7 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
     if (req.method === "GET" && url.pathname === "/internal/product-visibility-audit") return await handleProductVisibilityAudit(req, res, url);
+    if (req.method === "GET" && url.pathname === "/internal/hide-old-products") return await handleHideOldProducts(req, res, url);
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
