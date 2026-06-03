@@ -423,6 +423,7 @@ async function handleCatalogProduct(req, res, url) {
       component: attr.component || "select",
       options: (attr.options || [])
         .filter((option) => option.visible !== false && option.label)
+        .filter((option) => option.component !== "option_group")
         .filter((option) => !catalogOptionIsHidden(product, attr, option))
         .map((option) => ({ key: option.key, label: option.label || option.key, default: option.default === true })),
     }));
