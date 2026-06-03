@@ -339,24 +339,6 @@ async function handleCatalogPrice(req, res) {
   return json(res, 200, { unitPrice: quote.unitPrice, totalPrice: Number((quote.unitPrice * quantity).toFixed(2)), squareFeetEach: input.squareFeetEach }, corsHeaders(req));
 }
 
-async function handleActivateMeshTest(req, res, url) {
-  if (url.searchParams.get("key") !== "6b00a0e10f464fb1b2dd6f55e9290215") return json(res, 404, { error: "Not found." });
-  const existing = await shopifyGraphql(`query FindProduct($handle: String!) {
-    productByHandle(handle: $handle) { id title handle status templateSuffix }
-  }`, { handle: "mesh-banners" });
-  const product = existing.productByHandle;
-  if (!product?.id) throw new Error("Mesh Banner was not found in Shopify.");
-  const data = await shopifyGraphql(`mutation ActivateProduct($product: ProductUpdateInput!) {
-    productUpdate(product: $product) {
-      product { id title handle status templateSuffix }
-      userErrors { field message }
-    }
-  }`, { product: { id: product.id, status: "ACTIVE", templateSuffix: "catalog-configurator" } });
-  const result = data.productUpdate;
-  if (result.userErrors?.length) throw new Error(result.userErrors.map((error) => error.message).join(" "));
-  return json(res, 200, { before: product, after: result.product });
-}
-
 function buildAttributes(formData, artworkUrls) {
   return [
     attribute("Banner Size", field(formData, "banner_size")),
@@ -614,7 +596,6 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
-    if (req.method === "POST" && url.pathname === "/internal/activate-mesh-test") return await handleActivateMeshTest(req, res, url);
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
