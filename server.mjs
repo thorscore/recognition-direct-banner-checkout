@@ -618,7 +618,7 @@ async function handleRepair13ozProduct(req, res, url) {
     body: JSON.stringify({
       product: {
         id: product.id,
-        template_suffix: "catalog-configurator-v2",
+        template_suffix: "catalog-configurator-v3",
       },
     }),
   });
