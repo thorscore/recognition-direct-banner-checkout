@@ -207,10 +207,32 @@ async function handleRemoveBannerCategoryHardware(req, res, url) {
     removed.push({ title: product.title, handle: product.handle });
   }
 
+  const smartCollections = await shopifyRest("/smart_collections.json?limit=250&handle=banners");
+  const targetProducts = [];
+  const productQuery = `#graphql
+    query TargetProducts($after: String) {
+      products(first: 250, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id title handle tags }
+      }
+    }
+  `;
+  after = null;
+  do {
+    const data = await shopifyGraphql(productQuery, { after });
+    for (const product of data.products.nodes) {
+      if (targetHandles.has(product.handle)) targetProducts.push(product);
+    }
+    after = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
+  } while (after && targetProducts.length < targetHandles.size);
+
   return json(res, 200, {
     collection: banners.handle,
+    customCollectionId: banners.id,
+    smartCollections: smartCollections.smart_collections || [],
     removedCount: removed.length,
     removed,
+    targetProducts,
   });
 }
 
