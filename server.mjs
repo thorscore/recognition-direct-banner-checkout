@@ -145,17 +145,23 @@ async function shopifyGraphql(query, variables) {
 }
 
 async function shopifyRest(pathname, options = {}) {
-  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Access-Token": await getShopifyToken(),
-      ...(options.headers || {}),
-    },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
-  return payload;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": await getShopifyToken(),
+        ...(options.headers || {}),
+      },
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) return payload;
+    if (response.status === 429 && attempt < 4) {
+      await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+      continue;
+    }
+    throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
+  }
 }
 
 const CATEGORY_COLLECTIONS = [
@@ -246,6 +252,7 @@ async function handleSyncCategoryCollections(req, res, url) {
         method: "POST",
         body: JSON.stringify({ collect: { collection_id: customCollection.id, product_id: productId } }),
       });
+      await new Promise((resolve) => setTimeout(resolve, 650));
       currentProductIds.add(productId);
       added += 1;
     }
