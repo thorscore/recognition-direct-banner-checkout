@@ -178,7 +178,7 @@ function catalogAttributeIsHidden(product, attr) {
 
 function catalogOptionIsHidden(product, attr, option) {
   const handle = productHandle(product.url);
-  if (["standard-retractable", "deluxe-retractable"].includes(handle) && attr.key === "led" && String(option.key) === "2") return true;
+  if (["standard-retractable", "deluxe-retractable", "sd-retractable"].includes(handle) && attr.key === "led" && String(option.key) === "2") return true;
   if (handle === "step-repeat-backdrop" && attr.key === "size" && String(option.key) === "custom") return true;
   return false;
 }
@@ -186,7 +186,7 @@ function catalogOptionIsHidden(product, attr, option) {
 function normalizeCatalogValues(product, sourceValues) {
   const values = { ...sourceValues };
   const handle = productHandle(product.url);
-  if (["standard-retractable", "deluxe-retractable"].includes(handle) && String(values.led) === "2") values.led = "1";
+  if (["standard-retractable", "deluxe-retractable", "sd-retractable"].includes(handle) && String(values.led) === "2") values.led = "1";
   if (handle === "step-repeat-backdrop" && String(values.size) === "custom") values.size = "120x96";
   return values;
 }
