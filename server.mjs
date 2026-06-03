@@ -144,6 +144,20 @@ async function shopifyGraphql(query, variables) {
   return payload.data;
 }
 
+async function shopifyRest(pathname, options = {}) {
+  const response = await fetch(`https://${SHOPIFY_SHOP}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}${pathname}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": await getShopifyToken(),
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Shopify REST request failed (${response.status}): ${JSON.stringify(payload)}`);
+  return payload;
+}
+
 function field(formData, name, maxLength = 500) {
   return cleanText(formData.get(name), maxLength);
 }
@@ -578,6 +592,63 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
+async function handleRetargetBannerProductsV4(req, res, url) {
+  if (url.searchParams.get("key") !== "banner-v4-refresh-2026-06-03") {
+    return json(res, 404, { error: "Not found." });
+  }
+
+  const data = await shopifyGraphql(`
+    query CatalogBannerProductsForTemplateUpdate($query: String!) {
+      products(first: 250, query: $query) {
+        nodes {
+          id
+          title
+          handle
+        }
+      }
+    }
+  `, { query: "tag:catalog-migration" });
+
+  const bannerProducts = data.products.nodes.filter((product) => {
+    const label = `${product.title || ""} ${product.handle || ""}`.toLowerCase();
+    return label.includes("banner");
+  });
+
+  const updated = [];
+  const failed = [];
+  for (const product of bannerProducts) {
+    try {
+      const numericId = product.id.split("/").pop();
+      const result = await shopifyRest(`/products/${numericId}.json`, {
+        method: "PUT",
+        body: JSON.stringify({
+          product: {
+            id: Number(numericId),
+            template_suffix: "catalog-configurator-v4",
+          },
+        }),
+      });
+      updated.push({
+        id: result.product?.id,
+        title: result.product?.title,
+        handle: result.product?.handle,
+        template_suffix: result.product?.template_suffix,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    } catch (error) {
+      failed.push({ title: product.title, handle: product.handle, error: error.message });
+    }
+  }
+
+  return json(res, 200, {
+    ok: failed.length === 0,
+    targeted: bannerProducts.length,
+    updated: updated.length,
+    failed,
+    sample: updated.slice(0, 20),
+  });
+}
+
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -634,6 +705,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/internal/retarget-banner-products-v4") return await handleRetargetBannerProductsV4(req, res, url);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
