@@ -610,9 +610,14 @@ async function handleRetargetCatalogTemplate(req, res, url) {
     }
   `, { query: "tag:catalog-migration" });
 
+  const bannerProducts = data.products.nodes.filter((product) => {
+    const label = `${product.title || ""} ${product.handle || ""}`.toLowerCase();
+    return label.includes("banner");
+  });
+
   const updated = [];
   const failed = [];
-  for (const product of data.products.nodes) {
+  for (const product of bannerProducts) {
     try {
       const numericId = product.id.split("/").pop();
       const result = await shopifyRest(`/products/${numericId}.json`, {
@@ -624,6 +629,7 @@ async function handleRetargetCatalogTemplate(req, res, url) {
           },
         }),
       });
+      await new Promise((resolve) => setTimeout(resolve, 650));
       updated.push({
         id: result.product?.id,
         title: result.product?.title,
@@ -637,6 +643,7 @@ async function handleRetargetCatalogTemplate(req, res, url) {
 
   return json(res, 200, {
     found: data.products.nodes.length,
+    targeted: bannerProducts.length,
     updated: updated.length,
     failed,
     sample: updated.slice(0, 10),
