@@ -203,9 +203,13 @@ function catalogAttributeLabel(product, attr) {
   const handle = productHandle(product.url);
   if (handle === "coroplast" && attr.key === "hardware") return "Yard Stake";
   if (!attr.label && ["flag_pole", "flag_pole_tab"].includes(attr.key)) return "Hardware";
+  if (!attr.label && attr.key === "sign_h_stake_tab") return "Yard Sign Package";
+  if (!attr.label && attr.key === "tent_hardware") return "Tent Package";
+  if (!attr.label && attr.key === "tent_wall") return "Wall Type";
+  if (!attr.label && attr.key === "design") return "Design";
   if (attr.key === "hardware" && attr.label && attr.label !== "Hardware") return attr.label;
   if (attr.key === "hardware") return "Package";
-  return attr.label || attr.key;
+  return (attr.label || attr.key).replace(/\s+/g, " ").trim();
 }
 
 function catalogSizeAttribute(product) {
