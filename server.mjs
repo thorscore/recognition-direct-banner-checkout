@@ -171,6 +171,11 @@ function catalogPricingOverride(product) {
   return CATALOG_PRICE_OVERRIDES.get(handle) || null;
 }
 
+function catalogAttributeIsHidden(product, attr) {
+  const handle = productHandle(product.url);
+  return handle === "table-top-banner-stand" && attr.key === "lamination";
+}
+
 function catalogOptionIsHidden(product, attr, option) {
   const handle = productHandle(product.url);
   if (["standard-retractable", "deluxe-retractable"].includes(handle) && attr.key === "led" && String(option.key) === "2") return true;
@@ -255,6 +260,7 @@ function catalogOptions(formData) {
 function selectedCatalogAttributes(product, values) {
   const labels = new Set();
   return (product.attrs?.attrs || []).flatMap((attr) => {
+    if (catalogAttributeIsHidden(product, attr)) return [];
     if (attr.component === "size" || attr.component === "hidden") return [];
     const label = attr.label || attr.key;
     if (labels.has(label)) return [];
@@ -349,6 +355,7 @@ async function handleCatalogProduct(req, res, url) {
   const squareFootRate = override?.squareFootRate || Number(product.sqft || 0);
   const attrs = (product.attrs?.attrs || [])
     .filter((attr) => attr.component !== "size" && attr.component !== "hidden")
+    .filter((attr) => !catalogAttributeIsHidden(product, attr))
     .filter((attr) => {
       const label = attr.label || attr.key;
       if (labels.has(label)) return false;
