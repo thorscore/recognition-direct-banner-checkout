@@ -31,6 +31,7 @@ const ALLOWED_FILE_EXTENSIONS = new Set([".pdf", ".ai", ".eps", ".psd", ".jpg", 
 const CATALOG_PRICE_OVERRIDES = new Map([
   ["fabric-block-out", { squareFootRate: 3.98 }],
 ]);
+const NAME_BADGE_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_PRICE_BREAKS || "");
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
 let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
@@ -78,6 +79,64 @@ function escapeHtml(value) {
     "\"": "&quot;",
     "'": "&#039;",
   })[character]);
+}
+
+function parseNameBadgePriceBreaks(value) {
+  return String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [minimumQuantity, unitPrice] = part.split(":").map((entry) => Number.parseFloat(entry));
+      return Number.isFinite(minimumQuantity) && Number.isFinite(unitPrice) && minimumQuantity > 0 && unitPrice >= 0
+        ? { minimumQuantity: Math.floor(minimumQuantity), unitPrice }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.minimumQuantity - b.minimumQuantity);
+}
+
+function nameBadgeUnitPrice(quantity) {
+  let price = null;
+  for (const priceBreak of NAME_BADGE_PRICE_BREAKS) {
+    if (quantity >= priceBreak.minimumQuantity) price = priceBreak.unitPrice;
+  }
+  if (price === null) throw new Error("Name badge quantity pricing is not configured yet.");
+  return Number(price.toFixed(2));
+}
+
+function nameBadgeOption(formData, name, allowed, label) {
+  const value = field(formData, name, 100);
+  if (!allowed.includes(value)) throw new Error(`Select a valid ${label}.`);
+  return value;
+}
+
+function nameBadgeLabel(value) {
+  return ({
+    "1x3": "1\" x 3\"",
+    "1-5x3": "1.5\" x 3\"",
+    white: "White",
+    "brushed-gold": "Brushed Gold",
+    "brushed-silver": "Brushed Silver",
+    "silver-frame": "Silver Frame",
+    "gold-frame": "Gold Frame",
+    magnetic: "Magnetic",
+    pin: "Pin",
+  })[value] || value;
+}
+
+function buildNameBadgeInput(formData) {
+  const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
+  const unitPrice = nameBadgeUnitPrice(quantity);
+  return {
+    quantity,
+    unitPrice,
+    totalPrice: Number((quantity * unitPrice).toFixed(2)),
+    size: nameBadgeOption(formData, "badge_size", ["1x3", "1-5x3"], "badge size"),
+    color: nameBadgeOption(formData, "badge_color", ["white", "brushed-gold", "brushed-silver"], "badge color"),
+    frame: nameBadgeOption(formData, "badge_frame", ["silver-frame", "gold-frame"], "frame"),
+    fastener: nameBadgeOption(formData, "badge_fastener", ["magnetic", "pin"], "fastener"),
+  };
 }
 
 async function readRequestBody(req) {
@@ -463,6 +522,19 @@ async function handleCatalogPrice(req, res) {
   return json(res, 200, { unitPrice, totalPrice: Number((unitPrice * quantity).toFixed(2)), squareFeetEach: input.squareFeetEach }, corsHeaders(req));
 }
 
+async function handleNameBadgePrice(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const input = buildNameBadgeInput(formData);
+  return json(res, 200, {
+    unitPrice: input.unitPrice,
+    totalPrice: input.totalPrice,
+    priceBreaks: NAME_BADGE_PRICE_BREAKS,
+  }, corsHeaders(req));
+}
+
 function buildAttributes(formData, artworkUrls) {
   return [
     attribute("Banner Size", field(formData, "banner_size")),
@@ -703,6 +775,79 @@ async function handleCatalogCheckout(req, res) {
   res.end();
 }
 
+async function handleNameBadgeCheckout(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const input = buildNameBadgeInput(formData);
+  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const isPickup = deliveryMethod !== "Ship";
+  const artworkUrl = await saveUpload(formData.get("artwork"));
+  const email = field(formData, "email", 320);
+  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+
+  const attributes = [
+    attribute("Product", "Name Badges"),
+    attribute("Badge Size", nameBadgeLabel(input.size)),
+    attribute("Badge Color", nameBadgeLabel(input.color)),
+    attribute("Frame", nameBadgeLabel(input.frame)),
+    attribute("Fastener", nameBadgeLabel(input.fastener)),
+    attribute("Delivery Method", deliveryMethod),
+    attribute("Names / Badge Text", field(formData, "badge_names", 3000)),
+    attribute("Need-by Date", field(formData, "need_by")),
+    attribute("Phone", field(formData, "phone")),
+    attribute("Notes", field(formData, "notes", 1500)),
+    attribute("Artwork", artworkUrl),
+  ].filter(Boolean);
+
+  const orderRecord = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    productHandle: "name-badges",
+    productTitle: "Name Badges",
+    email,
+    quantity: input.quantity,
+    unitPrice: input.unitPrice,
+    totalPrice: input.totalPrice,
+    deliveryMethod,
+    attributes,
+    artworkUrl,
+  };
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+
+  if (MOCK_SHOPIFY) {
+    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
+    return res.end();
+  }
+
+  const draftOrder = await createDraftOrder({
+    email,
+    note: `Recognition Direct name badge order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    tags: ["name-badges", "proof-required", isPickup ? field(formData, "delivery_method") : "ship"],
+    allowDiscountCodesInCheckout: true,
+    lineItems: [{
+      title: "Name Badges",
+      quantity: input.quantity,
+      originalUnitPriceWithCurrency: { amount: input.unitPrice.toFixed(2), currencyCode: "USD" },
+      requiresShipping: !isPickup,
+      taxable: true,
+      customAttributes: attributes,
+    }],
+    customAttributes: [
+      { key: "Configuration ID", value: orderRecord.id },
+      { key: "Proof Required", value: "Yes" },
+      { key: "Delivery Method", value: deliveryMethod },
+    ],
+  });
+
+  orderRecord.shopifyDraftOrderId = draftOrder.id;
+  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+  res.writeHead(303, { Location: draftOrder.invoiceUrl });
+  res.end();
+}
+
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -723,6 +868,177 @@ async function servePublicFile(res, name, contentType) {
   } catch {
     json(res, 404, { error: "Not found." });
   }
+}
+
+function nameBadgePageHtml() {
+  const priceBreakText = NAME_BADGE_PRICE_BREAKS.length
+    ? NAME_BADGE_PRICE_BREAKS.map((priceBreak) => `${priceBreak.minimumQuantity}+ badges: $${priceBreak.unitPrice.toFixed(2)} each`).join(" | ")
+    : "Quantity pricing is not configured yet.";
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Name Badges | Recognition Direct</title>
+  <meta name="description" content="Order custom name badges from Recognition Direct with size, badge color, frame, and fastener options.">
+  <style>
+    :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
+    .wrap{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:38px 0 46px}
+    .hero{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
+    .art{min-height:420px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(135deg,#f8fafc,#e9eef7);display:grid;place-items:center;padding:24px}
+    .badge-preview{width:min(430px,90%);border-radius:9px;border:2px solid #bfc7d4;background:#fff;box-shadow:0 18px 45px rgba(24,33,47,.16);padding:28px;text-align:center}
+    .badge-preview strong{display:block;font-size:34px;letter-spacing:.08em;text-transform:uppercase}
+    .badge-preview span{display:block;margin-top:8px;color:var(--muted)}
+    h1{margin:0 0 10px;font-size:clamp(34px,5vw,58px);line-height:1}
+    .intro{margin:0 0 20px;color:var(--muted);font-size:18px}
+    form{display:grid;gap:16px}
+    .panel{border:1px solid var(--line);border-radius:8px;padding:18px;background:#fff}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    label,legend{display:block;margin:0 0 6px;font-size:13px;font-weight:800;color:#344055}
+    input,select,textarea{width:100%;min-height:44px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit}
+    textarea{min-height:112px;resize:vertical}
+    .full{grid-column:1/-1}
+    .price{border-radius:8px;background:var(--ink);color:#fff;padding:18px}
+    .price small{color:#d7dde8;text-transform:uppercase;font-weight:800;letter-spacing:.05em}
+    .total{margin:6px 0;font-size:42px;font-weight:900;line-height:1}
+    .note{margin:8px 0 0;color:var(--muted);font-size:13px}
+    .price .note{color:#d7dde8}
+    .actions{display:grid;gap:10px}
+    button{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
+    button:disabled{background:#98a1af;cursor:not-allowed}
+    .status{min-height:22px;color:var(--muted);font-size:14px}
+    @media(max-width:820px){.hero,.grid{grid-template-columns:1fr}.art{min-height:260px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="hero">
+      <div class="art" aria-label="Name badge preview">
+        <div class="badge-preview">
+          <strong>Name Badge</strong>
+          <span>White, Brushed Gold, or Brushed Silver</span>
+        </div>
+      </div>
+      <div>
+        <p class="note">Recognition Direct</p>
+        <h1>Name Badges</h1>
+        <p class="intro">Order custom name badges with your choice of size, badge color, frame, and fastener. You will receive a proof before production.</p>
+
+        <form id="badge-form" action="${APP_BASE_URL}/api/name-badge-checkout" method="post" enctype="multipart/form-data">
+          <div class="panel grid">
+            <div>
+              <label for="order_quantity">Quantity</label>
+              <input id="order_quantity" name="order_quantity" type="number" min="1" step="1" value="1" required>
+            </div>
+            <div>
+              <label for="badge_size">Size</label>
+              <select id="badge_size" name="badge_size">
+                <option value="1x3">1&quot; x 3&quot;</option>
+                <option value="1-5x3">1.5&quot; x 3&quot;</option>
+              </select>
+            </div>
+            <div>
+              <label for="badge_color">Color</label>
+              <select id="badge_color" name="badge_color">
+                <option value="white">White</option>
+                <option value="brushed-gold">Brushed Gold</option>
+                <option value="brushed-silver">Brushed Silver</option>
+              </select>
+            </div>
+            <div>
+              <label for="badge_frame">Frame</label>
+              <select id="badge_frame" name="badge_frame">
+                <option value="silver-frame">Silver Frame</option>
+                <option value="gold-frame">Gold Frame</option>
+              </select>
+            </div>
+            <div>
+              <label for="badge_fastener">Fastener</label>
+              <select id="badge_fastener" name="badge_fastener">
+                <option value="magnetic">Magnetic</option>
+                <option value="pin">Pin</option>
+              </select>
+            </div>
+            <div>
+              <label for="delivery_method">Delivery</label>
+              <select id="delivery_method" name="delivery_method">
+                <option value="ship">Ship</option>
+                <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-pine-valley">Pickup at Pine Valley</option>
+              </select>
+            </div>
+            <div class="full">
+              <label for="badge_names">Names / badge text</label>
+              <textarea id="badge_names" name="badge_names" placeholder="One badge per line. Example:&#10;Roth Ward - Owner&#10;Jane Smith - Sales"></textarea>
+            </div>
+            <div>
+              <label for="artwork">Logo / artwork upload</label>
+              <input id="artwork" name="artwork" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png">
+            </div>
+            <div>
+              <label for="need_by">Need-by date</label>
+              <input id="need_by" name="need_by" type="date">
+            </div>
+          </div>
+
+          <div class="panel grid">
+            <div>
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required>
+            </div>
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel">
+            </div>
+            <div class="full">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" placeholder="Tell us about layout, font, logo placement, or anything else we should know."></textarea>
+            </div>
+          </div>
+
+          <div class="price">
+            <small>Estimated total</small>
+            <div class="total" data-total>$0.00</div>
+            <p class="note" data-price-note>${escapeHtml(priceBreakText)}</p>
+          </div>
+
+          <div class="actions">
+            <button type="submit" ${NAME_BADGE_PRICE_BREAKS.length ? "" : "disabled"}>Add name badges to checkout</button>
+            <div class="status" data-status></div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <script>
+    const form = document.querySelector('#badge-form');
+    const total = document.querySelector('[data-total]');
+    const status = document.querySelector('[data-status]');
+    const button = form.querySelector('button');
+    async function price() {
+      status.textContent = 'Checking price...';
+      try {
+        const response = await fetch('${APP_BASE_URL}/api/name-badge-price', { method: 'POST', body: new FormData(form) });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Price unavailable');
+        total.textContent = '$' + payload.totalPrice.toFixed(2);
+        status.textContent = '$' + payload.unitPrice.toFixed(2) + ' each based on quantity.';
+        button.disabled = false;
+      } catch (error) {
+        total.textContent = '$0.00';
+        status.textContent = error.message || 'Pricing is not available yet.';
+        button.disabled = true;
+      }
+    }
+    form.addEventListener('input', price);
+    form.addEventListener('change', price);
+    price();
+  </script>
+</body>
+</html>`;
 }
 
 async function handleMockCheckout(res, url) {
@@ -747,11 +1063,14 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "OPTIONS" && url.pathname.startsWith("/api/name-badge-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
+    if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
+    if (req.method === "GET" && url.pathname === "/name-badges") return html(res, 200, nameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/assets/full-color-banner-eye.png") {
       return await servePublicFile(res, "full-color-banner-eye.png", "image/png");
     }
@@ -759,6 +1078,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/name-badge-checkout") return await handleNameBadgeCheckout(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
