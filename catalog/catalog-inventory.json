@@ -29134,8 +29134,7 @@
                                                                                               "logic":  "and",
                                                                                               "value":  [
                                                                                                             "36x24",
-                                                                                                            "36x36",
-                                                                                                            "36x48"
+                                                                                                            "36x36"
                                                                                                         ]
                                                                                           },
                                                                                           {
@@ -29264,16 +29263,11 @@
                                                                              "label":  "36\" x 24\" (Large Post)",
                                                                              "component":  "select"
                                                                          },
-                                                                         {
-                                                                             "key":  "36x36",
-                                                                             "label":  "36\" x 36\" (Large Post)",
-                                                                             "component":  "select"
-                                                                         },
-                                                                         {
-                                                                             "key":  "36x48",
-                                                                             "label":  "36\" x 48\" (Large Post)",
-                                                                             "component":  "select"
-                                                                         }
+                                                                          {
+                                                                              "key":  "36x36",
+                                                                              "label":  "36\" x 36\" (Large Post)",
+                                                                              "component":  "select"
+                                                                          }
                                                                      ],
                                                          "action":  [
                                                                         {
@@ -29313,8 +29307,7 @@
                                                                                               "logic":  "and",
                                                                                               "value":  [
                                                                                                             "36x24",
-                                                                                                            "36x36",
-                                                                                                            "36x48"
+                                                                                                            "36x36"
                                                                                                         ]
                                                                                           },
                                                                                           {
@@ -29377,9 +29370,8 @@
                                                                                              {
                                                                                                  "key":  "size",
                                                                                                  "value":  [
-                                                                                                               "36x24",
-                                                                                                               "36x36",
-                                                                                                               "36x48"
+                                                                                                                "36x24",
+                                                                                                                "36x36"
                                                                                                            ],
                                                                                                  "op":  "in",
                                                                                                  "logic":  "and"
@@ -29420,9 +29412,8 @@
                                                                                              {
                                                                                                  "key":  "size",
                                                                                                  "value":  [
-                                                                                                               "36x24",
-                                                                                                               "36x36",
-                                                                                                               "36x48"
+                                                                                                                "36x24",
+                                                                                                                "36x36"
                                                                                                            ],
                                                                                                  "op":  "in",
                                                                                                  "logic":  "and"
