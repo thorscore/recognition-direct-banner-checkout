@@ -144,6 +144,12 @@ function nameBadgeLabel(value) {
   })[value] || value;
 }
 
+function publicAssetResponseHeaders(name) {
+  return name.toLowerCase().endsWith(".png")
+    ? "image/png"
+    : "application/octet-stream";
+}
+
 function buildNameBadgeInput(formData) {
   const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
   const frame = nameBadgeOption(formData, "badge_frame", ["no-frame", "silver-frame", "gold-frame"], "frame");
@@ -944,9 +950,9 @@ function nameBadgePageHtml() {
     .wrap{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:38px 0 46px}
     .hero{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
     .art{min-height:420px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(135deg,#f8fafc,#e9eef7);display:grid;place-items:center;padding:24px}
-    .badge-preview{width:min(430px,90%);border-radius:9px;border:2px solid #bfc7d4;background:#fff;box-shadow:0 18px 45px rgba(24,33,47,.16);padding:28px;text-align:center}
-    .badge-preview strong{display:block;font-size:34px;letter-spacing:.08em;text-transform:uppercase}
-    .badge-preview span{display:block;margin-top:8px;color:var(--muted)}
+    .badge-preview{width:min(620px,96%);text-align:center}
+    .badge-preview img{display:block;width:100%;height:auto;border-radius:8px;box-shadow:0 18px 45px rgba(24,33,47,.16)}
+    .badge-preview span{display:block;margin-top:10px;color:var(--muted)}
     h1{margin:0 0 10px;font-size:clamp(34px,5vw,58px);line-height:1}
     .intro{margin:0 0 20px;color:var(--muted);font-size:18px}
     form{display:grid;gap:16px}
@@ -973,8 +979,8 @@ function nameBadgePageHtml() {
     <div class="hero">
       <div class="art" aria-label="Name badge preview">
         <div class="badge-preview">
-          <strong>Name Badge</strong>
-          <span>White, Brushed Gold, or Brushed Silver</span>
+          <img data-badge-preview src="${APP_BASE_URL}/assets/name-badges/1x3-white-no-frame.png" alt="Selected name badge preview" width="902" height="303">
+          <span data-badge-preview-caption>White 1&quot; x 3&quot; badge with no frame</span>
         </div>
       </div>
       <div>
@@ -1084,7 +1090,47 @@ function nameBadgePageHtml() {
     const total = document.querySelector('[data-total]');
     const status = document.querySelector('[data-status]');
     const button = form.querySelector('button');
+    const preview = document.querySelector('[data-badge-preview]');
+    const previewCaption = document.querySelector('[data-badge-preview-caption]');
+    const previewImages = {
+      '1x3|white|no-frame': '1x3-white-no-frame.png',
+      '1x3|white|gold-frame': '1x3-white-gold-frame.png',
+      '1x3|white|silver-frame': '1x3-white-silver-frame.png',
+      '1x3|brushed-gold|no-frame': '1x3-brushed-gold-no-frame.png',
+      '1x3|brushed-gold|gold-frame': '1x3-brushed-gold-gold-frame.png',
+      '1x3|brushed-silver|no-frame': '1x3-brushed-silver-no-frame.png',
+      '1x3|brushed-silver|silver-frame': '1x3-brushed-silver-silver-frame.png',
+      '1-5x3|white|no-frame': '1-5x3-white-no-frame.png',
+      '1-5x3|white|gold-frame': '1-5x3-white-gold-frame.png',
+      '1-5x3|white|silver-frame': '1-5x3-white-silver-frame.png',
+      '1-5x3|brushed-gold|no-frame': '1-5x3-brushed-gold-no-frame.png',
+      '1-5x3|brushed-gold|gold-frame': '1-5x3-brushed-gold-gold-frame.png',
+      '1-5x3|brushed-silver|no-frame': '1-5x3-brushed-silver-no-frame.png',
+      '1-5x3|brushed-silver|silver-frame': '1-5x3-brushed-silver-silver-frame.png'
+    };
+    const labels = {
+      '1x3': '1" x 3"',
+      '1-5x3': '1.5" x 3"',
+      white: 'White',
+      'brushed-gold': 'Brushed Gold',
+      'brushed-silver': 'Brushed Silver',
+      'no-frame': 'No Frame',
+      'gold-frame': 'Gold Frame',
+      'silver-frame': 'Silver Frame'
+    };
+    function updatePreview() {
+      const size = form.elements.badge_size.value;
+      const color = form.elements.badge_color.value;
+      const frame = form.elements.badge_frame.value;
+      const key = [size, color, frame].join('|');
+      const fallbackKey = [size, color, 'no-frame'].join('|');
+      const file = previewImages[key] || previewImages[fallbackKey] || previewImages['1x3|white|no-frame'];
+      preview.src = '${APP_BASE_URL}/assets/name-badges/' + file;
+      preview.alt = labels[color] + ' ' + labels[size] + ' badge preview, ' + labels[frame];
+      previewCaption.textContent = labels[color] + ' ' + labels[size] + ' badge, ' + labels[frame];
+    }
     async function price() {
+      updatePreview();
       status.textContent = 'Checking price...';
       try {
         const response = await fetch('${APP_BASE_URL}/api/name-badge-price', { method: 'POST', body: new FormData(form) });
@@ -1101,6 +1147,7 @@ function nameBadgePageHtml() {
     }
     form.addEventListener('input', price);
     form.addEventListener('change', price);
+    updatePreview();
     price();
   </script>
 </body>
@@ -1275,6 +1322,9 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/name-badges") return html(res, 200, nameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/custom-name-badges") return html(res, 200, customNameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/custom-name-badges/thanks") return html(res, 200, customNameBadgeThanksHtml(url));
+    if (req.method === "GET" && /^\/assets\/name-badges\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
+      return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));
+    }
     if (req.method === "GET" && url.pathname === "/assets/full-color-banner-eye.png") {
       return await servePublicFile(res, "full-color-banner-eye.png", "image/png");
     }
