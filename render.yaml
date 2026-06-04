@@ -25,8 +25,12 @@ services:
         value: "false"
       - key: NAME_BADGE_BASE_PRICE_BREAKS
         value: 1:12.00,10:11.50,25:11.00,50:10.00,100:9.50,250:8.75,500:8.50,1000:8.00
+      - key: NAME_BADGE_NO_FRAME_PRICE_BREAKS
+        value: 1:8.00,10:7.50,25:7.00,50:6.00,100:5.50,250:5.25,500:5.00,1000:4.50
       - key: NAME_BADGE_MAGNET_PRICE_BREAKS
         value: 1:2.25,10:2.25,25:2.25,50:2.25,100:1.90,250:1.90,500:1.75,1000:1.50
+      - key: NAME_BADGE_DOME_PRICE_BREAKS
+        value: 1:4.00,10:4.00,25:4.00,50:3.50,100:3.50,250:3.00,500:2.50,1000:2.50
     disk:
       name: banner-artwork
       mountPath: /opt/render/project/src/data

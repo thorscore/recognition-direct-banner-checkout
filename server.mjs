@@ -32,9 +32,13 @@ const CATALOG_PRICE_OVERRIDES = new Map([
   ["fabric-block-out", { squareFootRate: 3.98 }],
 ]);
 const DEFAULT_NAME_BADGE_BASE_PRICE_BREAKS = "1:12.00,10:11.50,25:11.00,50:10.00,100:9.50,250:8.75,500:8.50,1000:8.00";
+const DEFAULT_NAME_BADGE_NO_FRAME_PRICE_BREAKS = "1:8.00,10:7.50,25:7.00,50:6.00,100:5.50,250:5.25,500:5.00,1000:4.50";
 const DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS = "1:2.25,10:2.25,25:2.25,50:2.25,100:1.90,250:1.90,500:1.75,1000:1.50";
+const DEFAULT_NAME_BADGE_DOME_PRICE_BREAKS = "1:4.00,10:4.00,25:4.00,50:3.50,100:3.50,250:3.00,500:2.50,1000:2.50";
 const NAME_BADGE_BASE_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_BASE_PRICE_BREAKS || DEFAULT_NAME_BADGE_BASE_PRICE_BREAKS);
+const NAME_BADGE_NO_FRAME_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_NO_FRAME_PRICE_BREAKS || DEFAULT_NAME_BADGE_NO_FRAME_PRICE_BREAKS);
 const NAME_BADGE_MAGNET_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_MAGNET_PRICE_BREAKS || DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS);
+const NAME_BADGE_DOME_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_DOME_PRICE_BREAKS || DEFAULT_NAME_BADGE_DOME_PRICE_BREAKS);
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
 let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
@@ -108,11 +112,13 @@ function priceForQuantity(priceBreaks, quantity, label) {
   return Number(price.toFixed(2));
 }
 
-function nameBadgeUnitPrice(quantity, fastener) {
+function nameBadgeUnitPrice(quantity, frame, fastener, finish) {
   if (quantity >= 1500) throw new Error("Quantities of 1500 or more are by quote. Please contact us for pricing.");
-  const basePrice = priceForQuantity(NAME_BADGE_BASE_PRICE_BREAKS, quantity, "Name badge");
+  const basePriceBreaks = frame === "no-frame" ? NAME_BADGE_NO_FRAME_PRICE_BREAKS : NAME_BADGE_BASE_PRICE_BREAKS;
+  const basePrice = priceForQuantity(basePriceBreaks, quantity, "Name badge");
   const magnetPrice = fastener === "magnetic" ? priceForQuantity(NAME_BADGE_MAGNET_PRICE_BREAKS, quantity, "Magnet fastener") : 0;
-  return Number((basePrice + magnetPrice).toFixed(2));
+  const domePrice = finish === "epoxy-dome" ? priceForQuantity(NAME_BADGE_DOME_PRICE_BREAKS, quantity, "Epoxy dome finish") : 0;
+  return Number((basePrice + magnetPrice + domePrice).toFixed(2));
 }
 
 function nameBadgeOption(formData, name, allowed, label) {
@@ -128,25 +134,31 @@ function nameBadgeLabel(value) {
     white: "White",
     "brushed-gold": "Brushed Gold",
     "brushed-silver": "Brushed Silver",
+    "no-frame": "No Frame",
     "silver-frame": "Silver Frame",
     "gold-frame": "Gold Frame",
     magnetic: "Magnetic",
     pin: "Pin",
+    standard: "Standard",
+    "epoxy-dome": "Epoxy Dome",
   })[value] || value;
 }
 
 function buildNameBadgeInput(formData) {
   const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
+  const frame = nameBadgeOption(formData, "badge_frame", ["no-frame", "silver-frame", "gold-frame"], "frame");
   const fastener = nameBadgeOption(formData, "badge_fastener", ["magnetic", "pin"], "fastener");
-  const unitPrice = nameBadgeUnitPrice(quantity, fastener);
+  const finish = nameBadgeOption(formData, "badge_finish", ["standard", "epoxy-dome"], "finish");
+  const unitPrice = nameBadgeUnitPrice(quantity, frame, fastener, finish);
   return {
     quantity,
     unitPrice,
     totalPrice: Number((quantity * unitPrice).toFixed(2)),
     size: nameBadgeOption(formData, "badge_size", ["1x3", "1-5x3"], "badge size"),
     color: nameBadgeOption(formData, "badge_color", ["white", "brushed-gold", "brushed-silver"], "badge color"),
-    frame: nameBadgeOption(formData, "badge_frame", ["silver-frame", "gold-frame"], "frame"),
+    frame,
     fastener,
+    finish,
   };
 }
 
@@ -543,7 +555,9 @@ async function handleNameBadgePrice(req, res) {
     unitPrice: input.unitPrice,
     totalPrice: input.totalPrice,
     priceBreaks: NAME_BADGE_BASE_PRICE_BREAKS,
+    noFramePriceBreaks: NAME_BADGE_NO_FRAME_PRICE_BREAKS,
     magnetPriceBreaks: NAME_BADGE_MAGNET_PRICE_BREAKS,
+    domePriceBreaks: NAME_BADGE_DOME_PRICE_BREAKS,
   }, corsHeaders(req));
 }
 
@@ -805,6 +819,7 @@ async function handleNameBadgeCheckout(req, res) {
     attribute("Badge Color", nameBadgeLabel(input.color)),
     attribute("Frame", nameBadgeLabel(input.frame)),
     attribute("Fastener", nameBadgeLabel(input.fastener)),
+    attribute("Finish", nameBadgeLabel(input.finish)),
     attribute("Delivery Method", deliveryMethod),
     attribute("Names / Badge Text", field(formData, "badge_names", 3000)),
     attribute("Need-by Date", field(formData, "need_by")),
@@ -857,6 +872,34 @@ async function handleNameBadgeCheckout(req, res) {
   orderRecord.checkoutUrl = draftOrder.invoiceUrl;
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
   res.writeHead(303, { Location: draftOrder.invoiceUrl });
+  res.end();
+}
+
+async function handleCustomNameBadgeInquiry(req, res) {
+  const formData = await requestFormData(req);
+  const email = field(formData, "email", 320);
+  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+  const artworkUrl = await saveUpload(formData.get("artwork"));
+  const inquiry = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    type: "custom-name-badge-inquiry",
+    name: field(formData, "name"),
+    company: field(formData, "company"),
+    email,
+    phone: field(formData, "phone"),
+    estimatedQuantity: field(formData, "estimated_quantity"),
+    requestedSize: field(formData, "requested_size"),
+    requestedColor: field(formData, "requested_color"),
+    framePreference: field(formData, "frame_preference"),
+    fastenerPreference: field(formData, "fastener_preference"),
+    finishPreference: field(formData, "finish_preference"),
+    needBy: field(formData, "need_by"),
+    notes: field(formData, "notes", 2500),
+    artworkUrl,
+  };
+  await writeFile(join(ORDER_DIR, `${inquiry.id}.json`), JSON.stringify(inquiry, null, 2));
+  res.writeHead(303, { Location: `${APP_BASE_URL}/custom-name-badges/thanks?id=${encodeURIComponent(inquiry.id)}` });
   res.end();
 }
 
@@ -963,8 +1006,16 @@ function nameBadgePageHtml() {
             <div>
               <label for="badge_frame">Frame</label>
               <select id="badge_frame" name="badge_frame">
+                <option value="no-frame">No Frame</option>
                 <option value="silver-frame">Silver Frame</option>
                 <option value="gold-frame">Gold Frame</option>
+              </select>
+            </div>
+            <div>
+              <label for="badge_finish">Finish</label>
+              <select id="badge_finish" name="badge_finish">
+                <option value="standard">Standard</option>
+                <option value="epoxy-dome">Epoxy Dome Finish</option>
               </select>
             </div>
             <div>
@@ -981,6 +1032,9 @@ function nameBadgePageHtml() {
                 <option value="pickup-la-mesa">Pickup at La Mesa</option>
                 <option value="pickup-pine-valley">Pickup at Pine Valley</option>
               </select>
+            </div>
+            <div class="full">
+              <p class="note">Custom sizes and colors are available by request. <a href="${APP_BASE_URL}/custom-name-badges">Tell us what you need</a>.</p>
             </div>
             <div class="full">
               <label for="badge_names">Names / badge text</label>
@@ -1053,6 +1107,142 @@ function nameBadgePageHtml() {
 </html>`;
 }
 
+function customNameBadgePageHtml() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Custom Name Badge Request | Recognition Direct</title>
+  <meta name="description" content="Request custom name badges in special sizes, colors, or finishes from Recognition Direct.">
+  <style>
+    :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
+    .wrap{width:min(920px,calc(100% - 32px));margin:0 auto;padding:42px 0 52px}
+    .eyebrow{margin:0 0 8px;color:var(--accent);font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    h1{margin:0;font-size:clamp(34px,5vw,56px);line-height:1}
+    .intro{margin:14px 0 24px;color:var(--muted);font-size:18px}
+    form{display:grid;gap:16px}
+    .panel{border:1px solid var(--line);border-radius:8px;padding:18px;background:#fff}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .full{grid-column:1/-1}
+    label{display:block;margin:0 0 6px;font-size:13px;font-weight:800;color:#344055}
+    input,select,textarea{width:100%;min-height:44px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit}
+    textarea{min-height:130px;resize:vertical}
+    button{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
+    .back{display:inline-block;margin-top:18px;color:var(--blue)}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="eyebrow">Recognition Direct</p>
+    <h1>Custom Name Badge Request</h1>
+    <p class="intro">Use this form for custom badge sizes, custom colors, or badge requests that need review before pricing. This form does not create a checkout.</p>
+    <form action="${APP_BASE_URL}/api/custom-name-badge-inquiry" method="post" enctype="multipart/form-data">
+      <div class="panel grid">
+        <div>
+          <label for="name">Name</label>
+          <input id="name" name="name" required>
+        </div>
+        <div>
+          <label for="company">Company</label>
+          <input id="company" name="company">
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required>
+        </div>
+        <div>
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel">
+        </div>
+        <div>
+          <label for="estimated_quantity">Estimated quantity</label>
+          <input id="estimated_quantity" name="estimated_quantity" type="number" min="1" step="1">
+        </div>
+        <div>
+          <label for="need_by">Need-by date</label>
+          <input id="need_by" name="need_by" type="date">
+        </div>
+      </div>
+
+      <div class="panel grid">
+        <div>
+          <label for="requested_size">Requested size</label>
+          <input id="requested_size" name="requested_size" placeholder='Example: 2" x 3"'>
+        </div>
+        <div>
+          <label for="requested_color">Requested color</label>
+          <input id="requested_color" name="requested_color" placeholder="Example: Black, red, brushed copper">
+        </div>
+        <div>
+          <label for="frame_preference">Frame preference</label>
+          <select id="frame_preference" name="frame_preference">
+            <option value="">No preference</option>
+            <option>No Frame</option>
+            <option>Silver Frame</option>
+            <option>Gold Frame</option>
+          </select>
+        </div>
+        <div>
+          <label for="fastener_preference">Fastener preference</label>
+          <select id="fastener_preference" name="fastener_preference">
+            <option value="">No preference</option>
+            <option>Magnetic</option>
+            <option>Pin</option>
+          </select>
+        </div>
+        <div>
+          <label for="finish_preference">Finish preference</label>
+          <select id="finish_preference" name="finish_preference">
+            <option value="">No preference</option>
+            <option>Standard</option>
+            <option>Epoxy Dome</option>
+          </select>
+        </div>
+        <div>
+          <label for="artwork">Logo / artwork upload</label>
+          <input id="artwork" name="artwork" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png">
+        </div>
+        <div class="full">
+          <label for="notes">What do you need?</label>
+          <textarea id="notes" name="notes" placeholder="Tell us about badge size, color, layout, logo placement, and any special requirements."></textarea>
+        </div>
+      </div>
+
+      <button type="submit">Send custom badge request</button>
+    </form>
+    <a class="back" href="${APP_BASE_URL}/name-badges">Back to standard name badges</a>
+  </main>
+</body>
+</html>`;
+}
+
+function customNameBadgeThanksHtml(url) {
+  const id = escapeHtml(url.searchParams.get("id") || "");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Custom Name Badge Request Sent | Recognition Direct</title>
+  <style>body{margin:0;font:16px/1.45 Arial,Helvetica,sans-serif;color:#18212f}.wrap{width:min(760px,calc(100% - 32px));margin:0 auto;padding:56px 0}.box{border:1px solid #d9dee7;border-radius:8px;padding:24px}h1{margin:0 0 12px;font-size:38px;line-height:1}p{color:#5d6675}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:10px;padding:0 18px;background:#3154b8;color:#fff;text-decoration:none;border-radius:4px;font-weight:800}</style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="box">
+      <h1>Request sent</h1>
+      <p>Thank you. Your custom name badge request has been saved for review. We will follow up with pricing before any checkout is created.</p>
+      ${id ? `<p>Request ID: ${id}</p>` : ""}
+      <a class="button" href="${APP_BASE_URL}/name-badges">Back to name badges</a>
+    </div>
+  </main>
+</body>
+</html>`;
+}
+
 async function handleMockCheckout(res, url) {
   const id = url.searchParams.get("id") || "";
   try {
@@ -1083,6 +1273,8 @@ const server = createServer(async (req, res) => {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
     if (req.method === "GET" && url.pathname === "/name-badges") return html(res, 200, nameBadgePageHtml());
+    if (req.method === "GET" && url.pathname === "/custom-name-badges") return html(res, 200, customNameBadgePageHtml());
+    if (req.method === "GET" && url.pathname === "/custom-name-badges/thanks") return html(res, 200, customNameBadgeThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/assets/full-color-banner-eye.png") {
       return await servePublicFile(res, "full-color-banner-eye.png", "image/png");
     }
@@ -1091,6 +1283,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-checkout") return await handleNameBadgeCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/custom-name-badge-inquiry") return await handleCustomNameBadgeInquiry(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
