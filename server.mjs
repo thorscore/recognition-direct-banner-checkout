@@ -40,8 +40,8 @@ const NAME_BADGE_NO_FRAME_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.N
 const NAME_BADGE_MAGNET_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_MAGNET_PRICE_BREAKS || DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS);
 const NAME_BADGE_DOME_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_DOME_PRICE_BREAKS || DEFAULT_NAME_BADGE_DOME_PRICE_BREAKS);
 const SOLAR_PLACARD_PRODUCTS = [
-  { key: "placard-6x6", title: '6" x 6" Solar Placard', type: "placard", size: '6" x 6"', image: "placard-6x6.png", featured: true },
-  { key: "placard-8x6", title: '8" x 6" Solar Placard', type: "placard", size: '8" x 6"', image: "placard-8x6.png", featured: true },
+  { key: "placard-6x6", title: '6" x 6" Solar Placard', type: "placard", size: '6" x 6"', image: "placard-6x6.png", featured: true, unitPrice: 17 },
+  { key: "placard-8x6", title: '8" x 6" Solar Placard', type: "placard", size: '8" x 6"', image: "placard-8x6.png", featured: true, unitPrice: 17 },
   { key: "placard-8x8", title: '8" x 8" Solar Placard', type: "placard", size: '8" x 8"', image: "placard-8x8.png", unitPrice: 20 },
   { key: "placard-10x10", title: '10" x 10" Solar Placard', type: "placard", size: '10" x 10"', image: "placard-10x10.png", unitPrice: 25 },
   { key: "placard-12x12", title: '12" x 12" Solar Placard', type: "placard", size: '12" x 12"', image: "placard-12x12.png", unitPrice: 30 },
