@@ -292,6 +292,7 @@ function attribute(key, value) {
 function deliveryMethodLabel(value) {
   if (value === "pickup-la-mesa") return "Pickup at La Mesa Street Side Pickup";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
+  if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
   return "Ship";
 }
 
@@ -1156,6 +1157,7 @@ function nameBadgePageHtml() {
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
                 <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-spring-valley">Pickup at Spring Valley</option>
                 <option value="pickup-pine-valley">Pickup at Pine Valley</option>
               </select>
             </div>
