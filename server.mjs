@@ -27,7 +27,7 @@ const ALLOWED_ORIGINS = new Set(
     .filter(Boolean),
 );
 ALLOWED_ORIGINS.add(APP_BASE_URL);
-const ALLOWED_FILE_EXTENSIONS = new Set([".pdf", ".ai", ".eps", ".psd", ".jpg", ".jpeg", ".png"]);
+const ALLOWED_FILE_EXTENSIONS = new Set([".pdf", ".ai", ".eps", ".psd", ".jpg", ".jpeg", ".png", ".txt", ".csv"]);
 const CATALOG_PRICE_OVERRIDES = new Map([
   ["fabric-block-out", { squareFootRate: 3.98 }],
 ]);
@@ -843,6 +843,7 @@ async function handleNameBadgeCheckout(req, res) {
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
   const isPickup = deliveryMethod !== "Ship";
   const artworkUrl = await saveUpload(formData.get("artwork"));
+  const namesFileUrl = await saveUpload(formData.get("names_file"));
   const email = field(formData, "email", 320);
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
@@ -855,6 +856,7 @@ async function handleNameBadgeCheckout(req, res) {
     attribute("Finish", nameBadgeLabel(input.finish)),
     attribute("Delivery Method", deliveryMethod),
     attribute("Names / Badge Text", field(formData, "badge_names", 3000)),
+    attribute("Names File", namesFileUrl),
     attribute("Need-by Date", field(formData, "need_by")),
     attribute("Phone", field(formData, "phone")),
     attribute("Notes", field(formData, "notes", 1500)),
@@ -873,6 +875,7 @@ async function handleNameBadgeCheckout(req, res) {
     deliveryMethod,
     attributes,
     artworkUrl,
+    namesFileUrl,
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
@@ -938,7 +941,7 @@ async function handleCustomNameBadgeInquiry(req, res) {
 
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
-  if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png)$/i.test(name)) return json(res, 404, { error: "Not found." });
+  if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png|txt|csv)$/i.test(name)) return json(res, 404, { error: "Not found." });
   try {
     const bytes = await readFile(join(UPLOAD_DIR, name));
     res.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${name}"` });
@@ -1082,6 +1085,10 @@ function nameBadgePageHtml() {
             <div class="full">
               <label for="badge_names">Names / badge text</label>
               <textarea id="badge_names" name="badge_names" placeholder="One badge per line. Example:&#10;Roth Ward - Owner&#10;Jane Smith - Sales"></textarea>
+            </div>
+            <div>
+              <label for="names_file">Names file upload</label>
+              <input id="names_file" name="names_file" type="file" accept=".txt,.csv,text/plain,text/csv">
             </div>
             <div>
               <label for="artwork">Logo / artwork upload</label>
