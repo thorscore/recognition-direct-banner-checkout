@@ -47,12 +47,12 @@ const SOLAR_PLACARD_PRODUCTS = [
   { key: "placard-12x12", title: '12" x 12" Solar Placard', type: "placard", size: '12" x 12"', image: "placard-12x12.png", unitPrice: 30 },
   { key: "placard-10x7-5", title: '10" x 7.5" Solar Placard', type: "placard", size: '10" x 7.5"', image: "placard-10x7-5.png", unitPrice: 25 },
   { key: "placard-12x9", title: '12" x 9" Solar Placard', type: "placard", size: '12" x 9"', image: "placard-12x9.png", unitPrice: 30 },
-  { key: "plate-1x4", title: '1" x 4" Solar Plate', type: "plate", size: '1" x 4"', image: "plate-any-text-4x1.png" },
-  { key: "plate-1-5x4", title: '1.5" x 4" Solar Plate', type: "plate", size: '1.5" x 4"', image: "plate-any-text-4x1-5.png" },
-  { key: "plate-1-5x6", title: '1.5" x 6" Solar Plate', type: "plate", size: '1.5" x 6"', image: "plate-any-text-6x1-5.png" },
-  { key: "plate-2x6", title: '2" x 6" Solar Plate', type: "plate", size: '2" x 6"', image: "plate-any-text-6x2.png" },
-  { key: "plate-3x6", title: '3" x 6" Solar Plate', type: "plate", size: '3" x 6"', image: "plate-any-text-6x3.png" },
-  { key: "plate-4x4", title: '4" x 4" Solar Plate', type: "plate", size: '4" x 4"', image: "plate-any-text-4x4.png" },
+  { key: "plate-1x4", title: '1" x 4" Solar Plate', type: "plate", size: '1" x 4"', image: "plate-any-text-4x1.png", unitPrice: 4 },
+  { key: "plate-1-5x4", title: '1.5" x 4" Solar Plate', type: "plate", size: '1.5" x 4"', image: "plate-any-text-4x1-5.png", unitPrice: 4.5 },
+  { key: "plate-1-5x6", title: '1.5" x 6" Solar Plate', type: "plate", size: '1.5" x 6"', image: "plate-any-text-6x1-5.png", unitPrice: 5 },
+  { key: "plate-2x6", title: '2" x 6" Solar Plate', type: "plate", size: '2" x 6"', image: "plate-any-text-6x2.png", unitPrice: 6 },
+  { key: "plate-3x6", title: '3" x 6" Solar Plate', type: "plate", size: '3" x 6"', image: "plate-any-text-6x3.png", unitPrice: 8 },
+  { key: "plate-4x4", title: '4" x 4" Solar Plate', type: "plate", size: '4" x 4"', image: "plate-any-text-4x4.png", unitPrice: 8 },
   { key: "plate-custom", title: "Custom Solar Plate Size", type: "plate", size: "Custom", image: "plate-any-text-6x2.png" },
 ];
 const solarProductByKey = new Map(SOLAR_PLACARD_PRODUCTS.map((product) => [product.key, product]));
