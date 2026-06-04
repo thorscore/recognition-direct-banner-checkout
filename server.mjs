@@ -39,6 +39,23 @@ const NAME_BADGE_BASE_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_
 const NAME_BADGE_NO_FRAME_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_NO_FRAME_PRICE_BREAKS || DEFAULT_NAME_BADGE_NO_FRAME_PRICE_BREAKS);
 const NAME_BADGE_MAGNET_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_MAGNET_PRICE_BREAKS || DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS);
 const NAME_BADGE_DOME_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_DOME_PRICE_BREAKS || DEFAULT_NAME_BADGE_DOME_PRICE_BREAKS);
+const SOLAR_PLACARD_PRODUCTS = [
+  { key: "placard-6x6", title: '6" x 6" Solar Placard', type: "placard", size: '6" x 6"', image: "placard-6x6.png", featured: true },
+  { key: "placard-8x6", title: '8" x 6" Solar Placard', type: "placard", size: '8" x 6"', image: "placard-8x6.png", featured: true },
+  { key: "placard-8x8", title: '8" x 8" Solar Placard', type: "placard", size: '8" x 8"', image: "placard-8x8.png" },
+  { key: "placard-10x10", title: '10" x 10" Solar Placard', type: "placard", size: '10" x 10"', image: "placard-10x10.png" },
+  { key: "placard-12x12", title: '12" x 12" Solar Placard', type: "placard", size: '12" x 12"', image: "placard-12x12.png" },
+  { key: "placard-10x7-5", title: '10" x 7.5" Solar Placard', type: "placard", size: '10" x 7.5"', image: "placard-10x7-5.png" },
+  { key: "placard-12x9", title: '12" x 9" Solar Placard', type: "placard", size: '12" x 9"', image: "placard-12x9.png" },
+  { key: "plate-1x4", title: '1" x 4" Solar Plate', type: "plate", size: '1" x 4"', image: "plate-any-text-4x1.png" },
+  { key: "plate-1-5x4", title: '1.5" x 4" Solar Plate', type: "plate", size: '1.5" x 4"', image: "plate-any-text-4x1-5.png" },
+  { key: "plate-1-5x6", title: '1.5" x 6" Solar Plate', type: "plate", size: '1.5" x 6"', image: "plate-any-text-6x1-5.png" },
+  { key: "plate-2x6", title: '2" x 6" Solar Plate', type: "plate", size: '2" x 6"', image: "plate-any-text-6x2.png" },
+  { key: "plate-3x6", title: '3" x 6" Solar Plate', type: "plate", size: '3" x 6"', image: "plate-any-text-6x3.png" },
+  { key: "plate-4x4", title: '4" x 4" Solar Plate', type: "plate", size: '4" x 4"', image: "plate-any-text-4x4.png" },
+  { key: "plate-custom", title: "Custom Solar Plate Size", type: "plate", size: "Custom", image: "plate-any-text-6x2.png" },
+];
+const solarProductByKey = new Map(SOLAR_PLACARD_PRODUCTS.map((product) => [product.key, product]));
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
 let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
@@ -942,6 +959,42 @@ async function handleCustomNameBadgeInquiry(req, res) {
   res.end();
 }
 
+async function handleSolarPlacardInquiry(req, res) {
+  const formData = await requestFormData(req);
+  const email = field(formData, "email", 320);
+  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+  const product = solarProductByKey.get(field(formData, "product_key", 80));
+  if (!product) throw new Error("Select a solar placard or plate.");
+  const quantity = Math.max(1, Math.floor(Number.parseFloat(field(formData, "order_quantity")) || 1));
+  const planUrl = await saveUpload(formData.get("plan_file"));
+  const artworkUrl = await saveUpload(formData.get("artwork"));
+  const inquiry = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    type: "solar-placard-request",
+    productKey: product.key,
+    productTitle: product.title,
+    productType: product.type,
+    size: product.size,
+    quantity,
+    customWidth: field(formData, "custom_width"),
+    customHeight: field(formData, "custom_height"),
+    plateText: field(formData, "plate_text", 3000),
+    name: field(formData, "name"),
+    company: field(formData, "company"),
+    email,
+    phone: field(formData, "phone"),
+    deliveryMethod: deliveryMethodLabel(field(formData, "delivery_method")),
+    needBy: field(formData, "need_by"),
+    notes: field(formData, "notes", 2500),
+    planUrl,
+    artworkUrl,
+  };
+  await writeFile(join(ORDER_DIR, `${inquiry.id}.json`), JSON.stringify(inquiry, null, 2));
+  res.writeHead(303, { Location: `${APP_BASE_URL}/solar-placards/thanks?id=${encodeURIComponent(inquiry.id)}` });
+  res.end();
+}
+
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png|txt|csv)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -1347,6 +1400,218 @@ function customNameBadgeThanksHtml(url) {
 </html>`;
 }
 
+function solarProductCardsHtml(products) {
+  return products.map((product) => `
+    <button class="product-card${product.featured ? " featured" : ""}" type="button" data-product-key="${escapeHtml(product.key)}">
+      ${product.featured ? '<span class="pill">Featured</span>' : ""}
+      <img src="${APP_BASE_URL}/assets/solar-placards/${escapeHtml(product.image)}" alt="${escapeHtml(product.title)}" loading="lazy">
+      <strong>${escapeHtml(product.title)}</strong>
+      <small>${product.type === "placard" ? "Upload PDF plan sheet/design" : "Enter requested plate text"}</small>
+    </button>
+  `).join("");
+}
+
+function solarPlacardsPageHtml() {
+  const featured = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "placard" && product.featured);
+  const otherPlacards = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "placard" && !product.featured);
+  const plates = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "plate");
+  const first = SOLAR_PLACARD_PRODUCTS[0];
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solar Placards | Recognition Direct</title>
+  <meta name="description" content="Order solar placards and engraved solar plates from Recognition Direct. Upload PDF plans or enter custom plate text.">
+  <style>
+    :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8;--soft:#f5f7fb}
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
+    .wrap{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:38px 0 48px}
+    .eyebrow{margin:0 0 8px;color:var(--accent);font-size:13px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    h1{margin:0;font-size:clamp(36px,5vw,62px);line-height:1}
+    h2{margin:0 0 14px;font-size:24px;line-height:1.2}
+    h3{margin:28px 0 12px;font-size:20px}
+    .intro{max-width:760px;margin:14px 0 26px;color:var(--muted);font-size:18px}
+    .layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(380px,.95fr);gap:24px;align-items:start}
+    .panel{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px}
+    .gallery{background:linear-gradient(135deg,#fff,#eef2f8)}
+    .product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .product-card{position:relative;display:grid;gap:8px;width:100%;min-height:170px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;text-align:left;cursor:pointer}
+    .product-card:hover,.product-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+    .product-card img{display:block;width:100%;height:112px;object-fit:contain;background:#ef2d32;border-radius:4px}
+    .product-card strong{font-size:15px;line-height:1.2}
+    .product-card small{color:var(--muted);font-size:12px}
+    .pill{position:absolute;top:10px;left:10px;z-index:1;border-radius:999px;background:#18212f;color:#fff;padding:4px 8px;font-size:11px;font-weight:900;text-transform:uppercase}
+    .selected{display:grid;gap:14px}
+    .preview{display:block;width:100%;max-height:360px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#ef2d32}
+    form{display:grid;gap:16px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .full{grid-column:1/-1}
+    label{display:block;margin:0 0 6px;font-size:13px;font-weight:900;color:#344055}
+    input,select,textarea{width:100%;min-height:44px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit;background:#fff}
+    textarea{min-height:112px;resize:vertical}
+    .note{margin:8px 0 0;color:var(--muted);font-size:13px}
+    .price-note{border-radius:8px;background:#18212f;color:#fff;padding:16px}
+    .price-note strong{display:block;margin-bottom:4px}
+    .price-note span{color:#d7dde8}
+    button.submit{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
+    [hidden]{display:none!important}
+    @media(max-width:920px){.layout{grid-template-columns:1fr}.product-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:560px){.product-grid,.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="eyebrow">Recognition Direct</p>
+    <h1>Solar Placards</h1>
+    <p class="intro">Choose a solar placard size and upload the PDF plan sheet that contains the design, or choose a solar plate and enter the text you want printed. Pricing will be confirmed after review until the final price list is added.</p>
+
+    <div class="layout">
+      <section class="panel gallery" aria-label="Solar placard products">
+        <h2>Featured Solar Placards</h2>
+        <div class="product-grid">${solarProductCardsHtml(featured)}</div>
+        <h3>Other Solar Placards</h3>
+        <div class="product-grid">${solarProductCardsHtml(otherPlacards)}</div>
+        <h3>Solar Plates</h3>
+        <div class="product-grid">${solarProductCardsHtml(plates)}</div>
+      </section>
+
+      <section class="selected">
+        <img class="preview" data-preview src="${APP_BASE_URL}/assets/solar-placards/${escapeHtml(first.image)}" alt="${escapeHtml(first.title)}">
+        <form action="${APP_BASE_URL}/api/solar-placard-request" method="post" enctype="multipart/form-data" data-solar-form>
+          <input type="hidden" name="product_key" value="${escapeHtml(first.key)}">
+          <div class="panel grid">
+            <div class="full">
+              <label for="selected_product">Selected item</label>
+              <input id="selected_product" data-selected-title value="${escapeHtml(first.title)}" readonly>
+              <p class="note" data-selected-instruction>Upload the PDF plan sheet that contains the placard design.</p>
+            </div>
+            <div>
+              <label for="order_quantity">Quantity</label>
+              <input id="order_quantity" name="order_quantity" type="number" min="1" step="1" value="1" required>
+            </div>
+            <div>
+              <label for="delivery_method">Delivery</label>
+              <select id="delivery_method" name="delivery_method">
+                <option value="ship">Ship</option>
+                <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-pine-valley">Pickup at Pine Valley</option>
+              </select>
+            </div>
+            <div data-custom-size hidden>
+              <label for="custom_width">Custom width in inches</label>
+              <input id="custom_width" name="custom_width" type="number" min="0.1" step="0.1">
+            </div>
+            <div data-custom-size hidden>
+              <label for="custom_height">Custom height in inches</label>
+              <input id="custom_height" name="custom_height" type="number" min="0.1" step="0.1">
+            </div>
+            <div class="full" data-placard-upload>
+              <label for="plan_file">PDF plan sheet / placard design</label>
+              <input id="plan_file" name="plan_file" type="file" accept=".pdf,application/pdf">
+              <p class="note">Upload the plan sheet that shows the placard layout and required labeling.</p>
+            </div>
+            <div class="full" data-plate-text hidden>
+              <label for="plate_text">Plate text</label>
+              <textarea id="plate_text" name="plate_text" placeholder="Type the exact text you would like on the plate."></textarea>
+            </div>
+            <div class="full">
+              <label for="artwork">Additional artwork or reference file</label>
+              <input id="artwork" name="artwork" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png">
+            </div>
+          </div>
+
+          <div class="panel grid">
+            <div>
+              <label for="name">Name</label>
+              <input id="name" name="name" required>
+            </div>
+            <div>
+              <label for="company">Company</label>
+              <input id="company" name="company">
+            </div>
+            <div>
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required>
+            </div>
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel">
+            </div>
+            <div>
+              <label for="need_by">Need-by date</label>
+              <input id="need_by" name="need_by" type="date">
+            </div>
+            <div class="full">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" placeholder="Tell us anything else we should know about the solar placard or plate."></textarea>
+            </div>
+          </div>
+
+          <div class="price-note">
+            <strong>Pricing review required</strong>
+            <span>Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.</span>
+          </div>
+          <button class="submit" type="submit">Send solar request</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script>
+    const products = ${JSON.stringify(SOLAR_PLACARD_PRODUCTS)};
+    const form = document.querySelector('[data-solar-form]');
+    const cards = [...document.querySelectorAll('[data-product-key]')];
+    const preview = document.querySelector('[data-preview]');
+    const selectedTitle = document.querySelector('[data-selected-title]');
+    const selectedInstruction = document.querySelector('[data-selected-instruction]');
+    const customSizeFields = [...document.querySelectorAll('[data-custom-size]')];
+    const placardUpload = document.querySelector('[data-placard-upload]');
+    const plateText = document.querySelector('[data-plate-text]');
+    function selectProduct(key) {
+      const product = products.find((entry) => entry.key === key) || products[0];
+      form.elements.product_key.value = product.key;
+      selectedTitle.value = product.title;
+      preview.src = '${APP_BASE_URL}/assets/solar-placards/' + product.image;
+      preview.alt = product.title;
+      selectedInstruction.textContent = product.type === 'placard'
+        ? 'Upload the PDF plan sheet that contains the placard design.'
+        : 'Type the exact text you would like on the plate.';
+      placardUpload.hidden = product.type !== 'placard';
+      plateText.hidden = product.type !== 'plate';
+      customSizeFields.forEach((field) => { field.hidden = product.key !== 'plate-custom'; });
+      cards.forEach((card) => card.classList.toggle('active', card.dataset.productKey === product.key));
+    }
+    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.productKey)));
+    selectProduct('${escapeHtml(first.key)}');
+  </script>
+</body>
+</html>`;
+}
+
+function solarPlacardsThanksHtml(url) {
+  const id = escapeHtml(url.searchParams.get("id") || "");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solar Request Sent | Recognition Direct</title>
+  <style>body{margin:0;font:16px/1.45 Arial,Helvetica,sans-serif;color:#18212f}.wrap{width:min(760px,calc(100% - 32px));margin:0 auto;padding:56px 0}.box{border:1px solid #d9dee7;border-radius:8px;padding:24px}h1{margin:0 0 12px;font-size:38px;line-height:1}p{color:#5d6675}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:10px;padding:0 18px;background:#3154b8;color:#fff;text-decoration:none;border-radius:4px;font-weight:800}</style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="box">
+      <h1>Solar request sent</h1>
+      <p>Thank you. Your solar placard or plate request has been saved for review. We will follow up with pricing before any checkout is created.</p>
+      ${id ? `<p>Request ID: ${id}</p>` : ""}
+      <a class="button" href="${APP_BASE_URL}/solar-placards">Back to Solar Placards</a>
+    </div>
+  </main>
+</body>
+</html>`;
+}
+
 async function handleMockCheckout(res, url) {
   const id = url.searchParams.get("id") || "";
   try {
@@ -1379,7 +1644,12 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/name-badges") return html(res, 200, nameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/custom-name-badges") return html(res, 200, customNameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/custom-name-badges/thanks") return html(res, 200, customNameBadgeThanksHtml(url));
+    if (req.method === "GET" && url.pathname === "/solar-placards") return html(res, 200, solarPlacardsPageHtml());
+    if (req.method === "GET" && url.pathname === "/solar-placards/thanks") return html(res, 200, solarPlacardsThanksHtml(url));
     if (req.method === "GET" && /^\/assets\/name-badges\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
+      return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));
+    }
+    if (req.method === "GET" && /^\/assets\/solar-placards\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
       return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));
     }
     if (req.method === "GET" && url.pathname === "/assets/full-color-banner-eye.png") {
@@ -1391,6 +1661,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-checkout") return await handleNameBadgeCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/custom-name-badge-inquiry") return await handleCustomNameBadgeInquiry(req, res);
+    if (req.method === "POST" && url.pathname === "/api/solar-placard-request") return await handleSolarPlacardInquiry(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
