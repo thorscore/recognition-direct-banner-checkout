@@ -146,6 +146,7 @@ function nameBadgeLabel(value) {
 
 function nameBadgePriceChartHtml() {
   const quantities = NAME_BADGE_BASE_PRICE_BREAKS.map((priceBreak) => priceBreak.minimumQuantity);
+  const quantityLabels = ["1-9", "10-24", "25-49", "50-99", "100-249", "250-499", "500-999", "1000-1499"];
   const priceCell = (priceBreaks, quantity) => `$${priceForQuantity(priceBreaks, quantity, "Name badge").toFixed(2)}`;
   const row = (label, priceBreaks) => `<tr><th scope="row">${escapeHtml(label)}</th>${quantities.map((quantity) => `<td>${priceCell(priceBreaks, quantity)}</td>`).join("")}</tr>`;
   return `<div class="badge-price-chart" aria-label="Name badge quantity price chart">
@@ -155,7 +156,7 @@ function nameBadgePriceChartHtml() {
         <thead>
           <tr>
             <th scope="col">Option</th>
-            ${quantities.map((quantity) => `<th scope="col">${quantity}+</th>`).join("")}
+            ${quantityLabels.map((label) => `<th scope="col">${label}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
@@ -975,15 +976,15 @@ function nameBadgePageHtml() {
     body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
     .wrap{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:38px 0 46px}
     .hero{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
-    .art{min-height:420px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(135deg,#f8fafc,#e9eef7);display:grid;gap:18px;align-content:start;justify-items:center;padding:24px}
-    .badge-preview{width:min(620px,96%);text-align:center}
+    .art{min-width:0;min-height:420px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(135deg,#f8fafc,#e9eef7);display:grid;gap:18px;align-content:start;justify-items:center;padding:24px;overflow:hidden}
+    .badge-preview{width:min(620px,100%);text-align:center}
     .badge-preview img{display:block;width:100%;height:auto;border-radius:8px;box-shadow:0 18px 45px rgba(24,33,47,.16)}
     .badge-preview span{display:block;margin-top:10px;color:var(--muted)}
-    .badge-price-chart{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px;text-align:left}
+    .badge-price-chart{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px;text-align:left}
     .badge-price-chart h2{margin:0 0 10px;font-size:20px;line-height:1.2}
-    .badge-price-chart__scroll{overflow-x:auto}
-    .badge-price-chart table{width:100%;min-width:660px;border-collapse:collapse;font-size:13px}
-    .badge-price-chart th,.badge-price-chart td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+    .badge-price-chart__scroll{width:100%;max-width:100%;overflow-x:auto}
+    .badge-price-chart table{width:100%;min-width:600px;border-collapse:collapse;font-size:12px}
+    .badge-price-chart th,.badge-price-chart td{padding:7px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
     .badge-price-chart th:first-child,.badge-price-chart td:first-child{text-align:left}
     .badge-price-chart thead th{background:#f1f5ff;color:var(--ink);font-weight:800}
     .badge-price-chart tbody th{font-weight:800}
