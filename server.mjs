@@ -144,6 +144,32 @@ function nameBadgeLabel(value) {
   })[value] || value;
 }
 
+function nameBadgePriceChartHtml() {
+  const quantities = NAME_BADGE_BASE_PRICE_BREAKS.map((priceBreak) => priceBreak.minimumQuantity);
+  const priceCell = (priceBreaks, quantity) => `$${priceForQuantity(priceBreaks, quantity, "Name badge").toFixed(2)}`;
+  const row = (label, priceBreaks) => `<tr><th scope="row">${escapeHtml(label)}</th>${quantities.map((quantity) => `<td>${priceCell(priceBreaks, quantity)}</td>`).join("")}</tr>`;
+  return `<div class="badge-price-chart" aria-label="Name badge quantity price chart">
+    <h2>Quantity Pricing</h2>
+    <div class="badge-price-chart__scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Option</th>
+            ${quantities.map((quantity) => `<th scope="col">${quantity}+</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${row("No Frame", NAME_BADGE_NO_FRAME_PRICE_BREAKS)}
+          ${row("Silver / Gold Frame", NAME_BADGE_BASE_PRICE_BREAKS)}
+          ${row("Magnetic add-on", NAME_BADGE_MAGNET_PRICE_BREAKS)}
+          ${row("Epoxy Dome add-on", NAME_BADGE_DOME_PRICE_BREAKS)}
+        </tbody>
+      </table>
+    </div>
+    <p>Pin back is included. Quantities of 1500+ are by quote.</p>
+  </div>`;
+}
+
 function publicAssetResponseHeaders(name) {
   return name.toLowerCase().endsWith(".png")
     ? "image/png"
@@ -949,10 +975,19 @@ function nameBadgePageHtml() {
     body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
     .wrap{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:38px 0 46px}
     .hero{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
-    .art{min-height:420px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(135deg,#f8fafc,#e9eef7);display:grid;place-items:center;padding:24px}
+    .art{min-height:420px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(135deg,#f8fafc,#e9eef7);display:grid;gap:18px;align-content:start;justify-items:center;padding:24px}
     .badge-preview{width:min(620px,96%);text-align:center}
     .badge-preview img{display:block;width:100%;height:auto;border-radius:8px;box-shadow:0 18px 45px rgba(24,33,47,.16)}
     .badge-preview span{display:block;margin-top:10px;color:var(--muted)}
+    .badge-price-chart{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px;text-align:left}
+    .badge-price-chart h2{margin:0 0 10px;font-size:20px;line-height:1.2}
+    .badge-price-chart__scroll{overflow-x:auto}
+    .badge-price-chart table{width:100%;min-width:660px;border-collapse:collapse;font-size:13px}
+    .badge-price-chart th,.badge-price-chart td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+    .badge-price-chart th:first-child,.badge-price-chart td:first-child{text-align:left}
+    .badge-price-chart thead th{background:#f1f5ff;color:var(--ink);font-weight:800}
+    .badge-price-chart tbody th{font-weight:800}
+    .badge-price-chart p{margin:10px 0 0;color:var(--muted);font-size:13px}
     h1{margin:0 0 10px;font-size:clamp(34px,5vw,58px);line-height:1}
     .intro{margin:0 0 20px;color:var(--muted);font-size:18px}
     form{display:grid;gap:16px}
@@ -982,6 +1017,7 @@ function nameBadgePageHtml() {
           <img data-badge-preview src="${APP_BASE_URL}/assets/name-badges/1x3-white-no-frame.png" alt="Selected name badge preview" width="902" height="303">
           <span data-badge-preview-caption>White 1&quot; x 3&quot; badge with no frame</span>
         </div>
+        ${nameBadgePriceChartHtml()}
       </div>
       <div>
         <p class="note">Recognition Direct</p>
