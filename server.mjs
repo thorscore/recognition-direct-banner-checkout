@@ -42,11 +42,11 @@ const NAME_BADGE_DOME_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_
 const SOLAR_PLACARD_PRODUCTS = [
   { key: "placard-6x6", title: '6" x 6" Solar Placard', type: "placard", size: '6" x 6"', image: "placard-6x6.png", featured: true },
   { key: "placard-8x6", title: '8" x 6" Solar Placard', type: "placard", size: '8" x 6"', image: "placard-8x6.png", featured: true },
-  { key: "placard-8x8", title: '8" x 8" Solar Placard', type: "placard", size: '8" x 8"', image: "placard-8x8.png" },
-  { key: "placard-10x10", title: '10" x 10" Solar Placard', type: "placard", size: '10" x 10"', image: "placard-10x10.png" },
-  { key: "placard-12x12", title: '12" x 12" Solar Placard', type: "placard", size: '12" x 12"', image: "placard-12x12.png" },
-  { key: "placard-10x7-5", title: '10" x 7.5" Solar Placard', type: "placard", size: '10" x 7.5"', image: "placard-10x7-5.png" },
-  { key: "placard-12x9", title: '12" x 9" Solar Placard', type: "placard", size: '12" x 9"', image: "placard-12x9.png" },
+  { key: "placard-8x8", title: '8" x 8" Solar Placard', type: "placard", size: '8" x 8"', image: "placard-8x8.png", unitPrice: 20 },
+  { key: "placard-10x10", title: '10" x 10" Solar Placard', type: "placard", size: '10" x 10"', image: "placard-10x10.png", unitPrice: 25 },
+  { key: "placard-12x12", title: '12" x 12" Solar Placard', type: "placard", size: '12" x 12"', image: "placard-12x12.png", unitPrice: 30 },
+  { key: "placard-10x7-5", title: '10" x 7.5" Solar Placard', type: "placard", size: '10" x 7.5"', image: "placard-10x7-5.png", unitPrice: 25 },
+  { key: "placard-12x9", title: '12" x 9" Solar Placard', type: "placard", size: '12" x 9"', image: "placard-12x9.png", unitPrice: 30 },
   { key: "plate-1x4", title: '1" x 4" Solar Plate', type: "plate", size: '1" x 4"', image: "plate-any-text-4x1.png" },
   { key: "plate-1-5x4", title: '1.5" x 4" Solar Plate', type: "plate", size: '1.5" x 4"', image: "plate-any-text-4x1-5.png" },
   { key: "plate-1-5x6", title: '1.5" x 6" Solar Plate', type: "plate", size: '1.5" x 6"', image: "plate-any-text-6x1-5.png" },
@@ -968,6 +968,8 @@ async function handleSolarPlacardInquiry(req, res) {
   const quantity = Math.max(1, Math.floor(Number.parseFloat(field(formData, "order_quantity")) || 1));
   const planUrl = await saveUpload(formData.get("plan_file"));
   const artworkUrl = await saveUpload(formData.get("artwork"));
+  const unitPrice = Number.isFinite(product.unitPrice) ? product.unitPrice : null;
+  const totalPrice = unitPrice === null ? null : Number((unitPrice * quantity).toFixed(2));
   const inquiry = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
@@ -977,6 +979,8 @@ async function handleSolarPlacardInquiry(req, res) {
     productType: product.type,
     size: product.size,
     quantity,
+    unitPrice,
+    totalPrice,
     customWidth: field(formData, "custom_width"),
     customHeight: field(formData, "custom_height"),
     plateText: field(formData, "plate_text", 3000),
@@ -1406,6 +1410,7 @@ function solarProductCardsHtml(products) {
       ${product.featured ? '<span class="pill">Featured</span>' : ""}
       <img src="${APP_BASE_URL}/assets/solar-placards/${escapeHtml(product.image)}" alt="${escapeHtml(product.title)}" loading="lazy">
       <strong>${escapeHtml(product.title)}</strong>
+      <em>${Number.isFinite(product.unitPrice) ? `$${product.unitPrice.toFixed(2)}` : "Price review required"}</em>
       <small>${product.type === "placard" ? "Upload PDF plan sheet/design" : "Enter requested plate text"}</small>
     </button>
   `).join("");
@@ -1441,6 +1446,7 @@ function solarPlacardsPageHtml() {
     .product-card:hover,.product-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
     .product-card img{display:block;width:100%;height:112px;object-fit:contain;background:#ef2d32;border-radius:4px}
     .product-card strong{font-size:15px;line-height:1.2}
+    .product-card em{color:var(--accent);font-style:normal;font-weight:900}
     .product-card small{color:var(--muted);font-size:12px}
     .pill{position:absolute;top:10px;left:10px;z-index:1;border-radius:999px;background:#18212f;color:#fff;padding:4px 8px;font-size:11px;font-weight:900;text-transform:uppercase}
     .selected{display:grid;gap:14px}
@@ -1455,6 +1461,10 @@ function solarPlacardsPageHtml() {
     .price-note{border-radius:8px;background:#18212f;color:#fff;padding:16px}
     .price-note strong{display:block;margin-bottom:4px}
     .price-note span{color:#d7dde8}
+    .estimate{border-radius:8px;background:#18212f;color:#fff;padding:16px}
+    .estimate small{display:block;color:#d7dde8;text-transform:uppercase;font-weight:900;letter-spacing:.05em}
+    .estimate strong{display:block;margin:4px 0;font-size:34px;line-height:1}
+    .estimate span{color:#d7dde8}
     button.submit{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
     [hidden]{display:none!important}
     @media(max-width:920px){.layout{grid-template-columns:1fr}.product-grid{grid-template-columns:1fr 1fr}}
@@ -1549,9 +1559,10 @@ function solarPlacardsPageHtml() {
             </div>
           </div>
 
-          <div class="price-note">
-            <strong>Pricing review required</strong>
-            <span>Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.</span>
+          <div class="estimate">
+            <small data-price-label>Pricing review required</small>
+            <strong data-price-total>Quote</strong>
+            <span data-price-message>Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.</span>
           </div>
           <button class="submit" type="submit">Send solar request</button>
         </form>
@@ -1568,8 +1579,28 @@ function solarPlacardsPageHtml() {
     const customSizeFields = [...document.querySelectorAll('[data-custom-size]')];
     const placardUpload = document.querySelector('[data-placard-upload]');
     const plateText = document.querySelector('[data-plate-text]');
+    const priceLabel = document.querySelector('[data-price-label]');
+    const priceTotal = document.querySelector('[data-price-total]');
+    const priceMessage = document.querySelector('[data-price-message]');
+    let selectedProduct = products[0];
+    function money(value) {
+      return '$' + Number(value).toFixed(2);
+    }
+    function updatePrice() {
+      const quantity = Math.max(1, Number.parseInt(form.elements.order_quantity.value || '1', 10));
+      if (Number.isFinite(selectedProduct.unitPrice)) {
+        priceLabel.textContent = money(selectedProduct.unitPrice) + ' each';
+        priceTotal.textContent = money(selectedProduct.unitPrice * quantity);
+        priceMessage.textContent = 'Estimated total based on selected item and quantity. You will receive a proof before production.';
+      } else {
+        priceLabel.textContent = 'Pricing review required';
+        priceTotal.textContent = 'Quote';
+        priceMessage.textContent = 'Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.';
+      }
+    }
     function selectProduct(key) {
       const product = products.find((entry) => entry.key === key) || products[0];
+      selectedProduct = product;
       form.elements.product_key.value = product.key;
       selectedTitle.value = product.title;
       preview.src = '${APP_BASE_URL}/assets/solar-placards/' + product.image;
@@ -1581,8 +1612,10 @@ function solarPlacardsPageHtml() {
       plateText.hidden = product.type !== 'plate';
       customSizeFields.forEach((field) => { field.hidden = product.key !== 'plate-custom'; });
       cards.forEach((card) => card.classList.toggle('active', card.dataset.productKey === product.key));
+      updatePrice();
     }
     cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.productKey)));
+    form.elements.order_quantity.addEventListener('input', updatePrice);
     selectProduct('${escapeHtml(first.key)}');
   </script>
 </body>
