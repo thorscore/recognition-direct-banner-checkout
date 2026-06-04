@@ -55,6 +55,7 @@ const SOLAR_PLACARD_PRODUCTS = [
   { key: "plate-4x4", title: '4" x 4" Solar Plate', type: "plate", size: '4" x 4"', image: "plate-any-text-4x4.png", unitPrice: 8 },
   { key: "plate-custom", title: "Custom Solar Plate Size", type: "plate", size: "Custom", image: "plate-any-text-6x2.png" },
 ];
+const SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE = 0.5;
 const solarProductByKey = new Map(SOLAR_PLACARD_PRODUCTS.map((product) => [product.key, product]));
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
@@ -968,7 +969,14 @@ async function handleSolarPlacardInquiry(req, res) {
   const quantity = Math.max(1, Math.floor(Number.parseFloat(field(formData, "order_quantity")) || 1));
   const planUrl = await saveUpload(formData.get("plan_file"));
   const artworkUrl = await saveUpload(formData.get("artwork"));
-  const unitPrice = Number.isFinite(product.unitPrice) ? product.unitPrice : null;
+  const customWidth = Number.parseFloat(field(formData, "custom_width"));
+  const customHeight = Number.parseFloat(field(formData, "custom_height"));
+  const customArea = product.key === "plate-custom" && Number.isFinite(customWidth) && Number.isFinite(customHeight) && customWidth > 0 && customHeight > 0
+    ? Number((customWidth * customHeight).toFixed(2))
+    : null;
+  const unitPrice = product.key === "plate-custom" && customArea !== null
+    ? Number((customArea * SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE).toFixed(2))
+    : Number.isFinite(product.unitPrice) ? product.unitPrice : null;
   const totalPrice = unitPrice === null ? null : Number((unitPrice * quantity).toFixed(2));
   const inquiry = {
     id: randomUUID(),
@@ -983,6 +991,8 @@ async function handleSolarPlacardInquiry(req, res) {
     totalPrice,
     customWidth: field(formData, "custom_width"),
     customHeight: field(formData, "custom_height"),
+    customSquareInches: customArea,
+    customSquareInchRate: product.key === "plate-custom" ? SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE : null,
     plateText: field(formData, "plate_text", 3000),
     name: field(formData, "name"),
     company: field(formData, "company"),
@@ -1562,7 +1572,7 @@ function solarPlacardsPageHtml() {
           <div class="estimate">
             <small data-price-label>Pricing review required</small>
             <strong data-price-total>Quote</strong>
-            <span data-price-message>Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.</span>
+      <span data-price-message>Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.</span>
           </div>
           <button class="submit" type="submit">Send solar request</button>
         </form>
@@ -1571,6 +1581,7 @@ function solarPlacardsPageHtml() {
   </main>
   <script>
     const products = ${JSON.stringify(SOLAR_PLACARD_PRODUCTS)};
+    const customSquareInchRate = ${SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE};
     const form = document.querySelector('[data-solar-form]');
     const cards = [...document.querySelectorAll('[data-product-key]')];
     const preview = document.querySelector('[data-preview]');
@@ -1588,7 +1599,19 @@ function solarPlacardsPageHtml() {
     }
     function updatePrice() {
       const quantity = Math.max(1, Number.parseInt(form.elements.order_quantity.value || '1', 10));
-      if (Number.isFinite(selectedProduct.unitPrice)) {
+      const customWidth = Number.parseFloat(form.elements.custom_width.value || '');
+      const customHeight = Number.parseFloat(form.elements.custom_height.value || '');
+      if (selectedProduct.key === 'plate-custom' && Number.isFinite(customWidth) && Number.isFinite(customHeight) && customWidth > 0 && customHeight > 0) {
+        const area = customWidth * customHeight;
+        const unitPrice = area * customSquareInchRate;
+        priceLabel.textContent = money(customSquareInchRate) + ' per square inch';
+        priceTotal.textContent = money(unitPrice * quantity);
+        priceMessage.textContent = area.toFixed(2) + ' sq in each. Estimated total based on custom size and quantity.';
+      } else if (selectedProduct.key === 'plate-custom') {
+        priceLabel.textContent = money(customSquareInchRate) + ' per square inch';
+        priceTotal.textContent = 'Enter size';
+        priceMessage.textContent = 'Enter custom width and height in inches to estimate the price.';
+      } else if (Number.isFinite(selectedProduct.unitPrice)) {
         priceLabel.textContent = money(selectedProduct.unitPrice) + ' each';
         priceTotal.textContent = money(selectedProduct.unitPrice * quantity);
         priceMessage.textContent = 'Estimated total based on selected item and quantity. You will receive a proof before production.';
@@ -1616,6 +1639,8 @@ function solarPlacardsPageHtml() {
     }
     cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.productKey)));
     form.elements.order_quantity.addEventListener('input', updatePrice);
+    form.elements.custom_width.addEventListener('input', updatePrice);
+    form.elements.custom_height.addEventListener('input', updatePrice);
     selectProduct('${escapeHtml(first.key)}');
   </script>
 </body>
