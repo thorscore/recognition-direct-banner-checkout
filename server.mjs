@@ -1148,6 +1148,7 @@ async function handlePremierAwardPrice(req, res) {
 async function handlePremierAwardCheckout(req, res) {
   const origin = req.headers.origin || "";
   if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+  const wantsJson = (req.headers.accept || "").includes("application/json") || req.headers["x-requested-with"] === "fetch";
 
   const formData = await requestFormData(req);
   const email = field(formData, "email", 320);
@@ -1203,7 +1204,9 @@ async function handlePremierAwardCheckout(req, res) {
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
   if (MOCK_SHOPIFY) {
-    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
+    const checkoutUrl = `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}`;
+    if (wantsJson) return json(res, 200, { checkoutUrl, orderId: orderRecord.id });
+    res.writeHead(303, { Location: checkoutUrl });
     return res.end();
   }
 
@@ -1230,6 +1233,7 @@ async function handlePremierAwardCheckout(req, res) {
   orderRecord.shopifyDraftOrderId = draftOrder.id;
   orderRecord.checkoutUrl = draftOrder.invoiceUrl;
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+  if (wantsJson) return json(res, 200, { checkoutUrl: draftOrder.invoiceUrl, orderId: orderRecord.id });
   res.writeHead(303, { Location: draftOrder.invoiceUrl });
   res.end();
 }
@@ -1885,6 +1889,32 @@ function premierAwardsPageHtml() {
 
     cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.sku)));
     form.elements.order_quantity.addEventListener('input', updatePrice);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submitButton = form.querySelector('button[type="submit"]');
+      const originalText = submitButton.textContent;
+      submitButton.disabled = true;
+      submitButton.textContent = 'Creating checkout...';
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'fetch'
+          }
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.checkoutUrl) {
+          throw new Error(result.error || 'Unable to create checkout.');
+        }
+        window.top.location.href = result.checkoutUrl;
+      } catch (error) {
+        alert(error.message || 'Unable to create checkout. Please try again.');
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+      }
+    });
     search.addEventListener('input', filterProducts);
     window.addEventListener('load', sendHeight);
     window.addEventListener('resize', sendHeight);
