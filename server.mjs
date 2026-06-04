@@ -56,6 +56,8 @@ const SOLAR_PLACARD_PRODUCTS = [
   { key: "plate-custom", title: "Custom Solar Plate Size", type: "plate", size: "Custom", image: "plate-any-text-6x2.png" },
 ];
 const SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE = 0.5;
+const SOLAR_CUSTOM_PLATE_MAX_LONG_SIDE_INCHES = 24;
+const SOLAR_CUSTOM_PLATE_MAX_SHORT_SIDE_INCHES = 12;
 const solarProductByKey = new Map(SOLAR_PLACARD_PRODUCTS.map((product) => [product.key, product]));
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
@@ -975,6 +977,14 @@ async function handleSolarPlacardInquiry(req, res) {
   const customArea = product.key === "plate-custom" && Number.isFinite(customWidth) && Number.isFinite(customHeight) && customWidth > 0 && customHeight > 0
     ? Number((customWidth * customHeight).toFixed(2))
     : null;
+  if (product.key === "plate-custom") {
+    if (customArea === null) throw new Error("Enter a custom width and height in inches.");
+    const shortSide = Math.min(customWidth, customHeight);
+    const longSide = Math.max(customWidth, customHeight);
+    if (longSide > SOLAR_CUSTOM_PLATE_MAX_LONG_SIDE_INCHES || shortSide > SOLAR_CUSTOM_PLATE_MAX_SHORT_SIDE_INCHES) {
+      throw new Error('Custom solar plates cannot exceed 12" x 24" or 24" x 12".');
+    }
+  }
   const unitPrice = product.key === "plate-custom" && customArea !== null
     ? Number((customArea * SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE).toFixed(2))
     : Number.isFinite(product.unitPrice) ? product.unitPrice : null;
@@ -1518,16 +1528,19 @@ function solarPlacardsPageHtml() {
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
                 <option value="pickup-la-mesa">Pickup at La Mesa</option>
-                <option value="pickup-pine-valley">Pickup at Pine Valley</option>
+                <option value="pickup-spring-valley">Pickup at Spring Valley</option>
               </select>
             </div>
             <div data-custom-size hidden>
               <label for="custom_width">Custom width in inches</label>
-              <input id="custom_width" name="custom_width" type="number" min="0.1" step="0.1">
+              <input id="custom_width" name="custom_width" type="number" min="0.1" max="${SOLAR_CUSTOM_PLATE_MAX_LONG_SIDE_INCHES}" step="0.1">
             </div>
             <div data-custom-size hidden>
               <label for="custom_height">Custom height in inches</label>
-              <input id="custom_height" name="custom_height" type="number" min="0.1" step="0.1">
+              <input id="custom_height" name="custom_height" type="number" min="0.1" max="${SOLAR_CUSTOM_PLATE_MAX_LONG_SIDE_INCHES}" step="0.1">
+            </div>
+            <div class="full" data-custom-size hidden>
+              <p class="note">Custom solar plates can be up to 12&quot; x 24&quot; or 24&quot; x 12&quot; max.</p>
             </div>
             <div class="full" data-placard-upload>
               <label for="plan_file">PDF plan sheet / placard design</label>
@@ -1584,6 +1597,8 @@ function solarPlacardsPageHtml() {
   <script>
     const products = ${JSON.stringify(SOLAR_PLACARD_PRODUCTS)};
     const customSquareInchRate = ${SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE};
+    const customMaxLongSide = ${SOLAR_CUSTOM_PLATE_MAX_LONG_SIDE_INCHES};
+    const customMaxShortSide = ${SOLAR_CUSTOM_PLATE_MAX_SHORT_SIDE_INCHES};
     const form = document.querySelector('[data-solar-form]');
     const cards = [...document.querySelectorAll('[data-product-key]')];
     const preview = document.querySelector('[data-preview]');
@@ -1605,6 +1620,14 @@ function solarPlacardsPageHtml() {
       const customHeight = Number.parseFloat(form.elements.custom_height.value || '');
       if (selectedProduct.key === 'plate-custom' && Number.isFinite(customWidth) && Number.isFinite(customHeight) && customWidth > 0 && customHeight > 0) {
         const area = customWidth * customHeight;
+        const shortSide = Math.min(customWidth, customHeight);
+        const longSide = Math.max(customWidth, customHeight);
+        if (longSide > customMaxLongSide || shortSide > customMaxShortSide) {
+          priceLabel.textContent = 'Size too large';
+          priceTotal.textContent = 'Adjust size';
+          priceMessage.textContent = 'Maximum custom plate size is 12" x 24" or 24" x 12".';
+          return;
+        }
         const unitPrice = area * customSquareInchRate;
         priceLabel.textContent = money(customSquareInchRate) + ' per square inch';
         priceTotal.textContent = money(unitPrice * quantity);
