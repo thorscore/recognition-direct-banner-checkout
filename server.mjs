@@ -963,15 +963,10 @@ async function handleCustomNameBadgeInquiry(req, res) {
   res.end();
 }
 
-async function handleSolarPlacardInquiry(req, res) {
-  const formData = await requestFormData(req);
-  const email = field(formData, "email", 320);
-  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+function buildSolarPlacardInput(formData) {
   const product = solarProductByKey.get(field(formData, "product_key", 80));
   if (!product) throw new Error("Select a solar placard or plate.");
-  const quantity = Math.max(1, Math.floor(Number.parseFloat(field(formData, "order_quantity")) || 1));
-  const planUrl = await saveUpload(formData.get("plan_file"));
-  const artworkUrl = await saveUpload(formData.get("artwork"));
+  const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
   const customWidth = Number.parseFloat(field(formData, "custom_width"));
   const customHeight = Number.parseFloat(field(formData, "custom_height"));
   const customArea = product.key === "plate-custom" && Number.isFinite(customWidth) && Number.isFinite(customHeight) && customWidth > 0 && customHeight > 0
@@ -988,11 +983,60 @@ async function handleSolarPlacardInquiry(req, res) {
   const unitPrice = product.key === "plate-custom" && customArea !== null
     ? Number((customArea * SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE).toFixed(2))
     : Number.isFinite(product.unitPrice) ? product.unitPrice : null;
+  if (unitPrice === null) throw new Error("Solar pricing is not configured for this item.");
   const totalPrice = unitPrice === null ? null : Number((unitPrice * quantity).toFixed(2));
-  const inquiry = {
+  return { product, quantity, customArea, customWidth, customHeight, unitPrice, totalPrice };
+}
+
+async function handleSolarPlacardPrice(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const input = buildSolarPlacardInput(formData);
+  return json(res, 200, {
+    unitPrice: input.unitPrice,
+    totalPrice: input.totalPrice,
+    customSquareInches: input.customArea,
+  }, corsHeaders(req));
+}
+
+async function handleSolarPlacardCheckout(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const email = field(formData, "email", 320);
+  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+  const input = buildSolarPlacardInput(formData);
+  const { product, quantity, customArea, unitPrice, totalPrice } = input;
+  const planUrl = await saveUpload(formData.get("plan_file"));
+  const artworkUrl = await saveUpload(formData.get("artwork"));
+  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const isPickup = deliveryMethod !== "Ship";
+  const customSize = product.key === "plate-custom" && customArea !== null
+    ? `${field(formData, "custom_width")} in x ${field(formData, "custom_height")} in`
+    : "";
+  const attributes = [
+    attribute("Product", product.title),
+    attribute("Product Type", product.type === "placard" ? "Solar Placard" : "Solar Plate"),
+    attribute("Size", product.key === "plate-custom" ? customSize : product.size),
+    attribute("Custom Square Inches", customArea !== null ? `${customArea.toFixed(2)} sq in` : ""),
+    attribute("Custom Square Inch Rate", product.key === "plate-custom" ? `$${SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE.toFixed(2)}` : ""),
+    attribute("Plate Text", field(formData, "plate_text", 3000)),
+    attribute("PDF Plan Sheet / Placard Design", planUrl),
+    attribute("Additional Artwork", artworkUrl),
+    attribute("Delivery Method", deliveryMethod),
+    attribute("Need-by Date", field(formData, "need_by")),
+    attribute("Phone", field(formData, "phone")),
+    attribute("Company", field(formData, "company")),
+    attribute("Notes", field(formData, "notes", 2500)),
+  ].filter(Boolean);
+
+  const orderRecord = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
-    type: "solar-placard-request",
+    type: "solar-placard-order",
     productKey: product.key,
     productTitle: product.title,
     productType: product.type,
@@ -1009,14 +1053,44 @@ async function handleSolarPlacardInquiry(req, res) {
     company: field(formData, "company"),
     email,
     phone: field(formData, "phone"),
-    deliveryMethod: deliveryMethodLabel(field(formData, "delivery_method")),
+    deliveryMethod,
     needBy: field(formData, "need_by"),
     notes: field(formData, "notes", 2500),
     planUrl,
     artworkUrl,
+    attributes,
   };
-  await writeFile(join(ORDER_DIR, `${inquiry.id}.json`), JSON.stringify(inquiry, null, 2));
-  res.writeHead(303, { Location: `${APP_BASE_URL}/solar-placards/thanks?id=${encodeURIComponent(inquiry.id)}` });
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+
+  if (MOCK_SHOPIFY) {
+    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
+    return res.end();
+  }
+
+  const draftOrder = await createDraftOrder({
+    email,
+    note: `Recognition Direct solar placard/plate order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    tags: ["solar-placards", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship"],
+    allowDiscountCodesInCheckout: true,
+    lineItems: [{
+      title: product.title,
+      quantity,
+      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+      requiresShipping: !isPickup,
+      taxable: true,
+      customAttributes: attributes,
+    }],
+    customAttributes: [
+      { key: "Configuration ID", value: orderRecord.id },
+      { key: "Proof Required", value: "Yes" },
+      { key: "Delivery Method", value: deliveryMethod },
+    ],
+  });
+
+  orderRecord.shopifyDraftOrderId = draftOrder.id;
+  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+  res.writeHead(303, { Location: draftOrder.invoiceUrl });
   res.end();
 }
 
@@ -1497,7 +1571,7 @@ function solarPlacardsPageHtml() {
   <main class="wrap">
     <p class="eyebrow">Recognition Direct</p>
     <h1>Solar Placards</h1>
-    <p class="intro">Choose a solar placard size and upload the PDF plan sheet that contains the design, or choose a solar plate and enter the text you want printed. Pricing will be confirmed after review until the final price list is added.</p>
+    <p class="intro">Choose a solar placard size and upload the PDF plan sheet that contains the design, or choose a solar plate and enter the text you want printed. You will receive a proof before production.</p>
 
     <div class="layout">
       <section class="panel gallery" aria-label="Solar placard products">
@@ -1511,7 +1585,7 @@ function solarPlacardsPageHtml() {
 
       <section class="selected">
         <img class="preview" data-preview src="${APP_BASE_URL}/assets/solar-placards/${escapeHtml(first.image)}" alt="${escapeHtml(first.title)}">
-        <form action="${APP_BASE_URL}/api/solar-placard-request" method="post" enctype="multipart/form-data" data-solar-form>
+        <form action="${APP_BASE_URL}/api/solar-placard-checkout" method="post" enctype="multipart/form-data" data-solar-form>
           <input type="hidden" name="product_key" value="${escapeHtml(first.key)}">
           <div class="panel grid">
             <div class="full">
@@ -1587,9 +1661,9 @@ function solarPlacardsPageHtml() {
           <div class="estimate">
             <small data-price-label>Pricing review required</small>
             <strong data-price-total>Quote</strong>
-      <span data-price-message>Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.</span>
+      <span data-price-message>You will receive a proof before production.</span>
           </div>
-          <button class="submit" type="submit">Send solar request</button>
+          <button class="submit" type="submit">Add solar item to checkout</button>
         </form>
       </section>
     </div>
@@ -1643,7 +1717,7 @@ function solarPlacardsPageHtml() {
       } else {
         priceLabel.textContent = 'Pricing review required';
         priceTotal.textContent = 'Quote';
-        priceMessage.textContent = 'Submit this request and we will confirm pricing. Once the price list is added, this page can send customers directly to checkout.';
+        priceMessage.textContent = 'Submit this item and we will confirm pricing before production.';
       }
     }
     function selectProduct(key) {
@@ -1718,9 +1792,11 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/name-badge-")) return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "OPTIONS" && url.pathname.startsWith("/api/solar-placard-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
+    if (req.method === "POST" && url.pathname === "/api/solar-placard-price") return await handleSolarPlacardPrice(req, res);
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
@@ -1744,7 +1820,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-checkout") return await handleNameBadgeCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/custom-name-badge-inquiry") return await handleCustomNameBadgeInquiry(req, res);
-    if (req.method === "POST" && url.pathname === "/api/solar-placard-request") return await handleSolarPlacardInquiry(req, res);
+    if (req.method === "POST" && url.pathname === "/api/solar-placard-checkout") return await handleSolarPlacardCheckout(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
