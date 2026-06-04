@@ -845,6 +845,7 @@ async function handleNameBadgeCheckout(req, res) {
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const namesFileUrl = await saveUpload(formData.get("names_file"));
   const email = field(formData, "email", 320);
+  const expressOne = formData.get("express_one") === "yes";
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
   const attributes = [
@@ -855,6 +856,7 @@ async function handleNameBadgeCheckout(req, res) {
     attribute("Fastener", nameBadgeLabel(input.fastener)),
     attribute("Finish", nameBadgeLabel(input.finish)),
     attribute("Delivery Method", deliveryMethod),
+    attribute("Express One", expressOne ? "Yes - hold extra badge stock and ship releases as needed" : "No"),
     attribute("Names / Badge Text", field(formData, "badge_names", 3000)),
     attribute("Names File", namesFileUrl),
     attribute("Need-by Date", field(formData, "need_by")),
@@ -873,6 +875,7 @@ async function handleNameBadgeCheckout(req, res) {
     unitPrice: input.unitPrice,
     totalPrice: input.totalPrice,
     deliveryMethod,
+    expressOne,
     attributes,
     artworkUrl,
     namesFileUrl,
@@ -999,6 +1002,9 @@ function nameBadgePageHtml() {
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     label,legend{display:block;margin:0 0 6px;font-size:13px;font-weight:800;color:#344055}
     input,select,textarea{width:100%;min-height:44px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit}
+    input[type="checkbox"]{width:auto;min-height:0;padding:0}
+    .choice{display:flex;gap:10px;align-items:center;margin:0;font-size:15px;color:var(--ink)}
+    .choice span{font-weight:900}
     textarea{min-height:112px;resize:vertical}
     .full{grid-column:1/-1}
     .price{border-radius:8px;background:var(--ink);color:#fff;padding:18px}
@@ -1033,6 +1039,13 @@ function nameBadgePageHtml() {
             <div>
               <label for="order_quantity">Quantity</label>
               <input id="order_quantity" name="order_quantity" type="number" min="1" step="1" value="1" required>
+            </div>
+            <div class="full">
+              <label class="choice">
+                <input type="checkbox" name="express_one" value="yes">
+                <span>Use Express One for this order</span>
+              </label>
+              <p class="note">Order a larger quantity now to receive the quantity discount. We produce and hold your extra badge stock, then ship badges as your team needs them. Express One orders receive priority production. Shipping for later releases is invoiced after those badges are sent.</p>
             </div>
             <div>
               <label for="badge_size">Size</label>
