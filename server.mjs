@@ -14,6 +14,7 @@ const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
+const PREMIER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-baseball-softball-resin-trophies.json");
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
@@ -66,10 +67,13 @@ let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
 await mkdir(UPLOAD_DIR, { recursive: true });
 await mkdir(ORDER_DIR, { recursive: true });
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const catalogByHandle = new Map(catalogData.products.map((product) => [
   product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-"),
   product,
 ]));
+const premierAwardProducts = premierAwardsData.products || [];
+const premierAwardBySku = new Map(premierAwardProducts.map((product) => [product.sku, product]));
 
 function json(res, status, payload, headers = {}) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", ...headers });
@@ -296,6 +300,37 @@ function deliveryMethodLabel(value) {
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
   if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
   return "Ship";
+}
+
+function premierAwardTier(product, quantity) {
+  const caseQuantity = Math.max(1, Number(product.caseQuantity || 1));
+  const prices = product.prices || {};
+  const tiers = [
+    { minimumQuantity: caseQuantity * 40, unitPrice: prices.fortyCases, label: "40 case price" },
+    { minimumQuantity: caseQuantity * 20, unitPrice: prices.twentyCases, label: "20 case price" },
+    { minimumQuantity: caseQuantity * 10, unitPrice: prices.tenCases, label: "10 case price" },
+    { minimumQuantity: caseQuantity * 5, unitPrice: prices.fiveCases, label: "5 case price" },
+    { minimumQuantity: caseQuantity, unitPrice: prices.oneCase, label: "case price" },
+    { minimumQuantity: 1, unitPrice: prices.lessThanCase, label: "less than case price" },
+  ];
+  const tier = tiers.find((entry) => quantity >= entry.minimumQuantity && Number.isFinite(entry.unitPrice));
+  if (!tier) throw new Error("Pricing is not configured for this trophy.");
+  return tier;
+}
+
+function buildPremierAwardInput(formData) {
+  const product = premierAwardBySku.get(field(formData, "sku", 80));
+  if (!product) throw new Error("Select a Baseball / Softball trophy.");
+  const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
+  const tier = premierAwardTier(product, quantity);
+  const unitPrice = Number(tier.unitPrice.toFixed(2));
+  return {
+    product,
+    quantity,
+    tier,
+    unitPrice,
+    totalPrice: Number((unitPrice * quantity).toFixed(2)),
+  };
 }
 
 function productHandle(value) {
@@ -1094,6 +1129,111 @@ async function handleSolarPlacardCheckout(req, res) {
   res.end();
 }
 
+async function handlePremierAwardPrice(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const input = buildPremierAwardInput(formData);
+  return json(res, 200, {
+    sku: input.product.sku,
+    unitPrice: input.unitPrice,
+    totalPrice: input.totalPrice,
+    tierLabel: input.tier.label,
+    tierMinimumQuantity: input.tier.minimumQuantity,
+    caseQuantity: input.product.caseQuantity,
+  }, corsHeaders(req));
+}
+
+async function handlePremierAwardCheckout(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const email = field(formData, "email", 320);
+  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+  const input = buildPremierAwardInput(formData);
+  const { product, quantity, tier, unitPrice, totalPrice } = input;
+  const artworkUrl = await saveUpload(formData.get("artwork"));
+  const namesFileUrl = await saveUpload(formData.get("names_file"));
+  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const isPickup = deliveryMethod !== "Ship";
+  const attributes = [
+    attribute("Vendor", "JDS / Premier Sport Awards"),
+    attribute("SKU", product.sku),
+    attribute("Product", product.title),
+    attribute("Size", product.size),
+    attribute("Case Quantity", String(product.caseQuantity)),
+    attribute("Pricing Tier", tier.label),
+    attribute("Plate / Personalization Text", field(formData, "plate_text", 5000)),
+    attribute("Names File", namesFileUrl),
+    attribute("Logo / Artwork", artworkUrl),
+    attribute("Delivery Method", deliveryMethod),
+    attribute("Need-by Date", field(formData, "need_by")),
+    attribute("Phone", field(formData, "phone")),
+    attribute("Company", field(formData, "company")),
+    attribute("Notes", field(formData, "notes", 2500)),
+    attribute("Proof Required", "Yes"),
+  ].filter(Boolean);
+
+  const orderRecord = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    type: "premier-baseball-softball-award-order",
+    sku: product.sku,
+    productTitle: product.title,
+    size: product.size,
+    quantity,
+    unitPrice,
+    totalPrice,
+    tierLabel: tier.label,
+    caseQuantity: product.caseQuantity,
+    name: field(formData, "name"),
+    company: field(formData, "company"),
+    email,
+    phone: field(formData, "phone"),
+    deliveryMethod,
+    needBy: field(formData, "need_by"),
+    plateText: field(formData, "plate_text", 5000),
+    notes: field(formData, "notes", 2500),
+    artworkUrl,
+    namesFileUrl,
+    attributes,
+  };
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+
+  if (MOCK_SHOPIFY) {
+    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
+    return res.end();
+  }
+
+  const draftOrder = await createDraftOrder({
+    email,
+    note: `Recognition Direct Baseball / Softball trophy order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    tags: ["baseball-softball-trophies", "proof-required", "jds-premier", isPickup ? field(formData, "delivery_method") : "ship"],
+    allowDiscountCodesInCheckout: true,
+    lineItems: [{
+      title: product.title,
+      quantity,
+      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+      requiresShipping: !isPickup,
+      taxable: true,
+      customAttributes: attributes,
+    }],
+    customAttributes: [
+      { key: "Configuration ID", value: orderRecord.id },
+      { key: "Proof Required", value: "Yes" },
+      { key: "Delivery Method", value: deliveryMethod },
+    ],
+  });
+
+  orderRecord.shopifyDraftOrderId = draftOrder.id;
+  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+  res.writeHead(303, { Location: draftOrder.invoiceUrl });
+  res.end();
+}
+
 async function handleUpload(req, res, pathname) {
   const name = pathname.slice("/uploads/".length);
   if (!/^[a-f0-9-]+\.(pdf|ai|eps|psd|jpg|jpeg|png|txt|csv)$/i.test(name)) return json(res, 404, { error: "Not found." });
@@ -1500,6 +1640,260 @@ function customNameBadgeThanksHtml(url) {
 </html>`;
 }
 
+function premierAwardCardsHtml(products) {
+  return products.map((product, index) => {
+    const startingPrice = premierAwardTier(product, 1).unitPrice;
+    return `
+      <button class="award-card${index === 0 ? " active" : ""}" type="button" data-sku="${escapeHtml(product.sku)}">
+        <img src="${escapeHtml(product.thumbnail || product.image)}" alt="${escapeHtml(product.title)}" loading="lazy">
+        <strong>${escapeHtml(product.title)}</strong>
+        <span>${escapeHtml(product.size || "")}</span>
+        <em>Starts at $${startingPrice.toFixed(2)} each</em>
+      </button>`;
+  }).join("");
+}
+
+function premierAwardsPageHtml() {
+  const first = premierAwardProducts[0];
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baseball / Softball Resin Trophies | Recognition Direct</title>
+  <meta name="description" content="Order personalized Baseball and Softball resin trophies with proof before production from Recognition Direct.">
+  <style>
+    :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
+    .wrap{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:38px 0 54px}
+    .eyebrow{margin:0 0 8px;color:var(--accent);font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    h1{margin:0;font-size:clamp(38px,5vw,62px);line-height:1;letter-spacing:0}
+    .intro{max-width:760px;margin:14px 0 26px;color:var(--muted);font-size:18px}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.72fr);gap:28px;align-items:start}
+    .panel{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px}
+    .gallery{background:linear-gradient(135deg,#fff,#eef2f8)}
+    .toolbar{display:flex;gap:12px;align-items:end;margin-bottom:14px}
+    .toolbar label{display:block;margin:0 0 5px;font-size:12px;font-weight:900;color:#344055}
+    .toolbar input{width:100%;min-height:40px;border:1px solid #b9c3d2;border-radius:4px;padding:9px;font:inherit}
+    .toolbar>div{flex:1}
+    .award-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-height:760px;overflow:auto;padding-right:4px}
+    .award-card{display:grid;gap:8px;align-content:start;width:100%;min-height:245px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;text-align:left;cursor:pointer}
+    .award-card:hover,.award-card.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+    .award-card img{display:block;width:100%;height:130px;object-fit:contain;background:#f8fafc;border-radius:4px}
+    .award-card strong{font-size:14px;line-height:1.2}
+    .award-card span{color:var(--muted);font-size:12px}
+    .award-card em{color:var(--accent);font-style:normal;font-size:13px;font-weight:900}
+    .selected{display:grid;gap:14px}
+    .preview{display:block;width:100%;height:360px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#f8fafc}
+    form{display:grid;gap:16px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .full{grid-column:1/-1}
+    label{display:block;margin:0 0 6px;font-size:13px;font-weight:900;color:#344055}
+    input,select,textarea{width:100%;min-height:44px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit;background:#fff}
+    textarea{min-height:112px;resize:vertical}
+    .note{margin:8px 0 0;color:var(--muted);font-size:13px}
+    .description{color:var(--muted);font-size:14px}
+    .tier-table{width:100%;border-collapse:collapse;font-size:13px}
+    .tier-table th,.tier-table td{padding:7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+    .tier-table th:first-child,.tier-table td:first-child{text-align:left}
+    .tier-table thead th{background:#f1f5ff}
+    .estimate{border-radius:8px;background:#18212f;color:#fff;padding:16px}
+    .estimate small{display:block;color:#d7dde8;text-transform:uppercase;font-weight:900;letter-spacing:.05em}
+    .estimate strong{display:block;margin:4px 0;font-size:34px;line-height:1}
+    .estimate span{color:#d7dde8}
+    button.submit{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
+    [hidden]{display:none!important}
+    @media(max-width:980px){.layout{grid-template-columns:1fr}.award-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}.preview{height:280px}}
+    @media(max-width:560px){.award-grid,.grid{grid-template-columns:1fr}.toolbar{display:block}.toolbar>div{margin-bottom:10px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="eyebrow">Recognition Direct</p>
+    <h1>Baseball / Softball Resin Trophies</h1>
+    <p class="intro">Choose a trophy, enter your personalization, and checkout online. We will send a proof before production.</p>
+
+    <div class="layout">
+      <section class="panel gallery" aria-label="Baseball and Softball trophy products">
+        <div class="toolbar">
+          <div>
+            <label for="award_search">Search trophies</label>
+            <input id="award_search" data-search placeholder="Search by name, size, or SKU">
+          </div>
+        </div>
+        <div class="award-grid" data-award-grid>${premierAwardCardsHtml(premierAwardProducts)}</div>
+      </section>
+
+      <section class="selected">
+        <img class="preview" data-preview src="${escapeHtml(first.image)}" alt="${escapeHtml(first.title)}">
+        <div class="panel">
+          <h2 data-selected-title>${escapeHtml(first.title)}</h2>
+          <p class="description" data-selected-description>${escapeHtml(first.description)}</p>
+          <table class="tier-table" aria-label="Quantity price breaks">
+            <thead><tr><th>Qty</th><th>Each</th></tr></thead>
+            <tbody data-price-table></tbody>
+          </table>
+        </div>
+        <form action="${APP_BASE_URL}/api/premier-award-checkout" method="post" enctype="multipart/form-data" data-award-form>
+          <input type="hidden" name="sku" value="${escapeHtml(first.sku)}">
+          <div class="panel grid">
+            <div>
+              <label for="order_quantity">Quantity</label>
+              <input id="order_quantity" name="order_quantity" type="number" min="1" step="1" value="1" required>
+            </div>
+            <div>
+              <label for="delivery_method">Delivery</label>
+              <select id="delivery_method" name="delivery_method">
+                <option value="ship">Ship</option>
+                <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-pine-valley">Pickup at Pine Valley</option>
+              </select>
+            </div>
+            <div class="full">
+              <label for="plate_text">Personalized plate text</label>
+              <textarea id="plate_text" name="plate_text" placeholder="Enter one trophy plate per line. Example:&#10;MVP - Jackson Smith&#10;Coach Award - Sarah Lee"></textarea>
+              <p class="note">You can also upload a names/text file below. We will send a proof before production.</p>
+            </div>
+            <div>
+              <label for="names_file">Names / plate text file</label>
+              <input id="names_file" name="names_file" type="file" accept=".txt,.csv,text/plain,text/csv">
+            </div>
+            <div>
+              <label for="artwork">Logo / artwork upload</label>
+              <input id="artwork" name="artwork" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png">
+            </div>
+          </div>
+
+          <div class="panel grid">
+            <div>
+              <label for="name">Name</label>
+              <input id="name" name="name" required>
+            </div>
+            <div>
+              <label for="company">Company / Team</label>
+              <input id="company" name="company">
+            </div>
+            <div>
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required>
+            </div>
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel">
+            </div>
+            <div>
+              <label for="need_by">Need-by date</label>
+              <input id="need_by" name="need_by" type="date">
+            </div>
+            <div class="full">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" placeholder="Tell us anything else we should know about layout, deadline, team, or award wording."></textarea>
+            </div>
+          </div>
+
+          <div class="estimate">
+            <small data-price-label>Checking price...</small>
+            <strong data-price-total>$0.00</strong>
+            <span data-price-message>You will receive a proof before production.</span>
+          </div>
+          <button class="submit" type="submit">Add trophies to checkout</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script>
+    const products = ${JSON.stringify(premierAwardProducts)};
+    const form = document.querySelector('[data-award-form]');
+    const cards = [...document.querySelectorAll('[data-sku]')];
+    const preview = document.querySelector('[data-preview]');
+    const selectedTitle = document.querySelector('[data-selected-title]');
+    const selectedDescription = document.querySelector('[data-selected-description]');
+    const priceTable = document.querySelector('[data-price-table]');
+    const priceLabel = document.querySelector('[data-price-label]');
+    const priceTotal = document.querySelector('[data-price-total]');
+    const priceMessage = document.querySelector('[data-price-message]');
+    const search = document.querySelector('[data-search]');
+    let selectedProduct = products[0];
+
+    function money(value) {
+      return '$' + Number(value).toFixed(2);
+    }
+
+    function tierFor(product, quantity) {
+      const caseQuantity = Math.max(1, Number(product.caseQuantity || 1));
+      const prices = product.prices || {};
+      const tiers = [
+        { minimumQuantity: caseQuantity * 40, unitPrice: prices.fortyCases, label: '40 case price' },
+        { minimumQuantity: caseQuantity * 20, unitPrice: prices.twentyCases, label: '20 case price' },
+        { minimumQuantity: caseQuantity * 10, unitPrice: prices.tenCases, label: '10 case price' },
+        { minimumQuantity: caseQuantity * 5, unitPrice: prices.fiveCases, label: '5 case price' },
+        { minimumQuantity: caseQuantity, unitPrice: prices.oneCase, label: 'case price' },
+        { minimumQuantity: 1, unitPrice: prices.lessThanCase, label: 'less than case price' },
+      ];
+      return tiers.find((tier) => quantity >= tier.minimumQuantity && Number.isFinite(tier.unitPrice)) || tiers[tiers.length - 1];
+    }
+
+    function renderTiers(product) {
+      const caseQuantity = Math.max(1, Number(product.caseQuantity || 1));
+      const tiers = [
+        { label: '1-' + Math.max(1, caseQuantity - 1), unitPrice: product.prices.lessThanCase },
+        { label: caseQuantity + '+', unitPrice: product.prices.oneCase },
+        { label: (caseQuantity * 5) + '+', unitPrice: product.prices.fiveCases },
+        { label: (caseQuantity * 10) + '+', unitPrice: product.prices.tenCases },
+        { label: (caseQuantity * 20) + '+', unitPrice: product.prices.twentyCases },
+        { label: (caseQuantity * 40) + '+', unitPrice: product.prices.fortyCases },
+      ].filter((tier) => Number.isFinite(tier.unitPrice));
+      priceTable.innerHTML = tiers.map((tier) => '<tr><td>' + tier.label + '</td><td>' + money(tier.unitPrice) + '</td></tr>').join('');
+    }
+
+    function updatePrice() {
+      const quantity = Math.max(1, Number.parseInt(form.elements.order_quantity.value || '1', 10));
+      const tier = tierFor(selectedProduct, quantity);
+      const total = Number(tier.unitPrice) * quantity;
+      priceLabel.textContent = money(tier.unitPrice) + ' each - ' + tier.label;
+      priceTotal.textContent = money(total);
+      priceMessage.textContent = 'Estimated total for ' + quantity + ' trophies. Proof required before production.';
+      sendHeight();
+    }
+
+    function selectProduct(sku) {
+      selectedProduct = products.find((product) => product.sku === sku) || products[0];
+      form.elements.sku.value = selectedProduct.sku;
+      preview.src = selectedProduct.image;
+      preview.alt = selectedProduct.title;
+      selectedTitle.textContent = selectedProduct.title;
+      selectedDescription.textContent = selectedProduct.description;
+      renderTiers(selectedProduct);
+      cards.forEach((card) => card.classList.toggle('active', card.dataset.sku === selectedProduct.sku));
+      updatePrice();
+    }
+
+    function filterProducts() {
+      const term = search.value.trim().toLowerCase();
+      cards.forEach((card) => {
+        const product = products.find((entry) => entry.sku === card.dataset.sku);
+        const haystack = [product.sku, product.title, product.size].join(' ').toLowerCase();
+        card.hidden = term && !haystack.includes(term);
+      });
+      sendHeight();
+    }
+
+    function sendHeight() {
+      window.parent?.postMessage({ type: 'rd-awards-height', height: document.documentElement.scrollHeight }, '*');
+    }
+
+    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.sku)));
+    form.elements.order_quantity.addEventListener('input', updatePrice);
+    search.addEventListener('input', filterProducts);
+    window.addEventListener('load', sendHeight);
+    window.addEventListener('resize', sendHeight);
+    selectProduct(products[0].sku);
+  </script>
+</body>
+</html>`;
+}
+
 function solarProductCardsHtml(products) {
   return products.map((product) => `
     <button class="product-card${product.featured ? " featured" : ""}" type="button" data-product-key="${escapeHtml(product.key)}">
@@ -1793,10 +2187,12 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/name-badge-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/solar-placard-")) return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "OPTIONS" && url.pathname.startsWith("/api/premier-award-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/solar-placard-price") return await handleSolarPlacardPrice(req, res);
+    if (req.method === "POST" && url.pathname === "/api/premier-award-price") return await handlePremierAwardPrice(req, res);
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
@@ -1805,6 +2201,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/custom-name-badges/thanks") return html(res, 200, customNameBadgeThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/solar-placards") return html(res, 200, solarPlacardsPageHtml());
     if (req.method === "GET" && url.pathname === "/solar-placards/thanks") return html(res, 200, solarPlacardsThanksHtml(url));
+    if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml());
     if (req.method === "GET" && /^\/assets\/name-badges\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
       return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));
     }
@@ -1821,6 +2218,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/name-badge-checkout") return await handleNameBadgeCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/custom-name-badge-inquiry") return await handleCustomNameBadgeInquiry(req, res);
     if (req.method === "POST" && url.pathname === "/api/solar-placard-checkout") return await handleSolarPlacardCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/premier-award-checkout") return await handlePremierAwardCheckout(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);

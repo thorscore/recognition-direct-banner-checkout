@@ -1,0 +1,1212 @@
+﻿{
+    "generatedAt":  "2026-06-04T15:05:47.7759393-07:00",
+    "source":  "Premier Sport Awards category 1 + JDS API",
+    "markup":  2,
+    "title":  "Baseball / Softball Resin Trophies",
+    "products":  [
+                     {
+                         "sku":  "AA202",
+                         "title":  "7\" Baseball/Softball Astro Award",
+                         "displayName":  "Baseball/Softball Astro Award-7\"",
+                         "size":  "7\"",
+                         "description":  "A baseball/softball sits on a 3 1/2\" column adorned with a star and draped ribbon. The shield shaped base offers plenty of room for a personalized plate to complete the award. This is the smallest of 3 available sizes to fill the award needs of any budget!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.5,
+                                       "oneCase":  5.8,
+                                       "fiveCases":  5.45,
+                                       "tenCases":  5.25,
+                                       "twentyCases":  5.25,
+                                       "fortyCases":  5.25
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  15,
+                                        "oneCase":  11.6,
+                                        "fiveCases":  10.9,
+                                        "tenCases":  10.5,
+                                        "twentyCases":  10.5,
+                                        "fortyCases":  10.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670509747/products/images/large/AA202--ce8666a8.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670509747/products/images/large/AA202--ce8666a8.png",
+                         "availableQuantity":  5030,
+                         "localQuantity":  321
+                     },
+                     {
+                         "sku":  "AA212",
+                         "title":  "8 3/4\" Baseball/Softball Astro Award",
+                         "displayName":  "Baseball/Softball Astro Award-8 3/4\"",
+                         "size":  "8 3/4\"",
+                         "description":  "A baseball/softball sits on a 5 1/8\" column adorned with a star and draped ribbon. The shield shaped base offers plenty of room for a personalized plate to complete the award. This is the mid-size of 3 available sizes to fill the award needs of any budget!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  9.4,
+                                       "oneCase":  7.75,
+                                       "fiveCases":  7.35,
+                                       "tenCases":  7.05,
+                                       "twentyCases":  7.05,
+                                       "fortyCases":  7.05
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  18.8,
+                                        "oneCase":  15.5,
+                                        "fiveCases":  14.7,
+                                        "tenCases":  14.1,
+                                        "twentyCases":  14.1,
+                                        "fortyCases":  14.1
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670509738/products/images/large/AA212--749ed725.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670509738/products/images/large/AA212--749ed725.png",
+                         "availableQuantity":  7989,
+                         "localQuantity":  69
+                     },
+                     {
+                         "sku":  "AA222",
+                         "title":  "10 3/4\" Baseball/Softball Astro Award",
+                         "displayName":  "Baseball/Softball Astro Award-10 3/4\"",
+                         "size":  "10 3/4\"",
+                         "description":  "A baseball/softball sits on a 7 1/4\" column adorned with a star and draped ribbon. The shield shaped base offers plenty of room for a personalized plate to complete the award. This is the largest of 3 available sizes to fill the award needs of any budget!",
+                         "caseQuantity":  6,
+                         "costs":  {
+                                       "lessThanCase":  10.95,
+                                       "oneCase":  8.95,
+                                       "fiveCases":  8.55,
+                                       "tenCases":  8.2,
+                                       "twentyCases":  8.2,
+                                       "fortyCases":  8.2
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  21.9,
+                                        "oneCase":  17.9,
+                                        "fiveCases":  17.1,
+                                        "tenCases":  16.4,
+                                        "twentyCases":  16.4,
+                                        "fortyCases":  16.4
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670509730/products/images/large/AA222--30d0a156.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670509730/products/images/large/AA222--30d0a156.png",
+                         "availableQuantity":  7407,
+                         "localQuantity":  130
+                     },
+                     {
+                         "sku":  "ASP101",
+                         "title":  "6\" Baseball/Softball Aspire Resin",
+                         "displayName":  "Baseball/Softball Aspire Resin-6\"",
+                         "size":  "6\"",
+                         "description":  "The sport ball on the Aspire resin sits on top of a riser with silver and gold banners and a star design, and the base offers plenty of room for a sublimated or engraved plate. Budget friendly but still impressive, each resin is individually boxed. Just add your plate and they\u0027re ready to go!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  6.9,
+                                       "oneCase":  5.6,
+                                       "fiveCases":  5.45,
+                                       "tenCases":  5.15,
+                                       "twentyCases":  5.15,
+                                       "fortyCases":  5.15
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  13.8,
+                                        "oneCase":  11.2,
+                                        "fiveCases":  10.9,
+                                        "tenCases":  10.3,
+                                        "twentyCases":  10.3,
+                                        "fortyCases":  10.3
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670023924/products/images/large/ASP101--856c5b87.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670023924/products/images/large/ASP101--856c5b87.png",
+                         "availableQuantity":  2456,
+                         "localQuantity":  201
+                     },
+                     {
+                         "sku":  "ASP201",
+                         "title":  "8\" Baseball/Softball Aspire Resin",
+                         "displayName":  "Baseball/Softball Aspire Resin-8\"",
+                         "size":  "8\"",
+                         "description":  "The sport ball on the Aspire resin sits on top of a riser with silver and gold banners and a star design, and the base offers plenty of room for a sublimated or engraved plate. Budget friendly but still impressive, each resin is individually boxed. Just add your plate and they\u0027re ready to go!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  9.65,
+                                       "oneCase":  8,
+                                       "fiveCases":  7.65,
+                                       "tenCases":  7.25,
+                                       "twentyCases":  7.25,
+                                       "fortyCases":  7.25
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  19.3,
+                                        "oneCase":  16,
+                                        "fiveCases":  15.3,
+                                        "tenCases":  14.5,
+                                        "twentyCases":  14.5,
+                                        "fortyCases":  14.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1676309019/products/images/large/ASP201--c0cf89bd.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1676309019/products/images/large/ASP201--c0cf89bd.png",
+                         "availableQuantity":  2094,
+                         "localQuantity":  287
+                     },
+                     {
+                         "sku":  "BCR101",
+                         "title":  "6\" Baseball Broadcast Resin",
+                         "displayName":  "Baseball Broadcast Resin-6\"",
+                         "size":  "6\"",
+                         "description":  "Broadcast Resins are individually boxed and the plates are not included. They are an Antique Gold/Black resin that comes in 2 different sizes and 9 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7,
+                                       "oneCase":  5.4,
+                                       "fiveCases":  5.15,
+                                       "tenCases":  4.9,
+                                       "twentyCases":  4.9,
+                                       "fortyCases":  4.9
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  14,
+                                        "oneCase":  10.8,
+                                        "fiveCases":  10.3,
+                                        "tenCases":  9.8,
+                                        "twentyCases":  9.8,
+                                        "fortyCases":  9.8
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709908634/products/images/large/BCR101--eef16221.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709908634/products/images/large/BCR101--eef16221.png",
+                         "availableQuantity":  3289,
+                         "localQuantity":  91
+                     },
+                     {
+                         "sku":  "BCR201",
+                         "title":  "7\" Baseball Broadcast Resin",
+                         "displayName":  "Baseball Broadcast Resin-7\"",
+                         "size":  "7\"",
+                         "description":  "Broadcast Resins are individually boxed and the plates are not included. They are an Antique Gold/Black resin that comes in 2 different sizes and 9 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.95,
+                                       "oneCase":  6.35,
+                                       "fiveCases":  6.05,
+                                       "tenCases":  5.75,
+                                       "twentyCases":  5.75,
+                                       "fortyCases":  5.75
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  15.9,
+                                        "oneCase":  12.7,
+                                        "fiveCases":  12.1,
+                                        "tenCases":  11.5,
+                                        "twentyCases":  11.5,
+                                        "fortyCases":  11.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709908679/products/images/large/BCR201--05f2f7fd.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709908679/products/images/large/BCR201--05f2f7fd.png",
+                         "availableQuantity":  1342,
+                         "localQuantity":  333
+                     },
+                     {
+                         "sku":  "BNN18",
+                         "title":  "7\" Softball Banner Resin",
+                         "displayName":  "Softball Banner Resin-7\"",
+                         "size":  "7\"",
+                         "description":  "JDS Banner Resins are individually boxed and the plates are not included. They are a full color, Bright Silver and Gold resin that comes in 2 different sizes and 9 different styles. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  8.15,
+                                       "oneCase":  6.3,
+                                       "fiveCases":  6.05,
+                                       "tenCases":  5.85,
+                                       "twentyCases":  5.85,
+                                       "fortyCases":  5.85
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  16.3,
+                                        "oneCase":  12.6,
+                                        "fiveCases":  12.1,
+                                        "tenCases":  11.7,
+                                        "twentyCases":  11.7,
+                                        "fortyCases":  11.7
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917308/products/images/large/BNN18--abfe51f6.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917308/products/images/large/BNN18--abfe51f6.png",
+                         "availableQuantity":  695,
+                         "localQuantity":  284
+                     },
+                     {
+                         "sku":  "BNN38",
+                         "title":  "8 1/2\" Softball Banner Resin",
+                         "displayName":  "Softball Banner Resin-8 1/2\"",
+                         "size":  "8 1/2\"",
+                         "description":  "JDS Banner Resins are individually boxed and the plates are not included. They are a full color, Bright Silver and Gold resin that comes in 2 different sizes and 9 different styles. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  9.5,
+                                       "oneCase":  7.65,
+                                       "fiveCases":  7.35,
+                                       "tenCases":  7.1,
+                                       "twentyCases":  7.1,
+                                       "fortyCases":  7.1
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  19,
+                                        "oneCase":  15.3,
+                                        "fiveCases":  14.7,
+                                        "tenCases":  14.2,
+                                        "twentyCases":  14.2,
+                                        "fortyCases":  14.2
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917352/products/images/large/BNN38--c1ce16e7.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917352/products/images/large/BNN38--c1ce16e7.png",
+                         "availableQuantity":  226,
+                         "localQuantity":  69
+                     },
+                     {
+                         "sku":  "BZ01",
+                         "title":  "7\" Baseball / Softball Blaze Award",
+                         "displayName":  "Baseball/Softball Blaze Award",
+                         "size":  "7\"",
+                         "description":  "Blaze Award -7\" Baseball/Softball Award. Back of the award is plain. Material: Plastic. Color: Gold. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  5.2,
+                                       "oneCase":  4.1,
+                                       "fiveCases":  3.95,
+                                       "tenCases":  3.75,
+                                       "twentyCases":  3.75,
+                                       "fortyCases":  3.75
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  10.4,
+                                        "oneCase":  8.2,
+                                        "fiveCases":  7.9,
+                                        "tenCases":  7.5,
+                                        "twentyCases":  7.5,
+                                        "fortyCases":  7.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750940/products/images/large/BZ01--48a34828.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750940/products/images/large/BZ01--48a34828.png",
+                         "availableQuantity":  20,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "CA192",
+                         "title":  "6 1/2\" Baseball/Softball Cobra Award",
+                         "displayName":  "Baseball/Softball Cobra Award-6 1/2\"",
+                         "size":  "6 1/2\"",
+                         "description":  "The 6 1/2\" Baseball/Softball Cobra Award is made of weighted plastic. The gold/antique gold award has a rounded back with the \"hood\" detail around the ball. Just add a plate to this award and it\u0027s ready to go! All weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  5.45,
+                                       "oneCase":  4.45,
+                                       "fiveCases":  4.3,
+                                       "tenCases":  4.05,
+                                       "twentyCases":  4.05,
+                                       "fortyCases":  4.05
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  10.9,
+                                        "oneCase":  8.9,
+                                        "fiveCases":  8.6,
+                                        "tenCases":  8.1,
+                                        "twentyCases":  8.1,
+                                        "fortyCases":  8.1
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709918290/products/images/large/CA192--6a6b397e.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709918290/products/images/large/CA192--6a6b397e.png",
+                         "availableQuantity":  2039,
+                         "localQuantity":  207
+                     },
+                     {
+                         "sku":  "CA202",
+                         "title":  "7 1/2\" Baseball/Softball Cobra Award",
+                         "displayName":  "Baseball/Softball Cobra Award-7 1/2\"",
+                         "size":  "7 1/2\"",
+                         "description":  "Cobra Award - 7 1/2\" Baseball/Softball Award. Material: Plastic. Color: Antique Gold. The back is rounded with the \"hood\" detail around it. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.25,
+                                       "oneCase":  5.45,
+                                       "fiveCases":  5.25,
+                                       "tenCases":  4.9,
+                                       "twentyCases":  4.9,
+                                       "fortyCases":  4.9
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  14.5,
+                                        "oneCase":  10.9,
+                                        "fiveCases":  10.5,
+                                        "tenCases":  9.8,
+                                        "twentyCases":  9.8,
+                                        "fortyCases":  9.8
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750961/products/images/large/CA202--f95aecb6.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750961/products/images/large/CA202--f95aecb6.png",
+                         "availableQuantity":  3050,
+                         "localQuantity":  436
+                     },
+                     {
+                         "sku":  "CA222",
+                         "title":  "9\" Baseball/Softball Cobra Award",
+                         "displayName":  "Baseball/Softball Cobra Award-9\"",
+                         "size":  "9\"",
+                         "description":  "Cobra Award - 9\" Baseball/Softball Award. Material: Plastic. Color: Antique Gold. The back is rounded with the \"hood\" detail around it. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  8.45,
+                                       "oneCase":  6.55,
+                                       "fiveCases":  6.2,
+                                       "tenCases":  5.9,
+                                       "twentyCases":  5.9,
+                                       "fortyCases":  5.9
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  16.9,
+                                        "oneCase":  13.1,
+                                        "fiveCases":  12.4,
+                                        "tenCases":  11.8,
+                                        "twentyCases":  11.8,
+                                        "fortyCases":  11.8
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750974/products/images/large/CA222--8b6012c3.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750974/products/images/large/CA222--8b6012c3.png",
+                         "availableQuantity":  1796,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "CA242",
+                         "title":  "10 1/2\" Baseball/Softball Cobra Award",
+                         "displayName":  "Baseball/Softball Cobra Award-10 1/2\"",
+                         "size":  "10 1/2\"",
+                         "description":  "Cobra Award - 10 1/2\" Baseball/Softball Award. Material: Plastic. Color: Antique Gold. The back is rounded with the \"hood\" detail around it. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  6,
+                         "costs":  {
+                                       "lessThanCase":  10.5,
+                                       "oneCase":  8.55,
+                                       "fiveCases":  8.2,
+                                       "tenCases":  7.75,
+                                       "twentyCases":  7.75,
+                                       "fortyCases":  7.75
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  21,
+                                        "oneCase":  17.1,
+                                        "fiveCases":  16.4,
+                                        "tenCases":  15.5,
+                                        "twentyCases":  15.5,
+                                        "fortyCases":  15.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750986/products/images/large/CA242--f45c291d.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750986/products/images/large/CA242--f45c291d.png",
+                         "availableQuantity":  1431,
+                         "localQuantity":  131
+                     },
+                     {
+                         "sku":  "CA262",
+                         "title":  "12\" Baseball/Softball Cobra Award",
+                         "displayName":  "Baseball/Softball Cobra Award-12\"",
+                         "size":  "12\"",
+                         "description":  "Cobra Award - 12\" Baseball/Softball Award. Material: Plastic. Color: Antique Gold. The back is rounded with the \"hood\" detail around it. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  6,
+                         "costs":  {
+                                       "lessThanCase":  12.75,
+                                       "oneCase":  10.5,
+                                       "fiveCases":  10.05,
+                                       "tenCases":  9.55,
+                                       "twentyCases":  9.55,
+                                       "fortyCases":  9.55
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  25.5,
+                                        "oneCase":  21,
+                                        "fiveCases":  20.1,
+                                        "tenCases":  19.1,
+                                        "twentyCases":  19.1,
+                                        "fortyCases":  19.1
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709918239/products/images/large/CA262--1be36c7d.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709918239/products/images/large/CA262--1be36c7d.png",
+                         "availableQuantity":  1790,
+                         "localQuantity":  129
+                     },
+                     {
+                         "sku":  "EMB101",
+                         "title":  "5 1/2\" Baseball/Softball Embrace Resin",
+                         "displayName":  "Baseball/Softball Embrace Resin",
+                         "size":  "5 1/2\"",
+                         "description":  "The Baseball/Softball Embrace resin in antique silver and gold features a 2\" ball \"embraced\" by ribbons of silver and gold. The engraving area on the base has room for a nice sized plate for personalization. This resin is also available in a 6 1/2\" size. Very little labor involved, just add your plate and it\u0027s ready to go. Each resin is individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  5.55,
+                                       "oneCase":  4.65,
+                                       "fiveCases":  4.45,
+                                       "tenCases":  4.25,
+                                       "twentyCases":  4.25,
+                                       "fortyCases":  4.25
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  11.1,
+                                        "oneCase":  9.3,
+                                        "fiveCases":  8.9,
+                                        "tenCases":  8.5,
+                                        "twentyCases":  8.5,
+                                        "fortyCases":  8.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1764187087/products/images/large/EMB101--9ce4490b.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1764187087/products/images/large/EMB101--9ce4490b.png",
+                         "availableQuantity":  1239,
+                         "localQuantity":  309
+                     },
+                     {
+                         "sku":  "EMB151",
+                         "title":  "6 1/2\" Baseball/Softball Embrace Resin",
+                         "displayName":  "Baseball/Softball Embrace Resin",
+                         "size":  "6 1/2\"",
+                         "description":  "The Baseball/Softball Embrace resin in antique silver and gold features a 21/2\" ball \"embraced\" by ribbons of silver and gold. The engraving area on the base has room for a nice sized plate for personalization. This resin is also available in a 5 1/2\" size. Very little labor involved, just add your te and it\u0027s ready to go. Each resin is individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  6.25,
+                                       "oneCase":  5.25,
+                                       "fiveCases":  5,
+                                       "tenCases":  4.75,
+                                       "twentyCases":  4.75,
+                                       "fortyCases":  4.75
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  12.5,
+                                        "oneCase":  10.5,
+                                        "fiveCases":  10,
+                                        "tenCases":  9.5,
+                                        "twentyCases":  9.5,
+                                        "fortyCases":  9.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1764187074/products/images/large/EMB151--b6207c44.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1764187074/products/images/large/EMB151--b6207c44.png",
+                         "availableQuantity":  1870,
+                         "localQuantity":  140
+                     },
+                     {
+                         "sku":  "HC101",
+                         "title":  "6\" Baseball Happy Cup Trophy",
+                         "displayName":  "Baseball Happy Cup Award",
+                         "size":  "6\"",
+                         "description":  "Happy Cup Trophies are shipped fully assembled and individually boxed. They are a full color sport ball in a Bright Gold Trophy cup. They come in 4 different styles- Baseball, Soccer, Basketball and Softball.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  5.4,
+                                       "oneCase":  4.3,
+                                       "fiveCases":  4.15,
+                                       "tenCases":  3.85,
+                                       "twentyCases":  3.85,
+                                       "fortyCases":  3.85
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  10.8,
+                                        "oneCase":  8.6,
+                                        "fiveCases":  8.3,
+                                        "tenCases":  7.7,
+                                        "twentyCases":  7.7,
+                                        "fortyCases":  7.7
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709907291/products/images/large/HC101--dce1018a.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709907291/products/images/large/HC101--dce1018a.png",
+                         "availableQuantity":  916,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "HC301",
+                         "title":  "6 1/2\" Baseball/Softball Hurricane Award",
+                         "displayName":  "Baseball/Softball Hurricane Resin-6 1/2\"",
+                         "size":  "6 1/2\"",
+                         "description":  "Hurricane Award - 6 1/2\" Baseball/Softball Award. Weighted plastic awards are individually boxed. Color: Gold/Silver.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.1,
+                                       "oneCase":  5.6,
+                                       "fiveCases":  5.35,
+                                       "tenCases":  5.1,
+                                       "twentyCases":  5.1,
+                                       "fortyCases":  5.1
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  14.2,
+                                        "oneCase":  11.2,
+                                        "fiveCases":  10.7,
+                                        "tenCases":  10.2,
+                                        "twentyCases":  10.2,
+                                        "fortyCases":  10.2
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709909485/products/images/large/HC301--baf4c057.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709909485/products/images/large/HC301--baf4c057.png",
+                         "availableQuantity":  50,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "JDS11",
+                         "title":  "9\" Antique Gold Male Baseball Resin",
+                         "displayName":  "Male Baseball Resin",
+                         "size":  "9\"",
+                         "description":  "JDS Resins are individually boxed and the plates are not included. They are an Antique Gold resin that comes in multiple sizes and 12 styles. The only White/Silver resin is the JDS31A. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  16,
+                         "costs":  {
+                                       "lessThanCase":  11.6,
+                                       "oneCase":  9.75,
+                                       "fiveCases":  9.4,
+                                       "tenCases":  8.95,
+                                       "twentyCases":  8.95,
+                                       "fortyCases":  8.95
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  23.2,
+                                        "oneCase":  19.5,
+                                        "fiveCases":  18.8,
+                                        "tenCases":  17.9,
+                                        "twentyCases":  17.9,
+                                        "fortyCases":  17.9
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842528/products/images/large/JDS11--f95c2563.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842528/products/images/large/JDS11--f95c2563.png",
+                         "availableQuantity":  315,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "JDS12",
+                         "title":  "9 1/4\" Antique Gold Female Softball Resin",
+                         "displayName":  "Female Softball Resin",
+                         "size":  "9 1/4\"",
+                         "description":  "JDS Resins are individually boxed and the plates are not included. They are an Antique Gold resin that comes in multiple sizes and 12 styles. The only White/Silver resin is the JDS31A. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  16,
+                         "costs":  {
+                                       "lessThanCase":  11.6,
+                                       "oneCase":  9.75,
+                                       "fiveCases":  9.4,
+                                       "tenCases":  8.95,
+                                       "twentyCases":  8.95,
+                                       "fortyCases":  8.95
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  23.2,
+                                        "oneCase":  19.5,
+                                        "fiveCases":  18.8,
+                                        "tenCases":  17.9,
+                                        "twentyCases":  17.9,
+                                        "fortyCases":  17.9
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842525/products/images/large/JDS12--568cebf9.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842525/products/images/large/JDS12--568cebf9.png",
+                         "availableQuantity":  39,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "JSR101",
+                         "title":  "5 1/2\" Baseball Jazz Star Resin",
+                         "displayName":  "Baseball Jazz Star Award",
+                         "size":  "5 1/2\"",
+                         "description":  "Jazz Star Resins are individually boxed and the plates are not included. They are full color, Antique Silver/Gold that are 5 ½ inches with 14 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.15,
+                                       "oneCase":  5.3,
+                                       "fiveCases":  5.1,
+                                       "tenCases":  4.85,
+                                       "twentyCases":  4.85,
+                                       "fortyCases":  4.85
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  14.3,
+                                        "oneCase":  10.6,
+                                        "fiveCases":  10.2,
+                                        "tenCases":  9.7,
+                                        "twentyCases":  9.7,
+                                        "fortyCases":  9.7
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842495/products/images/large/JSR101--e2df0e20.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842495/products/images/large/JSR101--e2df0e20.png",
+                         "availableQuantity":  561,
+                         "localQuantity":  221
+                     },
+                     {
+                         "sku":  "LPR01",
+                         "title":  "5\" Baseball Little Pal Resin",
+                         "displayName":  "Baseball Little Pals Resin",
+                         "size":  "5\"",
+                         "description":  "JDS Little Pals Resins are individually boxed and the plates are not included. They are a full color resin that are 5 inches. They come in 10 different styles. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  6.1,
+                                       "oneCase":  4.7,
+                                       "fiveCases":  4.35,
+                                       "tenCases":  4.15,
+                                       "twentyCases":  4.15,
+                                       "fortyCases":  4.15
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  12.2,
+                                        "oneCase":  9.4,
+                                        "fiveCases":  8.7,
+                                        "tenCases":  8.3,
+                                        "twentyCases":  8.3,
+                                        "fortyCases":  8.3
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842423/products/images/large/LPR01--d286f32e.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842423/products/images/large/LPR01--d286f32e.png",
+                         "availableQuantity":  699,
+                         "localQuantity":  1
+                     },
+                     {
+                         "sku":  "PLR101",
+                         "title":  "6\" Baseball/Softball Imperial Resin",
+                         "displayName":  "Baseball/Softball Imperial Resin-6\"",
+                         "size":  "6\"",
+                         "description":  "Imperial resin awards are available in 3 sizes for 4 sports, as well as a 6\" tall 2\" insert holder award. The sport balls sit on a pedestal of gold beams that give them an \"imperial\" look. There is no assembly involved, simply add a personalized plate to the base and they\u0027re ready to go! These awards give you an impressive look at a pricepoint to fit any budget making themideal for large tournaments where a number of players are awarded.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  8.15,
+                                       "oneCase":  6.7,
+                                       "fiveCases":  6.4,
+                                       "tenCases":  6.05,
+                                       "twentyCases":  6.05,
+                                       "fortyCases":  6.05
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  16.3,
+                                        "oneCase":  13.4,
+                                        "fiveCases":  12.8,
+                                        "tenCases":  12.1,
+                                        "twentyCases":  12.1,
+                                        "fortyCases":  12.1
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697661407/products/images/large/PLR101--c4383588.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697661407/products/images/large/PLR101--c4383588.png",
+                         "availableQuantity":  4780,
+                         "localQuantity":  353
+                     },
+                     {
+                         "sku":  "PLR111",
+                         "title":  "7 7/8\" Baseball/Softball Imperial Resin",
+                         "displayName":  "Baseball/Softball Imperial Resin-7 7/8\"",
+                         "size":  "7 7/8\"",
+                         "description":  "Imperial resin awards are available in 3 sizes for 4 sports, as well as a 6\" tall 2\" insert holder award. The sport balls sit on a pedestal of gold beams that give them an \"imperial\" look. There is no assembly involved, simply add a personalized plate to the base and they\u0027re ready to go! These awards give you an impressive look at a pricepoint to fit any budget making themideal for large tournaments where a number of players are awarded.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  11.95,
+                                       "oneCase":  9.55,
+                                       "fiveCases":  9.15,
+                                       "tenCases":  8.7,
+                                       "twentyCases":  8.7,
+                                       "fortyCases":  8.7
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  23.9,
+                                        "oneCase":  19.1,
+                                        "fiveCases":  18.3,
+                                        "tenCases":  17.4,
+                                        "twentyCases":  17.4,
+                                        "fortyCases":  17.4
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697661473/products/images/large/PLR111--b2d86b9c.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697661473/products/images/large/PLR111--b2d86b9c.png",
+                         "availableQuantity":  1933,
+                         "localQuantity":  213
+                     },
+                     {
+                         "sku":  "PLR121",
+                         "title":  "9 7/8\" Baseball/Softball Imperial Resin",
+                         "displayName":  "Baseball/Softball Imperial Resin-9 7/8\"",
+                         "size":  "9 7/8\"",
+                         "description":  "Imperial resin awards are available in 3 sizes for 4 sports, as well as a 6\" tall 2\" insert holder award. The sport balls sit on a pedestal of gold beams that give them an \"imperial\" look. There is no assembly involved, simply add a personalized plate to the base and they\u0027re ready to go! These awards give you an impressive look at a pricepoint to fit any budget making themideal for large tournaments where a number of players are awarded.",
+                         "caseQuantity":  6,
+                         "costs":  {
+                                       "lessThanCase":  17.2,
+                                       "oneCase":  14.25,
+                                       "fiveCases":  13.6,
+                                       "tenCases":  13.05,
+                                       "twentyCases":  13.05,
+                                       "fortyCases":  13.05
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  34.4,
+                                        "oneCase":  28.5,
+                                        "fiveCases":  27.2,
+                                        "tenCases":  26.1,
+                                        "twentyCases":  26.1,
+                                        "fortyCases":  26.1
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697661512/products/images/large/PLR121--efd8ecbb.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697661512/products/images/large/PLR121--efd8ecbb.png",
+                         "availableQuantity":  1984,
+                         "localQuantity":  79
+                     },
+                     {
+                         "sku":  "REN101",
+                         "title":  "5 3/4\" Baseball Encore Resin",
+                         "displayName":  "Baseball Encore Resin-5 3/4\"",
+                         "size":  "5 3/4\"",
+                         "description":  "JDS Encore Resins are individually boxed and the plates are not included. They are a full color resin, Antique Gold and Silver resin that comes in 3 different sizes and 6 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  8.8,
+                                       "oneCase":  7,
+                                       "fiveCases":  6.7,
+                                       "tenCases":  6.35,
+                                       "twentyCases":  6.35,
+                                       "fortyCases":  6.35
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  17.6,
+                                        "oneCase":  14,
+                                        "fiveCases":  13.4,
+                                        "tenCases":  12.7,
+                                        "twentyCases":  12.7,
+                                        "fortyCases":  12.7
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917076/products/images/large/REN101--4f7e8dc8.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917076/products/images/large/REN101--4f7e8dc8.png",
+                         "availableQuantity":  0,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "REN201",
+                         "title":  "7\" Baseball Encore Resin",
+                         "displayName":  "Baseball Encore Resin-7\"",
+                         "size":  "7\"",
+                         "description":  "JDS Encore Resins are individually boxed and the plates are not included. They are a full color resin, Antique Gold and Silver resin that comes in 3 different sizes and 6 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  11.6,
+                                       "oneCase":  9.65,
+                                       "fiveCases":  9.25,
+                                       "tenCases":  8.8,
+                                       "twentyCases":  8.8,
+                                       "fortyCases":  8.8
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  23.2,
+                                        "oneCase":  19.3,
+                                        "fiveCases":  18.5,
+                                        "tenCases":  17.6,
+                                        "twentyCases":  17.6,
+                                        "fortyCases":  17.6
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917110/products/images/large/REN201--d563fb4d.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917110/products/images/large/REN201--d563fb4d.png",
+                         "availableQuantity":  52,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "REN301",
+                         "title":  "8 1/2\" Baseball Encore Resin",
+                         "displayName":  "Baseball Encore Resin-8 1/2\"",
+                         "size":  "8 1/2\"",
+                         "description":  "JDS Encore Resins are individually boxed and the plates are not included. They are a full color resin, Antique Gold and Silver resin that comes in 3 different sizes and 6 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  6,
+                         "costs":  {
+                                       "lessThanCase":  14.15,
+                                       "oneCase":  11.85,
+                                       "fiveCases":  11.25,
+                                       "tenCases":  10.8,
+                                       "twentyCases":  10.8,
+                                       "fortyCases":  10.8
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  28.3,
+                                        "oneCase":  23.7,
+                                        "fiveCases":  22.5,
+                                        "tenCases":  21.6,
+                                        "twentyCases":  21.6,
+                                        "fortyCases":  21.6
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917145/products/images/large/REN301--b512b58b.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917145/products/images/large/REN301--b512b58b.png",
+                         "availableQuantity":  317,
+                         "localQuantity":  30
+                     },
+                     {
+                         "sku":  "RKS201",
+                         "title":  "7 1/2\" Baseball/Softball Rock Star Award",
+                         "displayName":  "Baseball/Softball Rock Star Resin-7 1/2\"",
+                         "size":  "7 1/2\"",
+                         "description":  "Rock Star Resin- 7 1/2\" Baseball/Softball award. Material is Plastic. Back of Resin is flat. Color is Antique Gold.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  8.85,
+                                       "oneCase":  7.1,
+                                       "fiveCases":  6.75,
+                                       "tenCases":  6.45,
+                                       "twentyCases":  6.45,
+                                       "fortyCases":  6.45
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  17.7,
+                                        "oneCase":  14.2,
+                                        "fiveCases":  13.5,
+                                        "tenCases":  12.9,
+                                        "twentyCases":  12.9,
+                                        "fortyCases":  12.9
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917443/products/images/large/RKS201--a6ba45ea.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917443/products/images/large/RKS201--a6ba45ea.png",
+                         "availableQuantity":  2114,
+                         "localQuantity":  242
+                     },
+                     {
+                         "sku":  "RKS211",
+                         "title":  "9\" Baseball/Softball Rock Star Award",
+                         "displayName":  "Baseball/Softball Sun Ray Resin-9\"",
+                         "size":  "9\"",
+                         "description":  "Rock Star Resin- 9\" Baseball/Softball award. Material is Plastic. Back of Resin is flat. Color is Antique Gold.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  9.55,
+                                       "oneCase":  7.75,
+                                       "fiveCases":  7.35,
+                                       "tenCases":  7.05,
+                                       "twentyCases":  7.05,
+                                       "fortyCases":  7.05
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  19.1,
+                                        "oneCase":  15.5,
+                                        "fiveCases":  14.7,
+                                        "tenCases":  14.1,
+                                        "twentyCases":  14.1,
+                                        "fortyCases":  14.1
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917419/products/images/large/RKS211--4503e9c0.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917419/products/images/large/RKS211--4503e9c0.png",
+                         "availableQuantity":  1881,
+                         "localQuantity":  304
+                     },
+                     {
+                         "sku":  "RR505",
+                         "title":  "5 1/2\" Softball Ribbon Resin",
+                         "displayName":  "Softball Ribbon Resin-5 1/2\"",
+                         "size":  "5 1/2\"",
+                         "description":  "Ribbon Resins are individually boxed and the plates are not included. They are a full color resin that comes in 2 different sizes and 6 styles- Baseball, Basketball, Football, Soccer, Softball and 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  6.95,
+                                       "oneCase":  5.4,
+                                       "fiveCases":  5.15,
+                                       "tenCases":  4.9,
+                                       "twentyCases":  4.9,
+                                       "fortyCases":  4.9
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  13.9,
+                                        "oneCase":  10.8,
+                                        "fiveCases":  10.3,
+                                        "tenCases":  9.8,
+                                        "twentyCases":  9.8,
+                                        "fortyCases":  9.8
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917220/products/images/large/RR505--b2125fb8.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917220/products/images/large/RR505--b2125fb8.png",
+                         "availableQuantity":  537,
+                         "localQuantity":  139
+                     },
+                     {
+                         "sku":  "RR705",
+                         "title":  "7\" Softball Ribbon Resin",
+                         "displayName":  "Softball Ribbon Resin-7\"",
+                         "size":  "7\"",
+                         "description":  "Ribbon Resins are individually boxed and the plates are not included. They are a full color resin that comes in 2 different sizes and 6 styles- Baseball, Basketball, Football, Soccer, Softball and 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  8,
+                                       "oneCase":  6.25,
+                                       "fiveCases":  5.95,
+                                       "tenCases":  5.6,
+                                       "twentyCases":  5.6,
+                                       "fortyCases":  5.6
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  16,
+                                        "oneCase":  12.5,
+                                        "fiveCases":  11.9,
+                                        "tenCases":  11.2,
+                                        "twentyCases":  11.2,
+                                        "fortyCases":  11.2
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917258/products/images/large/RR705--206b7cad.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917258/products/images/large/RR705--206b7cad.png",
+                         "availableQuantity":  630,
+                         "localQuantity":  24
+                     },
+                     {
+                         "sku":  "SA601",
+                         "title":  "6\" Baseball / Softball Shield Award",
+                         "displayName":  "Baseball/Softball Shield Award-6\"",
+                         "size":  "6\"",
+                         "description":  "Shield Award - 6\" Baseball/Softball Award. Color: Silver/Gold. The back features a pattern of trophy cups. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.15,
+                                       "oneCase":  5.4,
+                                       "fiveCases":  5.1,
+                                       "tenCases":  4.85,
+                                       "twentyCases":  4.85,
+                                       "fortyCases":  4.85
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  14.3,
+                                        "oneCase":  10.8,
+                                        "fiveCases":  10.2,
+                                        "tenCases":  9.7,
+                                        "twentyCases":  9.7,
+                                        "fortyCases":  9.7
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669759468/products/images/large/SA601--9a1e6d85.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669759468/products/images/large/SA601--9a1e6d85.png",
+                         "availableQuantity":  117,
+                         "localQuantity":  0
+                     },
+                     {
+                         "sku":  "SA701",
+                         "title":  "7\" Baseball / Softball Shield Award",
+                         "displayName":  "Baseball/Softball Shield Award-7\"",
+                         "size":  "7\"",
+                         "description":  "Shield Award - 7\" Baseball/Softball Award. Color: Silver/Gold. The back features a pattern of trophy cups. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.8,
+                                       "oneCase":  6,
+                                       "fiveCases":  5.75,
+                                       "tenCases":  5.45,
+                                       "twentyCases":  5.45,
+                                       "fortyCases":  5.45
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  15.6,
+                                        "oneCase":  12,
+                                        "fiveCases":  11.5,
+                                        "tenCases":  10.9,
+                                        "twentyCases":  10.9,
+                                        "fortyCases":  10.9
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669759523/products/images/large/SA701--74de0e5f.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669759523/products/images/large/SA701--74de0e5f.png",
+                         "availableQuantity":  962,
+                         "localQuantity":  2
+                     },
+                     {
+                         "sku":  "SR101",
+                         "title":  "7\" Baseball / Softball Sun Ray Award",
+                         "displayName":  "Baseball/Softball Sun Ray Resin-7\"",
+                         "size":  "7\"",
+                         "description":  "Sun Ray Award - 7\" Baseball/Softball Award. Color: Gold/Gray/Silver. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  6.65,
+                                       "oneCase":  4.95,
+                                       "fiveCases":  4.8,
+                                       "tenCases":  4.6,
+                                       "twentyCases":  4.6,
+                                       "fortyCases":  4.6
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  13.3,
+                                        "oneCase":  9.9,
+                                        "fiveCases":  9.6,
+                                        "tenCases":  9.2,
+                                        "twentyCases":  9.2,
+                                        "fortyCases":  9.2
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917470/products/images/large/SR101--85c9ef65.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917470/products/images/large/SR101--85c9ef65.png",
+                         "availableQuantity":  4379,
+                         "localQuantity":  973
+                     },
+                     {
+                         "sku":  "SR201",
+                         "title":  "8\" Baseball / Softball Sun Ray Award",
+                         "displayName":  "Baseball/Softball Sun Ray Resin-8\"",
+                         "size":  "8\"",
+                         "description":  "Sun Ray Award - 8\" Baseball/Softball Award. Color: Gold/Gray/Silver. Weighted plastic awards are individually boxed.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.9,
+                                       "oneCase":  6.05,
+                                       "fiveCases":  5.8,
+                                       "tenCases":  5.55,
+                                       "twentyCases":  5.55,
+                                       "fortyCases":  5.55
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  15.8,
+                                        "oneCase":  12.1,
+                                        "fiveCases":  11.6,
+                                        "tenCases":  11.1,
+                                        "twentyCases":  11.1,
+                                        "fortyCases":  11.1
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1710792037/products/images/large/SR201--4ec5a13f.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1710792037/products/images/large/SR201--4ec5a13f.png",
+                         "availableQuantity":  1465,
+                         "localQuantity":  204
+                     },
+                     {
+                         "sku":  "TRD101",
+                         "title":  "5 1/2\" Baseball Triad Resin",
+                         "displayName":  "Baseball Triad Award",
+                         "size":  "5 1/2\"",
+                         "description":  "Triad Resin - 5 1/2\" Baseball. Color: Antique Gold/Silver. Resin is flat on the back. Individually boxed. Plate not included. Maximum plate size : 2 1/2\" x 1 1/16\".",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  6.5,
+                                       "oneCase":  5,
+                                       "fiveCases":  4.85,
+                                       "tenCases":  4.65,
+                                       "twentyCases":  4.65,
+                                       "fortyCases":  4.65
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  13,
+                                        "oneCase":  10,
+                                        "fiveCases":  9.7,
+                                        "tenCases":  9.3,
+                                        "twentyCases":  9.3,
+                                        "fortyCases":  9.3
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709907506/products/images/large/TRD101--65b34b8b.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709907506/products/images/large/TRD101--65b34b8b.png",
+                         "availableQuantity":  1693,
+                         "localQuantity":  48
+                     },
+                     {
+                         "sku":  "TR101",
+                         "title":  "5 1/2\" Baseball/Softball Triumph Resin",
+                         "displayName":  "Baseball/Softball Triumph Award-5 1/2\"",
+                         "size":  "5 1/2\"",
+                         "description":  "Triumph resin awards are available in 2 sizes for 16 sport and academic events and a 2\" insert holder you can customize to what you need. Silver with gold accents and stars, each resin features items that represent the event it\u0027s intended for. Resins are a great award for any budget and there is very little labor involved, just add a personalized plate and you\u0027re ready togo!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  6.5,
+                                       "oneCase":  5.25,
+                                       "fiveCases":  4.95,
+                                       "tenCases":  4.75,
+                                       "twentyCases":  4.75,
+                                       "fortyCases":  4.75
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  13,
+                                        "oneCase":  10.5,
+                                        "fiveCases":  9.9,
+                                        "tenCases":  9.5,
+                                        "twentyCases":  9.5,
+                                        "fortyCases":  9.5
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697827486/products/images/large/TR101--6e0bd715.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697827486/products/images/large/TR101--6e0bd715.png",
+                         "availableQuantity":  2545,
+                         "localQuantity":  553
+                     },
+                     {
+                         "sku":  "TR151",
+                         "title":  "6 1/2\" Baseball/Softball Triumph Resin",
+                         "displayName":  "Baseball/Softball Triumph Award-6 1/2\"",
+                         "size":  "6 1/2\"",
+                         "description":  "Triumph resin awards are available in 2 sizes for 16 sports and a 2\" insertholder. Silver with gold accents and stars, each resin features items that represent the sport it\u0027s intended for. Resins are a great award for any budget and there is very little labor involved, just add a personalized plate and they\u0027re ready to go!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.5,
+                                       "oneCase":  6.05,
+                                       "fiveCases":  5.7,
+                                       "tenCases":  5.45,
+                                       "twentyCases":  5.45,
+                                       "fortyCases":  5.45
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  15,
+                                        "oneCase":  12.1,
+                                        "fiveCases":  11.4,
+                                        "tenCases":  10.9,
+                                        "twentyCases":  10.9,
+                                        "fortyCases":  10.9
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697827439/products/images/large/TR151--e38a0845.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697827439/products/images/large/TR151--e38a0845.png",
+                         "availableQuantity":  1703,
+                         "localQuantity":  556
+                     },
+                     {
+                         "sku":  "TS807",
+                         "title":  "5 1/2\" Softball Tri Star Resin",
+                         "displayName":  "Softball Tri Star Resin",
+                         "size":  "5 1/2\"",
+                         "description":  "Tri Star Resin - 5 1/2\" Softball. Color: Gold/Black/Yellow. Individually boxed. Plates not included.",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7.1,
+                                       "oneCase":  5.6,
+                                       "fiveCases":  5.35,
+                                       "tenCases":  5.1,
+                                       "twentyCases":  5.1,
+                                       "fortyCases":  5.1
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  14.2,
+                                        "oneCase":  11.2,
+                                        "fiveCases":  10.7,
+                                        "tenCases":  10.2,
+                                        "twentyCases":  10.2,
+                                        "fortyCases":  10.2
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709918132/products/images/large/TS807--5146bf72.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709918132/products/images/large/TS807--5146bf72.png",
+                         "availableQuantity":  647,
+                         "localQuantity":  4
+                     },
+                     {
+                         "sku":  "VSR107",
+                         "title":  "5 1/2\" Softball Varsity Sport Resin",
+                         "displayName":  "Softball Varsity Sport Resin-5 1/2\"",
+                         "size":  "5 1/2\"",
+                         "description":  "JDS Varsity Sport Resins are individually boxed and the plates are not included. They are a full color resin that comes in 2 different sizes and 10 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  7,
+                                       "oneCase":  5.3,
+                                       "fiveCases":  5.1,
+                                       "tenCases":  4.85,
+                                       "twentyCases":  4.85,
+                                       "fortyCases":  4.85
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  14,
+                                        "oneCase":  10.6,
+                                        "fiveCases":  10.2,
+                                        "tenCases":  9.7,
+                                        "twentyCases":  9.7,
+                                        "fortyCases":  9.7
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917621/products/images/large/VSR107--84a73fe1.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917621/products/images/large/VSR107--84a73fe1.png",
+                         "availableQuantity":  661,
+                         "localQuantity":  7
+                     },
+                     {
+                         "sku":  "VSR207",
+                         "title":  "7\" Softball Varsity Sport Resin",
+                         "displayName":  "Softball Varsity Sport Resin-7\"",
+                         "size":  "7\"",
+                         "description":  "JDS Varsity Sport Resins are individually boxed and the plates are not included. They are a full color resin that comes in 2 different sizes and 10 different styles including a 2 inch insert holder. Resins are a great alternative to building a trophy!",
+                         "caseQuantity":  12,
+                         "costs":  {
+                                       "lessThanCase":  8.9,
+                                       "oneCase":  7.25,
+                                       "fiveCases":  6.85,
+                                       "tenCases":  6.5,
+                                       "twentyCases":  6.5,
+                                       "fortyCases":  6.5
+                                   },
+                         "prices":  {
+                                        "lessThanCase":  17.8,
+                                        "oneCase":  14.5,
+                                        "fiveCases":  13.7,
+                                        "tenCases":  13,
+                                        "twentyCases":  13,
+                                        "fortyCases":  13
+                                    },
+                         "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917685/products/images/large/VSR207--38324335.png",
+                         "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917685/products/images/large/VSR207--38324335.png",
+                         "availableQuantity":  716,
+                         "localQuantity":  156
+                     }
+                 ]
+}
