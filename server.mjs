@@ -31,7 +31,10 @@ const ALLOWED_FILE_EXTENSIONS = new Set([".pdf", ".ai", ".eps", ".psd", ".jpg", 
 const CATALOG_PRICE_OVERRIDES = new Map([
   ["fabric-block-out", { squareFootRate: 3.98 }],
 ]);
-const NAME_BADGE_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_PRICE_BREAKS || "");
+const DEFAULT_NAME_BADGE_BASE_PRICE_BREAKS = "1:12.00,10:11.50,25:11.00,50:10.00,100:9.50,250:8.75,500:8.50,1000:8.00";
+const DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS = "1:2.25,10:2.25,25:2.25,50:2.25,100:1.90,250:1.90,500:1.75,1000:1.50";
+const NAME_BADGE_BASE_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_BASE_PRICE_BREAKS || DEFAULT_NAME_BADGE_BASE_PRICE_BREAKS);
+const NAME_BADGE_MAGNET_PRICE_BREAKS = parseNameBadgePriceBreaks(process.env.NAME_BADGE_MAGNET_PRICE_BREAKS || DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS);
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
 let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
@@ -96,13 +99,20 @@ function parseNameBadgePriceBreaks(value) {
     .sort((a, b) => a.minimumQuantity - b.minimumQuantity);
 }
 
-function nameBadgeUnitPrice(quantity) {
+function priceForQuantity(priceBreaks, quantity, label) {
   let price = null;
-  for (const priceBreak of NAME_BADGE_PRICE_BREAKS) {
+  for (const priceBreak of priceBreaks) {
     if (quantity >= priceBreak.minimumQuantity) price = priceBreak.unitPrice;
   }
-  if (price === null) throw new Error("Name badge quantity pricing is not configured yet.");
+  if (price === null) throw new Error(`${label} pricing is not configured yet.`);
   return Number(price.toFixed(2));
+}
+
+function nameBadgeUnitPrice(quantity, fastener) {
+  if (quantity >= 1500) throw new Error("Quantities of 1500 or more are by quote. Please contact us for pricing.");
+  const basePrice = priceForQuantity(NAME_BADGE_BASE_PRICE_BREAKS, quantity, "Name badge");
+  const magnetPrice = fastener === "magnetic" ? priceForQuantity(NAME_BADGE_MAGNET_PRICE_BREAKS, quantity, "Magnet fastener") : 0;
+  return Number((basePrice + magnetPrice).toFixed(2));
 }
 
 function nameBadgeOption(formData, name, allowed, label) {
@@ -127,7 +137,8 @@ function nameBadgeLabel(value) {
 
 function buildNameBadgeInput(formData) {
   const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
-  const unitPrice = nameBadgeUnitPrice(quantity);
+  const fastener = nameBadgeOption(formData, "badge_fastener", ["magnetic", "pin"], "fastener");
+  const unitPrice = nameBadgeUnitPrice(quantity, fastener);
   return {
     quantity,
     unitPrice,
@@ -135,7 +146,7 @@ function buildNameBadgeInput(formData) {
     size: nameBadgeOption(formData, "badge_size", ["1x3", "1-5x3"], "badge size"),
     color: nameBadgeOption(formData, "badge_color", ["white", "brushed-gold", "brushed-silver"], "badge color"),
     frame: nameBadgeOption(formData, "badge_frame", ["silver-frame", "gold-frame"], "frame"),
-    fastener: nameBadgeOption(formData, "badge_fastener", ["magnetic", "pin"], "fastener"),
+    fastener,
   };
 }
 
@@ -531,7 +542,8 @@ async function handleNameBadgePrice(req, res) {
   return json(res, 200, {
     unitPrice: input.unitPrice,
     totalPrice: input.totalPrice,
-    priceBreaks: NAME_BADGE_PRICE_BREAKS,
+    priceBreaks: NAME_BADGE_BASE_PRICE_BREAKS,
+    magnetPriceBreaks: NAME_BADGE_MAGNET_PRICE_BREAKS,
   }, corsHeaders(req));
 }
 
@@ -871,8 +883,8 @@ async function servePublicFile(res, name, contentType) {
 }
 
 function nameBadgePageHtml() {
-  const priceBreakText = NAME_BADGE_PRICE_BREAKS.length
-    ? NAME_BADGE_PRICE_BREAKS.map((priceBreak) => `${priceBreak.minimumQuantity}+ badges: $${priceBreak.unitPrice.toFixed(2)} each`).join(" | ")
+  const priceBreakText = NAME_BADGE_BASE_PRICE_BREAKS.length
+    ? NAME_BADGE_BASE_PRICE_BREAKS.map((priceBreak) => `${priceBreak.minimumQuantity}+ framed badges: $${priceBreak.unitPrice.toFixed(2)} each`).join(" | ")
     : "Quantity pricing is not configured yet.";
 
   return `<!doctype html>
@@ -1006,7 +1018,7 @@ function nameBadgePageHtml() {
           </div>
 
           <div class="actions">
-            <button type="submit" ${NAME_BADGE_PRICE_BREAKS.length ? "" : "disabled"}>Add name badges to checkout</button>
+            <button type="submit" ${NAME_BADGE_BASE_PRICE_BREAKS.length ? "" : "disabled"}>Add name badges to checkout</button>
             <div class="status" data-status></div>
           </div>
         </form>

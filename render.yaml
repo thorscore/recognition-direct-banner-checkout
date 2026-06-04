@@ -23,8 +23,10 @@ services:
         value: 2026-04
       - key: MOCK_SHOPIFY
         value: "false"
-      - key: NAME_BADGE_PRICE_BREAKS
-        sync: false
+      - key: NAME_BADGE_BASE_PRICE_BREAKS
+        value: 1:12.00,10:11.50,25:11.00,50:10.00,100:9.50,250:8.75,500:8.50,1000:8.00
+      - key: NAME_BADGE_MAGNET_PRICE_BREAKS
+        value: 1:2.25,10:2.25,25:2.25,50:2.25,100:1.90,250:1.90,500:1.75,1000:1.50
     disk:
       name: banner-artwork
       mountPath: /opt/render/project/src/data
