@@ -1454,13 +1454,13 @@ function solarPlacardsPageHtml() {
     .product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
     .product-card{position:relative;display:grid;gap:8px;width:100%;min-height:170px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;text-align:left;cursor:pointer}
     .product-card:hover,.product-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
-    .product-card img{display:block;width:100%;height:112px;object-fit:contain;background:#ef2d32;border-radius:4px}
+    .product-card img{display:block;width:auto;max-width:100%;height:auto;max-height:180px;margin:0 auto;object-fit:contain;background:#ef2d32;border-radius:4px}
     .product-card strong{font-size:15px;line-height:1.2}
     .product-card em{color:var(--accent);font-style:normal;font-weight:900}
     .product-card small{color:var(--muted);font-size:12px}
     .pill{position:absolute;top:10px;left:10px;z-index:1;border-radius:999px;background:#18212f;color:#fff;padding:4px 8px;font-size:11px;font-weight:900;text-transform:uppercase}
     .selected{display:grid;gap:14px}
-    .preview{display:block;width:100%;max-height:360px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#ef2d32}
+    .preview{display:block;width:auto;max-width:100%;height:auto;max-height:520px;margin:0 auto;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#ef2d32}
     form{display:grid;gap:16px}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     .full{grid-column:1/-1}
