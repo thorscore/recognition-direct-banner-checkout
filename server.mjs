@@ -1285,9 +1285,9 @@ function nameBadgePageHtml() {
     .badge-price-chart{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px;text-align:left}
     .badge-price-chart h2{margin:0 0 10px;font-size:20px;line-height:1.2}
     .badge-price-chart__scroll{width:100%;max-width:100%;overflow-x:auto}
-    .badge-price-chart table{width:100%;min-width:600px;border-collapse:collapse;font-size:12px}
-    .badge-price-chart th,.badge-price-chart td{padding:7px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-    .badge-price-chart th:first-child,.badge-price-chart td:first-child{text-align:left}
+    .badge-price-chart table{width:max-content;min-width:760px;border-collapse:collapse;font-size:12px}
+    .badge-price-chart th,.badge-price-chart td{min-width:76px;padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+    .badge-price-chart th:first-child,.badge-price-chart td:first-child{width:170px;min-width:170px;text-align:left;white-space:normal;line-height:1.25}
     .badge-price-chart thead th{background:#f1f5ff;color:var(--ink);font-weight:800}
     .badge-price-chart tbody th{font-weight:800}
     .badge-price-chart p{margin:10px 0 0;color:var(--muted);font-size:13px}
