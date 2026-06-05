@@ -2186,7 +2186,7 @@ function polarCamelPageHtml() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Polar Camel Personalized Drinkware | Recognition Direct</title>
+  <title>Polar Camel Drinkware | Recognition Direct</title>
   <meta name="description" content="Order personalized Polar Camel tumblers, mugs, bottles, bowls, and drinkware from Recognition Direct with proof before production.">
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8;--soft:#f5f7fb}
@@ -2241,7 +2241,7 @@ function polarCamelPageHtml() {
 <body>
   <main class="wrap">
     <p class="eyebrow">Recognition Direct</p>
-    <h1>Polar Camel Personalized Drinkware & Gifts</h1>
+    <h1>Polar Camel Drinkware</h1>
     <p class="intro">Choose a Polar Camel item, select the color or option, add personalization details, and checkout online. We will send a proof before production.</p>
 
     <div class="layout">
