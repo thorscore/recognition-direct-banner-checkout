@@ -107,7 +107,19 @@ const premierAwardCatalogs = new Map([
 for (const catalog of premierAwardCatalogs.values()) {
   catalog.bySku = new Map(catalog.products.map((product) => [product.sku, product]));
 }
-const polarCamelProducts = [...(polarCamelData.products || [])].sort((a, b) => {
+const polarCamelProducts = (polarCamelData.products || [])
+  .filter((product) => !/sublimatable/i.test(product.title || ""))
+  .map((product) => ({
+    ...product,
+    variants: (product.variants || []).filter((variant) => !/sublimatable/i.test([
+      variant.title,
+      variant.optionValue,
+      variant.description,
+      variant.sku,
+    ].join(" "))),
+  }))
+  .filter((product) => (product.variants || []).length > 0)
+  .sort((a, b) => {
   const typePriority = new Map([
     ["Tumbler", 0],
     ["Water Bottle", 1],
@@ -133,7 +145,7 @@ const polarCamelProducts = [...(polarCamelData.products || [])].sort((a, b) => {
   const bVariantCount = (b.variants || []).length;
   if (aVariantCount !== bVariantCount) return bVariantCount - aVariantCount;
   return String(a.title || "").localeCompare(String(b.title || ""));
-});
+  });
 const polarCamelProductByHandle = new Map(polarCamelProducts.map((product) => [product.handle, product]));
 const polarCamelVariantBySku = new Map(polarCamelProducts.flatMap((product) => (
   (product.variants || []).map((variant) => [variant.sku, { product, variant }])
