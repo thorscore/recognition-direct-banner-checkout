@@ -2279,6 +2279,11 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
         { label: (caseQuantity * 20) + '+', unitPrice: product.prices.twentyCases },
         { label: (caseQuantity * 40) + '+', unitPrice: product.prices.fortyCases },
       ].filter((tier) => Number.isFinite(tier.unitPrice));
+      const uniquePrices = [...new Set(tiers.map((tier) => Number(tier.unitPrice).toFixed(2)))];
+      if (uniquePrices.length === 1) {
+        priceTable.innerHTML = '<tr><td>1+</td><td>' + money(tiers[0].unitPrice) + '</td></tr>';
+        return;
+      }
       priceTable.innerHTML = tiers.map((tier) => '<tr><td>' + tier.label + '</td><td>' + money(tier.unitPrice) + '</td></tr>').join('');
     }
 
