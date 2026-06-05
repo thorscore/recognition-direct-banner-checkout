@@ -17,6 +17,14 @@ const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.jso
 const PREMIER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-baseball-softball-resin-trophies.json");
 const PREMIER_SOCCER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-soccer-resin-trophies.json");
 const PREMIER_ACRYLIC_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-acrylic-awards.json");
+const PREMIER_AWARD_PLAQUES_FILE = join(import.meta.dirname, "catalog", "premier-award-plaques.json");
+const PREMIER_EXECUTIVE_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-executive-awards.json");
+const PREMIER_GLASS_CRYSTAL_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-glass-crystal-awards.json");
+const PREMIER_AWARD_CLOCKS_FILE = join(import.meta.dirname, "catalog", "premier-award-clocks.json");
+const PREMIER_OFFICE_ACCESSORIES_FILE = join(import.meta.dirname, "catalog", "premier-office-accessories.json");
+const PREMIER_CUTTING_BOARDS_FILE = join(import.meta.dirname, "catalog", "premier-cutting-boards.json");
+const PREMIER_BISON_RIVER_KNIVES_FILE = join(import.meta.dirname, "catalog", "premier-bison-river-knives.json");
+const PREMIER_AWARD_DRINKWARE_FILE = join(import.meta.dirname, "catalog", "premier-award-drinkware.json");
 const POLAR_CAMEL_FILE = join(import.meta.dirname, "catalog", "polar-camel.json");
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
@@ -73,6 +81,14 @@ const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^
 const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierSoccerAwardsData = JSON.parse((await readFile(PREMIER_SOCCER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierAcrylicAwardsData = JSON.parse((await readFile(PREMIER_ACRYLIC_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierAwardPlaquesData = JSON.parse((await readFile(PREMIER_AWARD_PLAQUES_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierExecutiveAwardsData = JSON.parse((await readFile(PREMIER_EXECUTIVE_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierGlassCrystalAwardsData = JSON.parse((await readFile(PREMIER_GLASS_CRYSTAL_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierAwardClocksData = JSON.parse((await readFile(PREMIER_AWARD_CLOCKS_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierOfficeAccessoriesData = JSON.parse((await readFile(PREMIER_OFFICE_ACCESSORIES_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierCuttingBoardsData = JSON.parse((await readFile(PREMIER_CUTTING_BOARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierBisonRiverKnivesData = JSON.parse((await readFile(PREMIER_BISON_RIVER_KNIVES_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierAwardDrinkwareData = JSON.parse((await readFile(PREMIER_AWARD_DRINKWARE_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const polarCamelData = JSON.parse((await readFile(POLAR_CAMEL_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const catalogByHandle = new Map(catalogData.products.map((product) => [
   product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-"),
@@ -124,6 +140,166 @@ const premierAwardCatalogs = new Map([
     noteLabel: "acrylic award",
     tags: ["acrylic-awards", "proof-required", "jds-premier"],
     products: premierAcrylicAwardsData.products || [],
+  }],
+  ["plaques", {
+    id: "plaques",
+    route: "/award-plaques",
+    title: "Plaques",
+    metaDescription: "Order personalized award plaques with proof before production from Recognition Direct.",
+    intro: "Choose a plaque, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Plaque products",
+    searchLabel: "Search plaques",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "plaques",
+    plateLabel: "Personalized plaque text",
+    platePlaceholder: "Enter plaque or engraving text. Example:\nEmployee of the Year\nPresented to Jane Smith",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or plaque wording.",
+    submitLabel: "Add plaques to checkout",
+    selectError: "Select a plaque.",
+    orderType: "premier-award-plaque-order",
+    noteLabel: "plaque",
+    tags: ["award-plaques", "proof-required", "jds-premier"],
+    products: premierAwardPlaquesData.products || [],
+  }],
+  ["executive-awards", {
+    id: "executive-awards",
+    route: "/executive-awards",
+    title: "Executive Awards",
+    metaDescription: "Order personalized executive awards with proof before production from Recognition Direct.",
+    intro: "Choose an executive award, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Executive award products",
+    searchLabel: "Search executive awards",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "awards",
+    plateLabel: "Personalized award text",
+    platePlaceholder: "Enter award plate or engraving text. Example:\nLeadership Award\nPresented to Jane Smith",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or award wording.",
+    submitLabel: "Add executive awards to checkout",
+    selectError: "Select an executive award.",
+    orderType: "premier-executive-award-order",
+    noteLabel: "executive award",
+    tags: ["executive-awards", "proof-required", "jds-premier"],
+    products: premierExecutiveAwardsData.products || [],
+  }],
+  ["glass-crystal-awards", {
+    id: "glass-crystal-awards",
+    route: "/glass-crystal-awards",
+    title: "Glass & Crystal Awards",
+    metaDescription: "Order personalized glass and crystal awards with proof before production from Recognition Direct.",
+    intro: "Choose a glass or crystal award, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Glass and crystal award products",
+    searchLabel: "Search glass and crystal awards",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "awards",
+    plateLabel: "Personalized award text",
+    platePlaceholder: "Enter award plate or engraving text. Example:\nExcellence Award\nPresented to Jane Smith",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or award wording.",
+    submitLabel: "Add glass & crystal awards to checkout",
+    selectError: "Select a glass or crystal award.",
+    orderType: "premier-glass-crystal-award-order",
+    noteLabel: "glass or crystal award",
+    tags: ["glass-crystal-awards", "proof-required", "jds-premier"],
+    products: premierGlassCrystalAwardsData.products || [],
+  }],
+  ["clocks", {
+    id: "clocks",
+    route: "/award-clocks",
+    title: "Clocks",
+    metaDescription: "Order personalized award clocks with proof before production from Recognition Direct.",
+    intro: "Choose a clock, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Clock products",
+    searchLabel: "Search clocks",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "clocks",
+    plateLabel: "Personalized clock text",
+    platePlaceholder: "Enter clock plate or engraving text. Example:\nRetirement Award\nPresented to Jane Smith",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or clock wording.",
+    submitLabel: "Add clocks to checkout",
+    selectError: "Select a clock.",
+    orderType: "premier-award-clock-order",
+    noteLabel: "clock",
+    tags: ["award-clocks", "proof-required", "jds-premier"],
+    products: premierAwardClocksData.products || [],
+  }],
+  ["office-accessories", {
+    id: "office-accessories",
+    route: "/office-accessories",
+    title: "Office Accessories",
+    metaDescription: "Order personalized office accessories with proof before production from Recognition Direct.",
+    intro: "Choose an office accessory, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Office accessory products",
+    searchLabel: "Search office accessories",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "items",
+    plateLabel: "Personalization text",
+    platePlaceholder: "Enter personalization text. Example:\nJane Smith\nSales Manager",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or personalization.",
+    submitLabel: "Add office accessories to checkout",
+    selectError: "Select an office accessory.",
+    orderType: "premier-office-accessory-order",
+    noteLabel: "office accessory",
+    tags: ["office-accessories", "proof-required", "jds-premier"],
+    products: premierOfficeAccessoriesData.products || [],
+  }],
+  ["cutting-boards", {
+    id: "cutting-boards",
+    route: "/cutting-boards",
+    title: "Cutting Boards",
+    metaDescription: "Order personalized cutting boards and serving boards with proof before production from Recognition Direct.",
+    intro: "Choose a cutting board or serving board, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Cutting board products",
+    searchLabel: "Search cutting boards",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "boards",
+    plateLabel: "Personalization text",
+    platePlaceholder: "Enter engraving text. Example:\nThe Martinez Family\nEst. 2026",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or engraving.",
+    submitLabel: "Add cutting boards to checkout",
+    selectError: "Select a cutting board.",
+    orderType: "premier-cutting-board-order",
+    noteLabel: "cutting board",
+    tags: ["cutting-boards", "proof-required", "jds-premier"],
+    products: premierCuttingBoardsData.products || [],
+  }],
+  ["bison-river-knives", {
+    id: "bison-river-knives",
+    route: "/bison-river-knives",
+    title: "Bison River Knives",
+    metaDescription: "Order personalized Bison River knives with proof before production from Recognition Direct.",
+    intro: "Choose a Bison River knife or tool, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Bison River knife products",
+    searchLabel: "Search Bison River knives",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "items",
+    plateLabel: "Personalization text",
+    platePlaceholder: "Enter engraving text. Example:\nRoth Ward\nThank you 2026",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or engraving.",
+    submitLabel: "Add Bison River items to checkout",
+    selectError: "Select a Bison River item.",
+    orderType: "premier-bison-river-knife-order",
+    noteLabel: "Bison River item",
+    tags: ["bison-river-knives", "proof-required", "jds-premier"],
+    products: premierBisonRiverKnivesData.products || [],
+  }],
+  ["award-drinkware", {
+    id: "award-drinkware",
+    route: "/award-drinkware",
+    title: "Award Drinkware",
+    metaDescription: "Order personalized award drinkware with proof before production from Recognition Direct.",
+    intro: "Choose award drinkware, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Award drinkware products",
+    searchLabel: "Search award drinkware",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "items",
+    plateLabel: "Personalization text",
+    platePlaceholder: "Enter engraving text. Example:\nJane Smith\nRecognition Direct",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or engraving.",
+    submitLabel: "Add award drinkware to checkout",
+    selectError: "Select an award drinkware item.",
+    orderType: "premier-award-drinkware-order",
+    noteLabel: "award drinkware",
+    tags: ["award-drinkware", "proof-required", "jds-premier"],
+    products: premierAwardDrinkwareData.products || [],
   }],
 ]);
 for (const catalog of premierAwardCatalogs.values()) {
@@ -2839,6 +3015,14 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball"));
     if (req.method === "GET" && url.pathname === "/soccer-resin-trophies") return html(res, 200, premierAwardsPageHtml("soccer"));
     if (req.method === "GET" && url.pathname === "/acrylic-awards") return html(res, 200, premierAwardsPageHtml("acrylic"));
+    if (req.method === "GET" && url.pathname === "/award-plaques") return html(res, 200, premierAwardsPageHtml("plaques"));
+    if (req.method === "GET" && url.pathname === "/executive-awards") return html(res, 200, premierAwardsPageHtml("executive-awards"));
+    if (req.method === "GET" && url.pathname === "/glass-crystal-awards") return html(res, 200, premierAwardsPageHtml("glass-crystal-awards"));
+    if (req.method === "GET" && url.pathname === "/award-clocks") return html(res, 200, premierAwardsPageHtml("clocks"));
+    if (req.method === "GET" && url.pathname === "/office-accessories") return html(res, 200, premierAwardsPageHtml("office-accessories"));
+    if (req.method === "GET" && url.pathname === "/cutting-boards") return html(res, 200, premierAwardsPageHtml("cutting-boards"));
+    if (req.method === "GET" && url.pathname === "/bison-river-knives") return html(res, 200, premierAwardsPageHtml("bison-river-knives"));
+    if (req.method === "GET" && url.pathname === "/award-drinkware") return html(res, 200, premierAwardsPageHtml("award-drinkware"));
     if (req.method === "GET" && url.pathname === "/polar-camel") return html(res, 200, polarCamelPageHtml());
     if (req.method === "GET" && /^\/assets\/name-badges\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
       return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));

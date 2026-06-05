@@ -1,0 +1,212 @@
+{
+  "generatedAt": "2026-06-05T20:43:27.761Z",
+  "source": "JDS Airflyte Shopify CSV + JDS API",
+  "markup": 2.5,
+  "title": "Cutting Boards",
+  "products": [
+    {
+      "sku": "SLT078",
+      "title": "18 1/2\" x 4 1/4\" Acacia Wood/Slate Serving Board",
+      "displayName": "18 1/2\" x 4 1/4\" Acacia Wood/Slate Serving Board",
+      "size": "",
+      "optionName": "Title",
+      "optionValue": "Default Title",
+      "description": "This custom engraved solid wood serving board with handle and slate coasters can be customized to suit. It makes a wonderful wedding or house-warming gift! It is also a beautiful, useful piece to add to your own kitchen, and use to host your favorite guests.  Coasters are removable.",
+      "caseQuantity": 6,
+      "costs": {
+        "lessThanCase": 17.4,
+        "oneCase": 13.5,
+        "fiveCases": 12.9,
+        "tenCases": 12.25,
+        "twentyCases": 12.25,
+        "fortyCases": 12.25
+      },
+      "prices": {
+        "lessThanCase": 43.5,
+        "oneCase": 33.75,
+        "fiveCases": 32.25,
+        "tenCases": 30.63,
+        "twentyCases": 30.63,
+        "fortyCases": 30.63
+      },
+      "image": "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669760615/products/images/large/SLT078--46b3a735.png",
+      "thumbnail": "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669760615/products/images/large/SLT078--46b3a735.png",
+      "imageAlt": "18 1/2\" x 4 1/4\" Acacia Wood/Slate Serving Board",
+      "productType": "Serving Board",
+      "vendor": "Airflyte",
+      "handle": "18-1-2-x-4-1-4-acacia-wood-slate-serving-board",
+      "availableQuantity": 1060,
+      "localQuantity": 32
+    },
+    {
+      "sku": "SLT087",
+      "title": "13 3/4\" x 9 3/4\" Acacia Wood/Slate Rectangle Cheese Set with Three Tools",
+      "displayName": "13 3/4\" x 9 3/4\" Acacia Wood/Slate Rectangle Cheese Set with Three Tools",
+      "size": "",
+      "optionName": "Title",
+      "optionValue": "Default Title",
+      "description": "This attractive cheese set features a Slate cutting board framed           by Acacia Wood, along with 3 tools (a cheese serving fork and              2 knives)on the front and a beautiful Acacia Wood back. Both can be        personalized with the grahics of choice. If you're looking for a great     personalized gift for a wedding, house warming, or just about any occasion,this may be it!",
+      "caseQuantity": 3,
+      "costs": {
+        "lessThanCase": 24.65,
+        "oneCase": 19.7,
+        "fiveCases": 18.7,
+        "tenCases": 17.65,
+        "twentyCases": 17.65,
+        "fortyCases": 17.65
+      },
+      "prices": {
+        "lessThanCase": 61.63,
+        "oneCase": 49.25,
+        "fiveCases": 46.75,
+        "tenCases": 44.13,
+        "twentyCases": 44.13,
+        "fortyCases": 44.13
+      },
+      "image": "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669760643/products/images/large/SLT087--a78f9e1a.png",
+      "thumbnail": "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669760643/products/images/large/SLT087--a78f9e1a.png",
+      "imageAlt": "13 3/4\" x 9 3/4\" Acacia Wood/Slate Rectangle Cheese Set with Three Tools",
+      "productType": "Cheese Set",
+      "vendor": "Airflyte",
+      "handle": "13-3-4-x-9-3-4-acacia-wood-slate-rectangle-cheese-set-with-three-tools",
+      "availableQuantity": 2811,
+      "localQuantity": 56
+    },
+    {
+      "sku": "GFT473",
+      "title": "18\"x 9\" Acacia with Blue Pearl Resin Serving Board",
+      "displayName": "18\"x 9\" Acacia with Blue Pearl Resin Serving Board",
+      "size": "",
+      "optionName": "Size",
+      "optionValue": "18\" x 9\"",
+      "description": "For an employee incentive, promotional item to get a busness or organization's informaton in front of the public, a useful personalized gift, or decor, this stunning serving board is a perfect choice! The board is crafted of genuine Acacia wood accented by a stream of pearl blue resin that follows the natural grain of the wood. Naturally resistant to germs and moisture, it is an ideal choice for any home or professional kitchen! Beautiful and durable enough to last for years of use.",
+      "caseQuantity": 8,
+      "costs": {
+        "lessThanCase": 39.15,
+        "oneCase": 34.35,
+        "fiveCases": 33.15,
+        "tenCases": 31.95,
+        "twentyCases": 31.95,
+        "fortyCases": 31.95
+      },
+      "prices": {
+        "lessThanCase": 97.88,
+        "oneCase": 85.88,
+        "fiveCases": 82.88,
+        "tenCases": 79.88,
+        "twentyCases": 79.88,
+        "fortyCases": 79.88
+      },
+      "image": "https://res.cloudinary.com/business-products/image/upload/q_auto/v1731965204/products/images/large/GFT473--86725da9.png",
+      "thumbnail": "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1731965204/products/images/large/GFT473--86725da9.png",
+      "imageAlt": "18\"x 9\" Acacia with Blue Pearl Resin Serving Board",
+      "productType": "Serving Board",
+      "vendor": "Airflyte",
+      "handle": "acacia-serving-board-with-blue-pearl-resin",
+      "availableQuantity": 126,
+      "localQuantity": 0
+    },
+    {
+      "sku": "GFT474",
+      "title": "15 3/4\" x 11 3/4\" Acacia with Blue Pearl Resin Serving Board",
+      "displayName": "15 3/4\" x 11 3/4\" Acacia with Blue Pearl Resin Serving Board",
+      "size": "",
+      "optionName": "Size",
+      "optionValue": "15 3/4\" x 11 3/4\"",
+      "description": "For an employee incentive, promotional item to get a busness or organization's informaton in front of the public, a useful personalized gift, or decor, this stunning serving board is a perfect choice! The board is crafted of genuine Acacia wood accented by a stream of pearl blue resin that follows the natural grain of the wood. Naturally resistant to germs and moisture, it is an ideal choice for any home or professional kitchen! Beautiful and durable enough to last for years of use.",
+      "caseQuantity": 8,
+      "costs": {
+        "lessThanCase": 40.35,
+        "oneCase": 35.55,
+        "fiveCases": 34.35,
+        "tenCases": 33.15,
+        "twentyCases": 33.15,
+        "fortyCases": 33.15
+      },
+      "prices": {
+        "lessThanCase": 100.88,
+        "oneCase": 88.88,
+        "fiveCases": 85.88,
+        "tenCases": 82.88,
+        "twentyCases": 82.88,
+        "fortyCases": 82.88
+      },
+      "image": "https://res.cloudinary.com/business-products/image/upload/q_auto/v1731965257/products/images/large/GFT474--61f4bf79.png",
+      "thumbnail": "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1731965257/products/images/large/GFT474--61f4bf79.png",
+      "imageAlt": "15 3/4\" x 11 3/4\" Acacia with Blue Pearl Resin Serving Board",
+      "productType": "Serving Board",
+      "vendor": "Airflyte",
+      "handle": "acacia-serving-board-with-blue-pearl-resin",
+      "availableQuantity": 453,
+      "localQuantity": 0
+    },
+    {
+      "sku": "GFT475",
+      "title": "18\" x 9\" Acacia with White Pearl Resin Serving Board",
+      "displayName": "18\" x 9\" Acacia with White Pearl Resin Serving Board",
+      "size": "",
+      "optionName": "Size",
+      "optionValue": "18\" x 9\"",
+      "description": "For an employee incentive, a useful personalized gift for any occasion that anyone would love, or for décor, these stunning serving boards are a perfect choice. The board is crafted of genuine Acacia wood accented by a stream of pearl white resin that flows through the natural grain of the wood. Naturally resistant to germs and moisture, they're an ideal choice for home or professional kitchens. Beautiful and durable enough to endure years of use",
+      "caseQuantity": 8,
+      "costs": {
+        "lessThanCase": 39.15,
+        "oneCase": 34.35,
+        "fiveCases": 33.15,
+        "tenCases": 31.95,
+        "twentyCases": 31.95,
+        "fortyCases": 31.95
+      },
+      "prices": {
+        "lessThanCase": 97.88,
+        "oneCase": 85.88,
+        "fiveCases": 82.88,
+        "tenCases": 79.88,
+        "twentyCases": 79.88,
+        "fortyCases": 79.88
+      },
+      "image": "https://res.cloudinary.com/business-products/image/upload/q_auto/v1760620974/products/images/large/GFT475--492d1c1e.png",
+      "thumbnail": "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1760620974/products/images/large/GFT475--492d1c1e.png",
+      "imageAlt": "18\" x 9\" Acacia with White Pearl Resin Serving Board",
+      "productType": "Serving Board",
+      "vendor": "Airflyte",
+      "handle": "acacia-serving-board-with-white-pearl-resin",
+      "availableQuantity": 495,
+      "localQuantity": 0
+    },
+    {
+      "sku": "GFT476",
+      "title": "15 3/4\" x 11 3/4\" Acacia with White Pearl Resin Serving Board",
+      "displayName": "15 3/4\" x 11 3/4\" Acacia with White Pearl Resin Serving Board",
+      "size": "",
+      "optionName": "Size",
+      "optionValue": "15 3/4\" x 11 3/4\"",
+      "description": "For an employee incentive, a useful personalized gift for any occasion that anyone would love, or for décor, these stunning serving boards are a perfect choice. The board is crafted of genuine Acacia wood accented by a stream of pearl white resin that flows through the natural grain of the wood. Naturally resistant to germs and moisture, they're an ideal choice for home or professional kitchens. Beautiful and durable enough to endure years of use",
+      "caseQuantity": 8,
+      "costs": {
+        "lessThanCase": 40.35,
+        "oneCase": 35.55,
+        "fiveCases": 34.35,
+        "tenCases": 33.15,
+        "twentyCases": 33.15,
+        "fortyCases": 33.15
+      },
+      "prices": {
+        "lessThanCase": 100.88,
+        "oneCase": 88.88,
+        "fiveCases": 85.88,
+        "tenCases": 82.88,
+        "twentyCases": 82.88,
+        "fortyCases": 82.88
+      },
+      "image": "https://res.cloudinary.com/business-products/image/upload/q_auto/v1760621015/products/images/large/GFT476--f6513e27.png",
+      "thumbnail": "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1760621015/products/images/large/GFT476--f6513e27.png",
+      "imageAlt": "15 3/4\" x 11 3/4\" Acacia with White Pearl Resin Serving Board",
+      "productType": "Serving Board",
+      "vendor": "Airflyte",
+      "handle": "acacia-serving-board-with-white-pearl-resin",
+      "availableQuantity": 635,
+      "localQuantity": 0
+    }
+  ]
+}
