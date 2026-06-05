@@ -1,7 +1,7 @@
 ﻿{
-    "generatedAt":  "2026-06-04T15:05:47.7759393-07:00",
+    "generatedAt":  "2026-06-05T14:46:45.9342463Z",
     "source":  "Premier Sport Awards category 1 + JDS API",
-    "markup":  2,
+    "markup":  3.5,
     "title":  "Baseball / Softball Resin Trophies",
     "products":  [
                      {
@@ -20,12 +20,12 @@
                                        "fortyCases":  5.25
                                    },
                          "prices":  {
-                                        "lessThanCase":  15,
-                                        "oneCase":  11.6,
-                                        "fiveCases":  10.9,
-                                        "tenCases":  10.5,
-                                        "twentyCases":  10.5,
-                                        "fortyCases":  10.5
+                                        "lessThanCase":  26.25,
+                                        "oneCase":  20.3,
+                                        "fiveCases":  19.08,
+                                        "tenCases":  18.38,
+                                        "twentyCases":  18.38,
+                                        "fortyCases":  18.38
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670509747/products/images/large/AA202--ce8666a8.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670509747/products/images/large/AA202--ce8666a8.png",
@@ -48,12 +48,12 @@
                                        "fortyCases":  7.05
                                    },
                          "prices":  {
-                                        "lessThanCase":  18.8,
-                                        "oneCase":  15.5,
-                                        "fiveCases":  14.7,
-                                        "tenCases":  14.1,
-                                        "twentyCases":  14.1,
-                                        "fortyCases":  14.1
+                                        "lessThanCase":  32.9,
+                                        "oneCase":  27.12,
+                                        "fiveCases":  25.72,
+                                        "tenCases":  24.68,
+                                        "twentyCases":  24.68,
+                                        "fortyCases":  24.68
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670509738/products/images/large/AA212--749ed725.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670509738/products/images/large/AA212--749ed725.png",
@@ -76,12 +76,12 @@
                                        "fortyCases":  8.2
                                    },
                          "prices":  {
-                                        "lessThanCase":  21.9,
-                                        "oneCase":  17.9,
-                                        "fiveCases":  17.1,
-                                        "tenCases":  16.4,
-                                        "twentyCases":  16.4,
-                                        "fortyCases":  16.4
+                                        "lessThanCase":  38.32,
+                                        "oneCase":  31.32,
+                                        "fiveCases":  29.93,
+                                        "tenCases":  28.7,
+                                        "twentyCases":  28.7,
+                                        "fortyCases":  28.7
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670509730/products/images/large/AA222--30d0a156.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670509730/products/images/large/AA222--30d0a156.png",
@@ -104,12 +104,12 @@
                                        "fortyCases":  5.15
                                    },
                          "prices":  {
-                                        "lessThanCase":  13.8,
-                                        "oneCase":  11.2,
-                                        "fiveCases":  10.9,
-                                        "tenCases":  10.3,
-                                        "twentyCases":  10.3,
-                                        "fortyCases":  10.3
+                                        "lessThanCase":  24.15,
+                                        "oneCase":  19.6,
+                                        "fiveCases":  19.08,
+                                        "tenCases":  18.03,
+                                        "twentyCases":  18.03,
+                                        "fortyCases":  18.03
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1670023924/products/images/large/ASP101--856c5b87.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1670023924/products/images/large/ASP101--856c5b87.png",
@@ -132,12 +132,12 @@
                                        "fortyCases":  7.25
                                    },
                          "prices":  {
-                                        "lessThanCase":  19.3,
-                                        "oneCase":  16,
-                                        "fiveCases":  15.3,
-                                        "tenCases":  14.5,
-                                        "twentyCases":  14.5,
-                                        "fortyCases":  14.5
+                                        "lessThanCase":  33.78,
+                                        "oneCase":  28,
+                                        "fiveCases":  26.78,
+                                        "tenCases":  25.38,
+                                        "twentyCases":  25.38,
+                                        "fortyCases":  25.38
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1676309019/products/images/large/ASP201--c0cf89bd.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1676309019/products/images/large/ASP201--c0cf89bd.png",
@@ -160,12 +160,12 @@
                                        "fortyCases":  4.9
                                    },
                          "prices":  {
-                                        "lessThanCase":  14,
-                                        "oneCase":  10.8,
-                                        "fiveCases":  10.3,
-                                        "tenCases":  9.8,
-                                        "twentyCases":  9.8,
-                                        "fortyCases":  9.8
+                                        "lessThanCase":  24.5,
+                                        "oneCase":  18.9,
+                                        "fiveCases":  18.03,
+                                        "tenCases":  17.15,
+                                        "twentyCases":  17.15,
+                                        "fortyCases":  17.15
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709908634/products/images/large/BCR101--eef16221.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709908634/products/images/large/BCR101--eef16221.png",
@@ -188,12 +188,12 @@
                                        "fortyCases":  5.75
                                    },
                          "prices":  {
-                                        "lessThanCase":  15.9,
-                                        "oneCase":  12.7,
-                                        "fiveCases":  12.1,
-                                        "tenCases":  11.5,
-                                        "twentyCases":  11.5,
-                                        "fortyCases":  11.5
+                                        "lessThanCase":  27.82,
+                                        "oneCase":  22.22,
+                                        "fiveCases":  21.18,
+                                        "tenCases":  20.12,
+                                        "twentyCases":  20.12,
+                                        "fortyCases":  20.12
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709908679/products/images/large/BCR201--05f2f7fd.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709908679/products/images/large/BCR201--05f2f7fd.png",
@@ -216,12 +216,12 @@
                                        "fortyCases":  5.85
                                    },
                          "prices":  {
-                                        "lessThanCase":  16.3,
-                                        "oneCase":  12.6,
-                                        "fiveCases":  12.1,
-                                        "tenCases":  11.7,
-                                        "twentyCases":  11.7,
-                                        "fortyCases":  11.7
+                                        "lessThanCase":  28.52,
+                                        "oneCase":  22.05,
+                                        "fiveCases":  21.18,
+                                        "tenCases":  20.47,
+                                        "twentyCases":  20.47,
+                                        "fortyCases":  20.47
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917308/products/images/large/BNN18--abfe51f6.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917308/products/images/large/BNN18--abfe51f6.png",
@@ -244,12 +244,12 @@
                                        "fortyCases":  7.1
                                    },
                          "prices":  {
-                                        "lessThanCase":  19,
-                                        "oneCase":  15.3,
-                                        "fiveCases":  14.7,
-                                        "tenCases":  14.2,
-                                        "twentyCases":  14.2,
-                                        "fortyCases":  14.2
+                                        "lessThanCase":  33.25,
+                                        "oneCase":  26.78,
+                                        "fiveCases":  25.72,
+                                        "tenCases":  24.85,
+                                        "twentyCases":  24.85,
+                                        "fortyCases":  24.85
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917352/products/images/large/BNN38--c1ce16e7.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917352/products/images/large/BNN38--c1ce16e7.png",
@@ -272,12 +272,12 @@
                                        "fortyCases":  3.75
                                    },
                          "prices":  {
-                                        "lessThanCase":  10.4,
-                                        "oneCase":  8.2,
-                                        "fiveCases":  7.9,
-                                        "tenCases":  7.5,
-                                        "twentyCases":  7.5,
-                                        "fortyCases":  7.5
+                                        "lessThanCase":  18.2,
+                                        "oneCase":  14.35,
+                                        "fiveCases":  13.82,
+                                        "tenCases":  13.12,
+                                        "twentyCases":  13.12,
+                                        "fortyCases":  13.12
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750940/products/images/large/BZ01--48a34828.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750940/products/images/large/BZ01--48a34828.png",
@@ -300,12 +300,12 @@
                                        "fortyCases":  4.05
                                    },
                          "prices":  {
-                                        "lessThanCase":  10.9,
-                                        "oneCase":  8.9,
-                                        "fiveCases":  8.6,
-                                        "tenCases":  8.1,
-                                        "twentyCases":  8.1,
-                                        "fortyCases":  8.1
+                                        "lessThanCase":  19.08,
+                                        "oneCase":  15.58,
+                                        "fiveCases":  15.05,
+                                        "tenCases":  14.18,
+                                        "twentyCases":  14.18,
+                                        "fortyCases":  14.18
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709918290/products/images/large/CA192--6a6b397e.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709918290/products/images/large/CA192--6a6b397e.png",
@@ -328,12 +328,12 @@
                                        "fortyCases":  4.9
                                    },
                          "prices":  {
-                                        "lessThanCase":  14.5,
-                                        "oneCase":  10.9,
-                                        "fiveCases":  10.5,
-                                        "tenCases":  9.8,
-                                        "twentyCases":  9.8,
-                                        "fortyCases":  9.8
+                                        "lessThanCase":  25.38,
+                                        "oneCase":  19.08,
+                                        "fiveCases":  18.38,
+                                        "tenCases":  17.15,
+                                        "twentyCases":  17.15,
+                                        "fortyCases":  17.15
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750961/products/images/large/CA202--f95aecb6.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750961/products/images/large/CA202--f95aecb6.png",
@@ -356,12 +356,12 @@
                                        "fortyCases":  5.9
                                    },
                          "prices":  {
-                                        "lessThanCase":  16.9,
-                                        "oneCase":  13.1,
-                                        "fiveCases":  12.4,
-                                        "tenCases":  11.8,
-                                        "twentyCases":  11.8,
-                                        "fortyCases":  11.8
+                                        "lessThanCase":  29.57,
+                                        "oneCase":  22.92,
+                                        "fiveCases":  21.7,
+                                        "tenCases":  20.65,
+                                        "twentyCases":  20.65,
+                                        "fortyCases":  20.65
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750974/products/images/large/CA222--8b6012c3.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750974/products/images/large/CA222--8b6012c3.png",
@@ -384,12 +384,12 @@
                                        "fortyCases":  7.75
                                    },
                          "prices":  {
-                                        "lessThanCase":  21,
-                                        "oneCase":  17.1,
-                                        "fiveCases":  16.4,
-                                        "tenCases":  15.5,
-                                        "twentyCases":  15.5,
-                                        "fortyCases":  15.5
+                                        "lessThanCase":  36.75,
+                                        "oneCase":  29.93,
+                                        "fiveCases":  28.7,
+                                        "tenCases":  27.12,
+                                        "twentyCases":  27.12,
+                                        "fortyCases":  27.12
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669750986/products/images/large/CA242--f45c291d.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669750986/products/images/large/CA242--f45c291d.png",
@@ -412,12 +412,12 @@
                                        "fortyCases":  9.55
                                    },
                          "prices":  {
-                                        "lessThanCase":  25.5,
-                                        "oneCase":  21,
-                                        "fiveCases":  20.1,
-                                        "tenCases":  19.1,
-                                        "twentyCases":  19.1,
-                                        "fortyCases":  19.1
+                                        "lessThanCase":  44.62,
+                                        "oneCase":  36.75,
+                                        "fiveCases":  35.18,
+                                        "tenCases":  33.43,
+                                        "twentyCases":  33.43,
+                                        "fortyCases":  33.43
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709918239/products/images/large/CA262--1be36c7d.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709918239/products/images/large/CA262--1be36c7d.png",
@@ -440,12 +440,12 @@
                                        "fortyCases":  4.25
                                    },
                          "prices":  {
-                                        "lessThanCase":  11.1,
-                                        "oneCase":  9.3,
-                                        "fiveCases":  8.9,
-                                        "tenCases":  8.5,
-                                        "twentyCases":  8.5,
-                                        "fortyCases":  8.5
+                                        "lessThanCase":  19.42,
+                                        "oneCase":  16.28,
+                                        "fiveCases":  15.58,
+                                        "tenCases":  14.88,
+                                        "twentyCases":  14.88,
+                                        "fortyCases":  14.88
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1764187087/products/images/large/EMB101--9ce4490b.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1764187087/products/images/large/EMB101--9ce4490b.png",
@@ -468,12 +468,12 @@
                                        "fortyCases":  4.75
                                    },
                          "prices":  {
-                                        "lessThanCase":  12.5,
-                                        "oneCase":  10.5,
-                                        "fiveCases":  10,
-                                        "tenCases":  9.5,
-                                        "twentyCases":  9.5,
-                                        "fortyCases":  9.5
+                                        "lessThanCase":  21.88,
+                                        "oneCase":  18.38,
+                                        "fiveCases":  17.5,
+                                        "tenCases":  16.62,
+                                        "twentyCases":  16.62,
+                                        "fortyCases":  16.62
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1764187074/products/images/large/EMB151--b6207c44.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1764187074/products/images/large/EMB151--b6207c44.png",
@@ -496,12 +496,12 @@
                                        "fortyCases":  3.85
                                    },
                          "prices":  {
-                                        "lessThanCase":  10.8,
-                                        "oneCase":  8.6,
-                                        "fiveCases":  8.3,
-                                        "tenCases":  7.7,
-                                        "twentyCases":  7.7,
-                                        "fortyCases":  7.7
+                                        "lessThanCase":  18.9,
+                                        "oneCase":  15.05,
+                                        "fiveCases":  14.53,
+                                        "tenCases":  13.48,
+                                        "twentyCases":  13.48,
+                                        "fortyCases":  13.48
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709907291/products/images/large/HC101--dce1018a.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709907291/products/images/large/HC101--dce1018a.png",
@@ -524,12 +524,12 @@
                                        "fortyCases":  5.1
                                    },
                          "prices":  {
-                                        "lessThanCase":  14.2,
-                                        "oneCase":  11.2,
-                                        "fiveCases":  10.7,
-                                        "tenCases":  10.2,
-                                        "twentyCases":  10.2,
-                                        "fortyCases":  10.2
+                                        "lessThanCase":  24.85,
+                                        "oneCase":  19.6,
+                                        "fiveCases":  18.72,
+                                        "tenCases":  17.85,
+                                        "twentyCases":  17.85,
+                                        "fortyCases":  17.85
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709909485/products/images/large/HC301--baf4c057.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709909485/products/images/large/HC301--baf4c057.png",
@@ -552,12 +552,12 @@
                                        "fortyCases":  8.95
                                    },
                          "prices":  {
-                                        "lessThanCase":  23.2,
-                                        "oneCase":  19.5,
-                                        "fiveCases":  18.8,
-                                        "tenCases":  17.9,
-                                        "twentyCases":  17.9,
-                                        "fortyCases":  17.9
+                                        "lessThanCase":  40.6,
+                                        "oneCase":  34.12,
+                                        "fiveCases":  32.9,
+                                        "tenCases":  31.32,
+                                        "twentyCases":  31.32,
+                                        "fortyCases":  31.32
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842528/products/images/large/JDS11--f95c2563.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842528/products/images/large/JDS11--f95c2563.png",
@@ -580,12 +580,12 @@
                                        "fortyCases":  8.95
                                    },
                          "prices":  {
-                                        "lessThanCase":  23.2,
-                                        "oneCase":  19.5,
-                                        "fiveCases":  18.8,
-                                        "tenCases":  17.9,
-                                        "twentyCases":  17.9,
-                                        "fortyCases":  17.9
+                                        "lessThanCase":  40.6,
+                                        "oneCase":  34.12,
+                                        "fiveCases":  32.9,
+                                        "tenCases":  31.32,
+                                        "twentyCases":  31.32,
+                                        "fortyCases":  31.32
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842525/products/images/large/JDS12--568cebf9.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842525/products/images/large/JDS12--568cebf9.png",
@@ -608,12 +608,12 @@
                                        "fortyCases":  4.85
                                    },
                          "prices":  {
-                                        "lessThanCase":  14.3,
-                                        "oneCase":  10.6,
-                                        "fiveCases":  10.2,
-                                        "tenCases":  9.7,
-                                        "twentyCases":  9.7,
-                                        "fortyCases":  9.7
+                                        "lessThanCase":  25.02,
+                                        "oneCase":  18.55,
+                                        "fiveCases":  17.85,
+                                        "tenCases":  16.97,
+                                        "twentyCases":  16.97,
+                                        "fortyCases":  16.97
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842495/products/images/large/JSR101--e2df0e20.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842495/products/images/large/JSR101--e2df0e20.png",
@@ -636,12 +636,12 @@
                                        "fortyCases":  4.15
                                    },
                          "prices":  {
-                                        "lessThanCase":  12.2,
-                                        "oneCase":  9.4,
-                                        "fiveCases":  8.7,
-                                        "tenCases":  8.3,
-                                        "twentyCases":  8.3,
-                                        "fortyCases":  8.3
+                                        "lessThanCase":  21.35,
+                                        "oneCase":  16.45,
+                                        "fiveCases":  15.22,
+                                        "tenCases":  14.53,
+                                        "twentyCases":  14.53,
+                                        "fortyCases":  14.53
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709842423/products/images/large/LPR01--d286f32e.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709842423/products/images/large/LPR01--d286f32e.png",
@@ -664,12 +664,12 @@
                                        "fortyCases":  6.05
                                    },
                          "prices":  {
-                                        "lessThanCase":  16.3,
-                                        "oneCase":  13.4,
-                                        "fiveCases":  12.8,
-                                        "tenCases":  12.1,
-                                        "twentyCases":  12.1,
-                                        "fortyCases":  12.1
+                                        "lessThanCase":  28.52,
+                                        "oneCase":  23.45,
+                                        "fiveCases":  22.4,
+                                        "tenCases":  21.18,
+                                        "twentyCases":  21.18,
+                                        "fortyCases":  21.18
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697661407/products/images/large/PLR101--c4383588.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697661407/products/images/large/PLR101--c4383588.png",
@@ -692,12 +692,12 @@
                                        "fortyCases":  8.7
                                    },
                          "prices":  {
-                                        "lessThanCase":  23.9,
-                                        "oneCase":  19.1,
-                                        "fiveCases":  18.3,
-                                        "tenCases":  17.4,
-                                        "twentyCases":  17.4,
-                                        "fortyCases":  17.4
+                                        "lessThanCase":  41.82,
+                                        "oneCase":  33.43,
+                                        "fiveCases":  32.02,
+                                        "tenCases":  30.45,
+                                        "twentyCases":  30.45,
+                                        "fortyCases":  30.45
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697661473/products/images/large/PLR111--b2d86b9c.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697661473/products/images/large/PLR111--b2d86b9c.png",
@@ -720,12 +720,12 @@
                                        "fortyCases":  13.05
                                    },
                          "prices":  {
-                                        "lessThanCase":  34.4,
-                                        "oneCase":  28.5,
-                                        "fiveCases":  27.2,
-                                        "tenCases":  26.1,
-                                        "twentyCases":  26.1,
-                                        "fortyCases":  26.1
+                                        "lessThanCase":  60.2,
+                                        "oneCase":  49.88,
+                                        "fiveCases":  47.6,
+                                        "tenCases":  45.68,
+                                        "twentyCases":  45.68,
+                                        "fortyCases":  45.68
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697661512/products/images/large/PLR121--efd8ecbb.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697661512/products/images/large/PLR121--efd8ecbb.png",
@@ -748,12 +748,12 @@
                                        "fortyCases":  6.35
                                    },
                          "prices":  {
-                                        "lessThanCase":  17.6,
-                                        "oneCase":  14,
-                                        "fiveCases":  13.4,
-                                        "tenCases":  12.7,
-                                        "twentyCases":  12.7,
-                                        "fortyCases":  12.7
+                                        "lessThanCase":  30.8,
+                                        "oneCase":  24.5,
+                                        "fiveCases":  23.45,
+                                        "tenCases":  22.22,
+                                        "twentyCases":  22.22,
+                                        "fortyCases":  22.22
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917076/products/images/large/REN101--4f7e8dc8.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917076/products/images/large/REN101--4f7e8dc8.png",
@@ -776,12 +776,12 @@
                                        "fortyCases":  8.8
                                    },
                          "prices":  {
-                                        "lessThanCase":  23.2,
-                                        "oneCase":  19.3,
-                                        "fiveCases":  18.5,
-                                        "tenCases":  17.6,
-                                        "twentyCases":  17.6,
-                                        "fortyCases":  17.6
+                                        "lessThanCase":  40.6,
+                                        "oneCase":  33.78,
+                                        "fiveCases":  32.38,
+                                        "tenCases":  30.8,
+                                        "twentyCases":  30.8,
+                                        "fortyCases":  30.8
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917110/products/images/large/REN201--d563fb4d.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917110/products/images/large/REN201--d563fb4d.png",
@@ -804,12 +804,12 @@
                                        "fortyCases":  10.8
                                    },
                          "prices":  {
-                                        "lessThanCase":  28.3,
-                                        "oneCase":  23.7,
-                                        "fiveCases":  22.5,
-                                        "tenCases":  21.6,
-                                        "twentyCases":  21.6,
-                                        "fortyCases":  21.6
+                                        "lessThanCase":  49.52,
+                                        "oneCase":  41.48,
+                                        "fiveCases":  39.38,
+                                        "tenCases":  37.8,
+                                        "twentyCases":  37.8,
+                                        "fortyCases":  37.8
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917145/products/images/large/REN301--b512b58b.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917145/products/images/large/REN301--b512b58b.png",
@@ -832,12 +832,12 @@
                                        "fortyCases":  6.45
                                    },
                          "prices":  {
-                                        "lessThanCase":  17.7,
-                                        "oneCase":  14.2,
-                                        "fiveCases":  13.5,
-                                        "tenCases":  12.9,
-                                        "twentyCases":  12.9,
-                                        "fortyCases":  12.9
+                                        "lessThanCase":  30.98,
+                                        "oneCase":  24.85,
+                                        "fiveCases":  23.62,
+                                        "tenCases":  22.58,
+                                        "twentyCases":  22.58,
+                                        "fortyCases":  22.58
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917443/products/images/large/RKS201--a6ba45ea.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917443/products/images/large/RKS201--a6ba45ea.png",
@@ -860,12 +860,12 @@
                                        "fortyCases":  7.05
                                    },
                          "prices":  {
-                                        "lessThanCase":  19.1,
-                                        "oneCase":  15.5,
-                                        "fiveCases":  14.7,
-                                        "tenCases":  14.1,
-                                        "twentyCases":  14.1,
-                                        "fortyCases":  14.1
+                                        "lessThanCase":  33.43,
+                                        "oneCase":  27.12,
+                                        "fiveCases":  25.72,
+                                        "tenCases":  24.68,
+                                        "twentyCases":  24.68,
+                                        "fortyCases":  24.68
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917419/products/images/large/RKS211--4503e9c0.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917419/products/images/large/RKS211--4503e9c0.png",
@@ -888,12 +888,12 @@
                                        "fortyCases":  4.9
                                    },
                          "prices":  {
-                                        "lessThanCase":  13.9,
-                                        "oneCase":  10.8,
-                                        "fiveCases":  10.3,
-                                        "tenCases":  9.8,
-                                        "twentyCases":  9.8,
-                                        "fortyCases":  9.8
+                                        "lessThanCase":  24.32,
+                                        "oneCase":  18.9,
+                                        "fiveCases":  18.03,
+                                        "tenCases":  17.15,
+                                        "twentyCases":  17.15,
+                                        "fortyCases":  17.15
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917220/products/images/large/RR505--b2125fb8.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917220/products/images/large/RR505--b2125fb8.png",
@@ -916,12 +916,12 @@
                                        "fortyCases":  5.6
                                    },
                          "prices":  {
-                                        "lessThanCase":  16,
-                                        "oneCase":  12.5,
-                                        "fiveCases":  11.9,
-                                        "tenCases":  11.2,
-                                        "twentyCases":  11.2,
-                                        "fortyCases":  11.2
+                                        "lessThanCase":  28,
+                                        "oneCase":  21.88,
+                                        "fiveCases":  20.82,
+                                        "tenCases":  19.6,
+                                        "twentyCases":  19.6,
+                                        "fortyCases":  19.6
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917258/products/images/large/RR705--206b7cad.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917258/products/images/large/RR705--206b7cad.png",
@@ -944,12 +944,12 @@
                                        "fortyCases":  4.85
                                    },
                          "prices":  {
-                                        "lessThanCase":  14.3,
-                                        "oneCase":  10.8,
-                                        "fiveCases":  10.2,
-                                        "tenCases":  9.7,
-                                        "twentyCases":  9.7,
-                                        "fortyCases":  9.7
+                                        "lessThanCase":  25.02,
+                                        "oneCase":  18.9,
+                                        "fiveCases":  17.85,
+                                        "tenCases":  16.97,
+                                        "twentyCases":  16.97,
+                                        "fortyCases":  16.97
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669759468/products/images/large/SA601--9a1e6d85.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669759468/products/images/large/SA601--9a1e6d85.png",
@@ -972,12 +972,12 @@
                                        "fortyCases":  5.45
                                    },
                          "prices":  {
-                                        "lessThanCase":  15.6,
-                                        "oneCase":  12,
-                                        "fiveCases":  11.5,
-                                        "tenCases":  10.9,
-                                        "twentyCases":  10.9,
-                                        "fortyCases":  10.9
+                                        "lessThanCase":  27.3,
+                                        "oneCase":  21,
+                                        "fiveCases":  20.12,
+                                        "tenCases":  19.08,
+                                        "twentyCases":  19.08,
+                                        "fortyCases":  19.08
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1669759523/products/images/large/SA701--74de0e5f.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1669759523/products/images/large/SA701--74de0e5f.png",
@@ -1000,12 +1000,12 @@
                                        "fortyCases":  4.6
                                    },
                          "prices":  {
-                                        "lessThanCase":  13.3,
-                                        "oneCase":  9.9,
-                                        "fiveCases":  9.6,
-                                        "tenCases":  9.2,
-                                        "twentyCases":  9.2,
-                                        "fortyCases":  9.2
+                                        "lessThanCase":  23.28,
+                                        "oneCase":  17.32,
+                                        "fiveCases":  16.8,
+                                        "tenCases":  16.1,
+                                        "twentyCases":  16.1,
+                                        "fortyCases":  16.1
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917470/products/images/large/SR101--85c9ef65.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917470/products/images/large/SR101--85c9ef65.png",
@@ -1028,12 +1028,12 @@
                                        "fortyCases":  5.55
                                    },
                          "prices":  {
-                                        "lessThanCase":  15.8,
-                                        "oneCase":  12.1,
-                                        "fiveCases":  11.6,
-                                        "tenCases":  11.1,
-                                        "twentyCases":  11.1,
-                                        "fortyCases":  11.1
+                                        "lessThanCase":  27.65,
+                                        "oneCase":  21.18,
+                                        "fiveCases":  20.3,
+                                        "tenCases":  19.42,
+                                        "twentyCases":  19.42,
+                                        "fortyCases":  19.42
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1710792037/products/images/large/SR201--4ec5a13f.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1710792037/products/images/large/SR201--4ec5a13f.png",
@@ -1056,12 +1056,12 @@
                                        "fortyCases":  4.65
                                    },
                          "prices":  {
-                                        "lessThanCase":  13,
-                                        "oneCase":  10,
-                                        "fiveCases":  9.7,
-                                        "tenCases":  9.3,
-                                        "twentyCases":  9.3,
-                                        "fortyCases":  9.3
+                                        "lessThanCase":  22.75,
+                                        "oneCase":  17.5,
+                                        "fiveCases":  16.97,
+                                        "tenCases":  16.28,
+                                        "twentyCases":  16.28,
+                                        "fortyCases":  16.28
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709907506/products/images/large/TRD101--65b34b8b.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709907506/products/images/large/TRD101--65b34b8b.png",
@@ -1084,12 +1084,12 @@
                                        "fortyCases":  4.75
                                    },
                          "prices":  {
-                                        "lessThanCase":  13,
-                                        "oneCase":  10.5,
-                                        "fiveCases":  9.9,
-                                        "tenCases":  9.5,
-                                        "twentyCases":  9.5,
-                                        "fortyCases":  9.5
+                                        "lessThanCase":  22.75,
+                                        "oneCase":  18.38,
+                                        "fiveCases":  17.32,
+                                        "tenCases":  16.62,
+                                        "twentyCases":  16.62,
+                                        "fortyCases":  16.62
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697827486/products/images/large/TR101--6e0bd715.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697827486/products/images/large/TR101--6e0bd715.png",
@@ -1112,12 +1112,12 @@
                                        "fortyCases":  5.45
                                    },
                          "prices":  {
-                                        "lessThanCase":  15,
-                                        "oneCase":  12.1,
-                                        "fiveCases":  11.4,
-                                        "tenCases":  10.9,
-                                        "twentyCases":  10.9,
-                                        "fortyCases":  10.9
+                                        "lessThanCase":  26.25,
+                                        "oneCase":  21.18,
+                                        "fiveCases":  19.95,
+                                        "tenCases":  19.08,
+                                        "twentyCases":  19.08,
+                                        "fortyCases":  19.08
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1697827439/products/images/large/TR151--e38a0845.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1697827439/products/images/large/TR151--e38a0845.png",
@@ -1140,12 +1140,12 @@
                                        "fortyCases":  5.1
                                    },
                          "prices":  {
-                                        "lessThanCase":  14.2,
-                                        "oneCase":  11.2,
-                                        "fiveCases":  10.7,
-                                        "tenCases":  10.2,
-                                        "twentyCases":  10.2,
-                                        "fortyCases":  10.2
+                                        "lessThanCase":  24.85,
+                                        "oneCase":  19.6,
+                                        "fiveCases":  18.72,
+                                        "tenCases":  17.85,
+                                        "twentyCases":  17.85,
+                                        "fortyCases":  17.85
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709918132/products/images/large/TS807--5146bf72.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709918132/products/images/large/TS807--5146bf72.png",
@@ -1168,12 +1168,12 @@
                                        "fortyCases":  4.85
                                    },
                          "prices":  {
-                                        "lessThanCase":  14,
-                                        "oneCase":  10.6,
-                                        "fiveCases":  10.2,
-                                        "tenCases":  9.7,
-                                        "twentyCases":  9.7,
-                                        "fortyCases":  9.7
+                                        "lessThanCase":  24.5,
+                                        "oneCase":  18.55,
+                                        "fiveCases":  17.85,
+                                        "tenCases":  16.97,
+                                        "twentyCases":  16.97,
+                                        "fortyCases":  16.97
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917621/products/images/large/VSR107--84a73fe1.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917621/products/images/large/VSR107--84a73fe1.png",
@@ -1196,12 +1196,12 @@
                                        "fortyCases":  6.5
                                    },
                          "prices":  {
-                                        "lessThanCase":  17.8,
-                                        "oneCase":  14.5,
-                                        "fiveCases":  13.7,
-                                        "tenCases":  13,
-                                        "twentyCases":  13,
-                                        "fortyCases":  13
+                                        "lessThanCase":  31.15,
+                                        "oneCase":  25.38,
+                                        "fiveCases":  23.98,
+                                        "tenCases":  22.75,
+                                        "twentyCases":  22.75,
+                                        "fortyCases":  22.75
                                     },
                          "image":  "https://res.cloudinary.com/business-products/image/upload/q_auto/v1709917685/products/images/large/VSR207--38324335.png",
                          "thumbnail":  "https://res.cloudinary.com/business-products/image/upload/q_auto,c_pad,b_transparent,w_300,h_300/v1709917685/products/images/large/VSR207--38324335.png",
