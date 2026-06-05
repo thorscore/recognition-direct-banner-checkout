@@ -107,7 +107,33 @@ const premierAwardCatalogs = new Map([
 for (const catalog of premierAwardCatalogs.values()) {
   catalog.bySku = new Map(catalog.products.map((product) => [product.sku, product]));
 }
-const polarCamelProducts = polarCamelData.products || [];
+const polarCamelProducts = [...(polarCamelData.products || [])].sort((a, b) => {
+  const typePriority = new Map([
+    ["Tumbler", 0],
+    ["Water Bottle", 1],
+    ["Mug", 2],
+    ["Beverage Holder", 3],
+    ["Wine Tumbler", 4],
+    ["Bowl", 5],
+    ["Glassware", 6],
+    ["Decanter", 7],
+    ["Polar Camel Wine Chiller", 8],
+    ["Straw", 9],
+  ]);
+  const accessoryPattern = /^(slider lid|magnetic lid|snap lid|handle|polar camel water bottle carabiner)|\bboot\b/i;
+  const specialtyPattern = /\/|ghost|rose gold|prism|leatherette|silicone grip/i;
+  const aAccessory = accessoryPattern.test(a.title || "") ? 20 : 0;
+  const bAccessory = accessoryPattern.test(b.title || "") ? 20 : 0;
+  const aSpecialty = specialtyPattern.test(a.title || "") ? 5 : 0;
+  const bSpecialty = specialtyPattern.test(b.title || "") ? 5 : 0;
+  const aPriority = (typePriority.get(a.type) ?? 10) + aAccessory + aSpecialty;
+  const bPriority = (typePriority.get(b.type) ?? 10) + bAccessory + bSpecialty;
+  if (aPriority !== bPriority) return aPriority - bPriority;
+  const aVariantCount = (a.variants || []).length;
+  const bVariantCount = (b.variants || []).length;
+  if (aVariantCount !== bVariantCount) return bVariantCount - aVariantCount;
+  return String(a.title || "").localeCompare(String(b.title || ""));
+});
 const polarCamelProductByHandle = new Map(polarCamelProducts.map((product) => [product.handle, product]));
 const polarCamelVariantBySku = new Map(polarCamelProducts.flatMap((product) => (
   (product.variants || []).map((variant) => [variant.sku, { product, variant }])
@@ -2120,11 +2146,13 @@ function polarCamelCardsHtml(products) {
       }
     }) || product.variants?.[0];
     const startingPrice = firstPricedVariant ? polarCamelTier(firstPricedVariant, 1).unitPrice : 0;
+    const variantCount = (product.variants || []).length;
+    const optionLabel = variantCount > 1 ? `${variantCount} colors/options` : "1 option";
     return `
       <button class="product-card${index === 0 ? " active" : ""}" type="button" data-handle="${escapeHtml(product.handle)}">
         <img src="${escapeHtml(product.thumbnail || product.image)}" alt="${escapeHtml(product.title)}" loading="lazy">
         <strong>${escapeHtml(product.title)}</strong>
-        <span>${escapeHtml(product.type || "Polar Camel")}</span>
+        <span>${escapeHtml(product.type || "Polar Camel")} - ${escapeHtml(optionLabel)}</span>
         <em>Starts at $${startingPrice.toFixed(2)} each</em>
       </button>`;
   }).join("");
