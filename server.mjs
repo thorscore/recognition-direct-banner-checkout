@@ -15,6 +15,7 @@ const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
 const PREMIER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-baseball-softball-resin-trophies.json");
+const PREMIER_SOCCER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-soccer-resin-trophies.json");
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
@@ -68,12 +69,42 @@ await mkdir(UPLOAD_DIR, { recursive: true });
 await mkdir(ORDER_DIR, { recursive: true });
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierSoccerAwardsData = JSON.parse((await readFile(PREMIER_SOCCER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const catalogByHandle = new Map(catalogData.products.map((product) => [
   product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-"),
   product,
 ]));
-const premierAwardProducts = premierAwardsData.products || [];
-const premierAwardBySku = new Map(premierAwardProducts.map((product) => [product.sku, product]));
+const premierAwardCatalogs = new Map([
+  ["baseball-softball", {
+    id: "baseball-softball",
+    route: "/baseball-softball-resin-trophies",
+    title: "Baseball / Softball Resin Trophies",
+    metaDescription: "Order personalized Baseball and Softball resin trophies with proof before production from Recognition Direct.",
+    intro: "Choose a trophy, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Baseball and Softball trophy products",
+    selectError: "Select a Baseball / Softball trophy.",
+    orderType: "premier-baseball-softball-award-order",
+    noteLabel: "Baseball / Softball trophy",
+    tags: ["baseball-softball-trophies", "proof-required", "jds-premier"],
+    products: premierAwardsData.products || [],
+  }],
+  ["soccer", {
+    id: "soccer",
+    route: "/soccer-resin-trophies",
+    title: "Soccer Resin Trophies",
+    metaDescription: "Order personalized soccer resin trophies with proof before production from Recognition Direct.",
+    intro: "Choose a soccer trophy, enter your plate wording, and checkout online. We will send a proof before production.",
+    galleryLabel: "Soccer trophy products",
+    selectError: "Select a soccer trophy.",
+    orderType: "premier-soccer-award-order",
+    noteLabel: "soccer trophy",
+    tags: ["soccer-trophies", "proof-required", "jds-premier"],
+    products: premierSoccerAwardsData.products || [],
+  }],
+]);
+for (const catalog of premierAwardCatalogs.values()) {
+  catalog.bySku = new Map(catalog.products.map((product) => [product.sku, product]));
+}
 
 function json(res, status, payload, headers = {}) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", ...headers });
@@ -313,13 +344,19 @@ function premierAwardTier(product, quantity) {
   return tier;
 }
 
+function premierAwardCatalog(id) {
+  return premierAwardCatalogs.get(cleanText(id, 80)) || premierAwardCatalogs.get("baseball-softball");
+}
+
 function buildPremierAwardInput(formData) {
-  const product = premierAwardBySku.get(field(formData, "sku", 80));
-  if (!product) throw new Error("Select a Baseball / Softball trophy.");
+  const catalog = premierAwardCatalog(formData.get("catalog"));
+  const product = catalog.bySku.get(field(formData, "sku", 80));
+  if (!product) throw new Error(catalog.selectError);
   const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
   const tier = premierAwardTier(product, quantity);
   const unitPrice = Number(tier.unitPrice.toFixed(2));
   return {
+    catalog,
     product,
     quantity,
     tier,
@@ -1149,7 +1186,7 @@ async function handlePremierAwardCheckout(req, res) {
   const email = field(formData, "email", 320);
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
   const input = buildPremierAwardInput(formData);
-  const { product, quantity, tier, unitPrice, totalPrice } = input;
+  const { catalog, product, quantity, tier, unitPrice, totalPrice } = input;
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const namesFileUrl = await saveUpload(formData.get("names_file"));
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
@@ -1175,7 +1212,8 @@ async function handlePremierAwardCheckout(req, res) {
   const orderRecord = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
-    type: "premier-baseball-softball-award-order",
+    type: catalog.orderType,
+    catalog: catalog.id,
     sku: product.sku,
     productTitle: product.title,
     size: product.size,
@@ -1207,8 +1245,8 @@ async function handlePremierAwardCheckout(req, res) {
 
   const draftOrder = await createDraftOrder({
     email,
-    note: `Recognition Direct Baseball / Softball trophy order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["baseball-softball-trophies", "proof-required", "jds-premier", isPickup ? field(formData, "delivery_method") : "ship"],
+    note: `Recognition Direct ${catalog.noteLabel} order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship"],
     allowDiscountCodesInCheckout: true,
     lineItems: [{
       title: product.title,
@@ -1652,15 +1690,17 @@ function premierAwardCardsHtml(products) {
   }).join("");
 }
 
-function premierAwardsPageHtml() {
-  const first = premierAwardProducts[0];
+function premierAwardsPageHtml(catalogId = "baseball-softball") {
+  const catalog = premierAwardCatalog(catalogId);
+  const products = catalog.products;
+  const first = products[0];
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Baseball / Softball Resin Trophies | Recognition Direct</title>
-  <meta name="description" content="Order personalized Baseball and Softball resin trophies with proof before production from Recognition Direct.">
+  <title>${escapeHtml(catalog.title)} | Recognition Direct</title>
+  <meta name="description" content="${escapeHtml(catalog.metaDescription)}">
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
     *{box-sizing:border-box}
@@ -1710,18 +1750,18 @@ function premierAwardsPageHtml() {
 <body>
   <main class="wrap">
     <p class="eyebrow">Recognition Direct</p>
-    <h1>Baseball / Softball Resin Trophies</h1>
-    <p class="intro">Choose a trophy, enter your personalization, and checkout online. We will send a proof before production.</p>
+    <h1>${escapeHtml(catalog.title)}</h1>
+    <p class="intro">${escapeHtml(catalog.intro)}</p>
 
     <div class="layout">
-      <section class="panel gallery" aria-label="Baseball and Softball trophy products">
+      <section class="panel gallery" aria-label="${escapeHtml(catalog.galleryLabel)}">
         <div class="toolbar">
           <div>
             <label for="award_search">Search trophies</label>
             <input id="award_search" data-search placeholder="Search by name, size, or SKU">
           </div>
         </div>
-        <div class="award-grid" data-award-grid>${premierAwardCardsHtml(premierAwardProducts)}</div>
+        <div class="award-grid" data-award-grid>${premierAwardCardsHtml(products)}</div>
       </section>
 
       <section class="selected">
@@ -1735,6 +1775,7 @@ function premierAwardsPageHtml() {
           </table>
         </div>
         <form action="${APP_BASE_URL}/api/premier-award-checkout" method="post" enctype="multipart/form-data" data-award-form>
+          <input type="hidden" name="catalog" value="${escapeHtml(catalog.id)}">
           <input type="hidden" name="sku" value="${escapeHtml(first.sku)}">
           <div class="panel grid">
             <div>
@@ -1802,7 +1843,7 @@ function premierAwardsPageHtml() {
     </div>
   </main>
   <script>
-    const products = ${JSON.stringify(premierAwardProducts)};
+    const products = ${JSON.stringify(products)};
     const form = document.querySelector('[data-award-form]');
     const cards = [...document.querySelectorAll('[data-sku]')];
     const preview = document.querySelector('[data-preview]');
@@ -2226,7 +2267,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/custom-name-badges/thanks") return html(res, 200, customNameBadgeThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/solar-placards") return html(res, 200, solarPlacardsPageHtml());
     if (req.method === "GET" && url.pathname === "/solar-placards/thanks") return html(res, 200, solarPlacardsThanksHtml(url));
-    if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml());
+    if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball"));
+    if (req.method === "GET" && url.pathname === "/soccer-resin-trophies") return html(res, 200, premierAwardsPageHtml("soccer"));
     if (req.method === "GET" && /^\/assets\/name-badges\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
       return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));
     }
