@@ -1286,6 +1286,7 @@ async function handlePremierAwardCheckout(req, res) {
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
   const input = buildPremierAwardInput(formData);
   const { catalog, product, quantity, tier, unitPrice, totalPrice } = input;
+  const productDisplayName = product.displayName || product.title;
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const namesFileUrl = await saveUpload(formData.get("names_file"));
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
@@ -1293,8 +1294,9 @@ async function handlePremierAwardCheckout(req, res) {
   const attributes = [
     attribute("Vendor", "JDS / Premier Sport Awards"),
     attribute("SKU", product.sku),
-    attribute("Product", product.title),
+    attribute("Product", productDisplayName),
     attribute("Size", product.size),
+    attribute("Option", product.optionValue),
     attribute("Case Quantity", String(product.caseQuantity)),
     attribute("Pricing Tier", tier.label),
     attribute("Plate / Personalization Text", field(formData, "plate_text", 5000)),
@@ -1314,7 +1316,7 @@ async function handlePremierAwardCheckout(req, res) {
     type: catalog.orderType,
     catalog: catalog.id,
     sku: product.sku,
-    productTitle: product.title,
+    productTitle: productDisplayName,
     size: product.size,
     quantity,
     unitPrice,
@@ -1348,7 +1350,7 @@ async function handlePremierAwardCheckout(req, res) {
     tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship"],
     allowDiscountCodesInCheckout: true,
     lineItems: [{
-      title: product.title,
+      title: productDisplayName,
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
       requiresShipping: !isPickup,
