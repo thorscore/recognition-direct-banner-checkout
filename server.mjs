@@ -16,6 +16,7 @@ const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
 const PREMIER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-baseball-softball-resin-trophies.json");
 const PREMIER_SOCCER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-soccer-resin-trophies.json");
+const PREMIER_ACRYLIC_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-acrylic-awards.json");
 const POLAR_CAMEL_FILE = join(import.meta.dirname, "catalog", "polar-camel.json");
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
@@ -71,6 +72,7 @@ await mkdir(ORDER_DIR, { recursive: true });
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierSoccerAwardsData = JSON.parse((await readFile(PREMIER_SOCCER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
+const premierAcrylicAwardsData = JSON.parse((await readFile(PREMIER_ACRYLIC_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const polarCamelData = JSON.parse((await readFile(POLAR_CAMEL_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const catalogByHandle = new Map(catalogData.products.map((product) => [
   product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-"),
@@ -102,6 +104,26 @@ const premierAwardCatalogs = new Map([
     noteLabel: "soccer trophy",
     tags: ["soccer-trophies", "proof-required", "jds-premier"],
     products: premierSoccerAwardsData.products || [],
+  }],
+  ["acrylic", {
+    id: "acrylic",
+    route: "/acrylic-awards",
+    title: "Acrylic Awards",
+    metaDescription: "Order personalized acrylic awards with proof before production from Recognition Direct.",
+    intro: "Choose an acrylic award, enter your personalization, and checkout online. We will send a proof before production.",
+    galleryLabel: "Acrylic award products",
+    searchLabel: "Search acrylic awards",
+    searchPlaceholder: "Search by name, style, option, or SKU",
+    itemPlural: "awards",
+    plateLabel: "Personalized award text",
+    platePlaceholder: "Enter award plate or engraving text. Example:\nTop Sales 2026\nPresented to Jane Smith",
+    notesPlaceholder: "Tell us anything else we should know about layout, deadline, logo placement, or award wording.",
+    submitLabel: "Add acrylic awards to checkout",
+    selectError: "Select an acrylic award.",
+    orderType: "premier-acrylic-award-order",
+    noteLabel: "acrylic award",
+    tags: ["acrylic-awards", "proof-required", "jds-premier"],
+    products: premierAcrylicAwardsData.products || [],
   }],
 ]);
 for (const catalog of premierAwardCatalogs.values()) {
@@ -1870,9 +1892,9 @@ function premierAwardCardsHtml(products) {
     const startingPrice = premierAwardTier(product, 1).unitPrice;
     return `
       <button class="award-card${index === 0 ? " active" : ""}" type="button" data-sku="${escapeHtml(product.sku)}">
-        <img src="${escapeHtml(product.thumbnail || product.image)}" alt="${escapeHtml(product.title)}" loading="lazy">
-        <strong>${escapeHtml(product.title)}</strong>
-        <span>${escapeHtml(product.size || "")}</span>
+        <img src="${escapeHtml(product.thumbnail || product.image)}" alt="${escapeHtml(product.imageAlt || product.displayName || product.title)}" loading="lazy">
+        <strong>${escapeHtml(product.displayName || product.title)}</strong>
+        <span>${escapeHtml([product.productType, product.size].filter(Boolean).join(" - "))}</span>
         <em>Starts at $${startingPrice.toFixed(2)} each</em>
       </button>`;
   }).join("");
@@ -1882,6 +1904,13 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
   const catalog = premierAwardCatalog(catalogId);
   const products = catalog.products;
   const first = products[0];
+  const itemPlural = catalog.itemPlural || "trophies";
+  const plateLabel = catalog.plateLabel || "Personalized plate text";
+  const platePlaceholder = catalog.platePlaceholder || "Enter one trophy plate per line. Example:\nMVP - Jackson Smith\nCoach Award - Sarah Lee";
+  const notesPlaceholder = catalog.notesPlaceholder || "Tell us anything else we should know about layout, deadline, team, or award wording.";
+  const submitLabel = catalog.submitLabel || "Add trophies to checkout";
+  const searchLabel = catalog.searchLabel || "Search trophies";
+  const searchPlaceholder = catalog.searchPlaceholder || "Search by name, size, or SKU";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1945,17 +1974,17 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
       <section class="panel gallery" aria-label="${escapeHtml(catalog.galleryLabel)}">
         <div class="toolbar">
           <div>
-            <label for="award_search">Search trophies</label>
-            <input id="award_search" data-search placeholder="Search by name, size, or SKU">
+            <label for="award_search">${escapeHtml(searchLabel)}</label>
+            <input id="award_search" data-search placeholder="${escapeHtml(searchPlaceholder)}">
           </div>
         </div>
         <div class="award-grid" data-award-grid>${premierAwardCardsHtml(products)}</div>
       </section>
 
       <section class="selected">
-        <img class="preview" data-preview src="${escapeHtml(first.image)}" alt="${escapeHtml(first.title)}">
+        <img class="preview" data-preview src="${escapeHtml(first.image)}" alt="${escapeHtml(first.imageAlt || first.displayName || first.title)}">
         <div class="panel">
-          <h2 data-selected-title>${escapeHtml(first.title)}</h2>
+          <h2 data-selected-title>${escapeHtml(first.displayName || first.title)}</h2>
           <p class="description" data-selected-description>${escapeHtml(first.description)}</p>
           <table class="tier-table" aria-label="Quantity price breaks">
             <thead><tr><th>Qty</th><th>Each</th></tr></thead>
@@ -1979,8 +2008,8 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
               </select>
             </div>
             <div class="full">
-              <label for="plate_text">Personalized plate text</label>
-              <textarea id="plate_text" name="plate_text" placeholder="Enter one trophy plate per line. Example:&#10;MVP - Jackson Smith&#10;Coach Award - Sarah Lee"></textarea>
+              <label for="plate_text">${escapeHtml(plateLabel)}</label>
+              <textarea id="plate_text" name="plate_text" placeholder="${escapeHtml(platePlaceholder)}"></textarea>
               <p class="note">You can also upload a names/text file below. We will send a proof before production.</p>
             </div>
             <div>
@@ -2016,7 +2045,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
             </div>
             <div class="full">
               <label for="notes">Notes</label>
-              <textarea id="notes" name="notes" placeholder="Tell us anything else we should know about layout, deadline, team, or award wording."></textarea>
+              <textarea id="notes" name="notes" placeholder="${escapeHtml(notesPlaceholder)}"></textarea>
             </div>
           </div>
 
@@ -2025,7 +2054,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
             <strong data-price-total>$0.00</strong>
             <span data-price-message>You will receive a proof before production.</span>
           </div>
-          <button class="submit" type="submit">Add trophies to checkout</button>
+          <button class="submit" type="submit">${escapeHtml(submitLabel)}</button>
         </form>
       </section>
     </div>
@@ -2081,7 +2110,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
       const total = Number(tier.unitPrice) * quantity;
       priceLabel.textContent = money(tier.unitPrice) + ' each - ' + tier.label;
       priceTotal.textContent = money(total);
-      priceMessage.textContent = 'Estimated total for ' + quantity + ' trophies. Proof required before production.';
+      priceMessage.textContent = 'Estimated total for ' + quantity + ' ${escapeHtml(itemPlural)}. Proof required before production.';
       sendHeight();
     }
 
@@ -2089,8 +2118,8 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
       selectedProduct = products.find((product) => product.sku === sku) || products[0];
       form.elements.sku.value = selectedProduct.sku;
       preview.src = selectedProduct.image;
-      preview.alt = selectedProduct.title;
-      selectedTitle.textContent = selectedProduct.title;
+      preview.alt = selectedProduct.imageAlt || selectedProduct.displayName || selectedProduct.title;
+      selectedTitle.textContent = selectedProduct.displayName || selectedProduct.title;
       selectedDescription.textContent = selectedProduct.description;
       renderTiers(selectedProduct);
       cards.forEach((card) => card.classList.toggle('active', card.dataset.sku === selectedProduct.sku));
@@ -2101,7 +2130,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
       const term = search.value.trim().toLowerCase();
       cards.forEach((card) => {
         const product = products.find((entry) => entry.sku === card.dataset.sku);
-        const haystack = [product.sku, product.title, product.size].join(' ').toLowerCase();
+        const haystack = [product.sku, product.title, product.displayName, product.size, product.optionValue, product.productType].join(' ').toLowerCase();
         card.hidden = term && !haystack.includes(term);
       });
       sendHeight();
@@ -2807,6 +2836,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/solar-placards/thanks") return html(res, 200, solarPlacardsThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball"));
     if (req.method === "GET" && url.pathname === "/soccer-resin-trophies") return html(res, 200, premierAwardsPageHtml("soccer"));
+    if (req.method === "GET" && url.pathname === "/acrylic-awards") return html(res, 200, premierAwardsPageHtml("acrylic"));
     if (req.method === "GET" && url.pathname === "/polar-camel") return html(res, 200, polarCamelPageHtml());
     if (req.method === "GET" && /^\/assets\/name-badges\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
       return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));
