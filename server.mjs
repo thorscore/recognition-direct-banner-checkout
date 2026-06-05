@@ -2148,11 +2148,17 @@ function polarCamelCardsHtml(products) {
     const startingPrice = firstPricedVariant ? polarCamelTier(firstPricedVariant, 1).unitPrice : 0;
     const variantCount = (product.variants || []).length;
     const optionLabel = variantCount > 1 ? `${variantCount} colors/options` : "1 option";
+    const visibleOptions = (product.variants || [])
+      .slice(0, 6)
+      .map((variant) => `<b>${escapeHtml(variant.optionValue || variant.sku)}</b>`)
+      .join("");
+    const moreOptions = variantCount > 6 ? `<b>+${variantCount - 6} more</b>` : "";
     return `
       <button class="product-card${index === 0 ? " active" : ""}" type="button" data-handle="${escapeHtml(product.handle)}">
         <img src="${escapeHtml(product.thumbnail || product.image)}" alt="${escapeHtml(product.title)}" loading="lazy">
         <strong>${escapeHtml(product.title)}</strong>
         <span>${escapeHtml(product.type || "Polar Camel")} - ${escapeHtml(optionLabel)}</span>
+        <span class="option-preview">${visibleOptions}${moreOptions}</span>
         <em>Starts at $${startingPrice.toFixed(2)} each</em>
       </button>`;
   }).join("");
@@ -2193,11 +2199,17 @@ function polarCamelPageHtml() {
     .product-card strong{font-size:14px;line-height:1.2}
     .product-card span{color:var(--muted);font-size:12px}
     .product-card em{color:var(--accent);font-style:normal;font-size:13px;font-weight:900}
+    .option-preview{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+    .option-preview b{display:inline-flex;align-items:center;min-height:22px;border:1px solid var(--line);border-radius:999px;background:#f8fafc;padding:2px 7px;color:#344055;font-size:11px;line-height:1.1}
     .selected{display:grid;gap:14px}
     .preview{display:block;width:100%;height:340px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#f8fafc}
     form{display:grid;gap:16px}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     .full{grid-column:1/-1}
+    .variant-picks{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .variant-pick{display:inline-flex;align-items:center;gap:7px;width:auto;min-height:34px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:6px 10px;color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+    .variant-pick:hover,.variant-pick.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+    .swatch{display:inline-block;width:16px;height:16px;border:1px solid #9aa4b2;border-radius:50%;background:#f8fafc;flex:0 0 auto}
     .description{color:var(--muted);font-size:14px}
     .tier-table{width:100%;border-collapse:collapse;font-size:13px}
     .tier-table th,.tier-table td{padding:7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
@@ -2254,6 +2266,7 @@ function polarCamelPageHtml() {
             <div class="full">
               <label for="variant_select" data-variant-label>${escapeHtml(first?.optionName || "Option")}</label>
               <select id="variant_select" data-variant-select></select>
+              <div class="variant-picks" data-variant-picks aria-label="Available colors and options"></div>
             </div>
             <div>
               <label for="order_quantity">Quantity</label>
@@ -2329,6 +2342,7 @@ function polarCamelPageHtml() {
     const selectedDescription = document.querySelector('[data-selected-description]');
     const variantSelect = document.querySelector('[data-variant-select]');
     const variantLabel = document.querySelector('[data-variant-label]');
+    const variantPicks = document.querySelector('[data-variant-picks]');
     const priceTable = document.querySelector('[data-price-table]');
     const priceLabel = document.querySelector('[data-price-label]');
     const priceTotal = document.querySelector('[data-price-total]');
@@ -2339,6 +2353,33 @@ function polarCamelPageHtml() {
     let selectedVariant = selectedProduct?.variants?.[0];
 
     function money(value) { return '$' + Number(value || 0).toFixed(2); }
+    function swatchStyle(value) {
+      const name = String(value || '').toLowerCase();
+      const colors = [
+        ['stainless', 'linear-gradient(135deg,#f9fafb,#9ca3af 48%,#f3f4f6)'],
+        ['black', '#111827'],
+        ['white', '#ffffff'],
+        ['red', '#cf2430'],
+        ['royal blue', '#2457c5'],
+        ['navy', '#102a56'],
+        ['blue', '#3154b8'],
+        ['pink', '#f472b6'],
+        ['teal', '#0f9f9a'],
+        ['light blue', '#8fd3ff'],
+        ['light purple', '#c4a7e7'],
+        ['purple', '#7c3aed'],
+        ['dark gray', '#4b5563'],
+        ['gray', '#6b7280'],
+        ['orange', '#f97316'],
+        ['maroon', '#7f1d1d'],
+        ['green', '#15803d'],
+        ['yellow', '#facc15'],
+        ['coral', '#fb7185'],
+        ['olive', '#6b7d2a'],
+      ];
+      const match = colors.find(([label]) => name.includes(label));
+      return 'background:' + (match ? match[1] : '#f8fafc');
+    }
     function tierFor(variant, quantity) {
       const caseQuantity = Math.max(1, Number(variant.caseQuantity || 1));
       const prices = variant.prices || {};
@@ -2376,6 +2417,8 @@ function polarCamelPageHtml() {
     function selectVariant(sku) {
       selectedVariant = selectedProduct.variants.find((variant) => variant.sku === sku) || selectedProduct.variants[0];
       form.elements.sku.value = selectedVariant.sku;
+      variantSelect.value = selectedVariant.sku;
+      variantPicks.querySelectorAll('[data-sku]').forEach((button) => button.classList.toggle('active', button.dataset.sku === selectedVariant.sku));
       preview.src = selectedVariant.image || selectedProduct.image;
       preview.alt = selectedVariant.title || selectedProduct.title;
       selectedDescription.textContent = selectedVariant.description || selectedProduct.description || '';
@@ -2388,6 +2431,8 @@ function polarCamelPageHtml() {
       selectedTitle.textContent = selectedProduct.title;
       variantLabel.textContent = selectedProduct.optionName || 'Option';
       variantSelect.innerHTML = selectedProduct.variants.map((variant) => '<option value="' + variant.sku + '">' + variant.optionValue + ' - ' + variant.sku + '</option>').join('');
+      variantPicks.innerHTML = selectedProduct.variants.map((variant) => '<button class="variant-pick" type="button" data-sku="' + variant.sku + '"><span class="swatch" style="' + swatchStyle(variant.optionValue) + '"></span>' + variant.optionValue + '</button>').join('');
+      variantPicks.querySelectorAll('[data-sku]').forEach((button) => button.addEventListener('click', () => selectVariant(button.dataset.sku)));
       cards.forEach((card) => card.classList.toggle('active', card.dataset.handle === selectedProduct.handle));
       selectVariant(selectedVariant.sku);
     }
