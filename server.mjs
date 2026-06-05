@@ -362,7 +362,10 @@ function corsHeaders(req) {
 }
 
 function html(res, status, markup) {
-  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8" });
+  res.writeHead(status, {
+    "Content-Type": "text/html; charset=utf-8",
+    "X-Robots-Tag": "noindex, nofollow",
+  });
   res.end(markup);
 }
 
@@ -1674,7 +1677,9 @@ async function handleUpload(req, res, pathname) {
 async function servePublicFile(res, name, contentType) {
   try {
     const bytes = await readFile(join(PUBLIC_DIR, name));
-    res.writeHead(200, { "Content-Type": contentType });
+    const headers = { "Content-Type": contentType };
+    if (contentType.includes("text/html")) headers["X-Robots-Tag"] = "noindex, nofollow";
+    res.writeHead(200, headers);
     res.end(bytes);
   } catch {
     json(res, 404, { error: "Not found." });
