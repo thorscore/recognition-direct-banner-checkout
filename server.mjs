@@ -172,24 +172,19 @@ function nameBadgePriceChartHtml() {
   const quantities = NAME_BADGE_BASE_PRICE_BREAKS.map((priceBreak) => priceBreak.minimumQuantity);
   const quantityLabels = ["1-9", "10-24", "25-49", "50-99", "100-249", "250-499", "500-999", "1000-1499"];
   const priceCell = (priceBreaks, quantity) => `$${priceForQuantity(priceBreaks, quantity, "Name badge").toFixed(2)}`;
-  const row = (label, priceBreaks) => `<tr><th scope="row">${escapeHtml(label)}</th>${quantities.map((quantity) => `<td>${priceCell(priceBreaks, quantity)}</td>`).join("")}</tr>`;
+  const row = (label, priceBreaks) => `<div class="badge-price-chart__row">
+    <strong>${escapeHtml(label)}</strong>
+    <div class="badge-price-chart__prices">
+      ${quantities.map((quantity, index) => `<span><b>${quantityLabels[index]}</b>${priceCell(priceBreaks, quantity)}</span>`).join("")}
+    </div>
+  </div>`;
   return `<div class="badge-price-chart" aria-label="Name badge quantity price chart">
     <h2>Quantity Pricing</h2>
-    <div class="badge-price-chart__scroll">
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Option</th>
-            ${quantityLabels.map((label) => `<th scope="col">${label}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${row("No Frame", NAME_BADGE_NO_FRAME_PRICE_BREAKS)}
-          ${row("Silver / Gold Frame", NAME_BADGE_BASE_PRICE_BREAKS)}
-          ${row("Magnetic add-on", NAME_BADGE_MAGNET_PRICE_BREAKS)}
-          ${row("Epoxy Dome add-on", NAME_BADGE_DOME_PRICE_BREAKS)}
-        </tbody>
-      </table>
+    <div class="badge-price-chart__list">
+      ${row("No Frame", NAME_BADGE_NO_FRAME_PRICE_BREAKS)}
+      ${row("Silver / Gold Frame", NAME_BADGE_BASE_PRICE_BREAKS)}
+      ${row("Magnetic add-on", NAME_BADGE_MAGNET_PRICE_BREAKS)}
+      ${row("Epoxy Dome add-on", NAME_BADGE_DOME_PRICE_BREAKS)}
     </div>
     <p>Pin back is included. Quantities of 1500+ are by quote.</p>
   </div>`;
@@ -1284,12 +1279,12 @@ function nameBadgePageHtml() {
     .badge-preview span{display:block;margin-top:10px;color:var(--muted)}
     .badge-price-chart{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px;text-align:left}
     .badge-price-chart h2{margin:0 0 10px;font-size:20px;line-height:1.2}
-    .badge-price-chart__scroll{width:100%;max-width:100%;overflow-x:auto}
-    .badge-price-chart table{width:max-content;min-width:760px;border-collapse:collapse;font-size:12px}
-    .badge-price-chart th,.badge-price-chart td{min-width:76px;padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-    .badge-price-chart th:first-child,.badge-price-chart td:first-child{width:170px;min-width:170px;text-align:left;white-space:normal;line-height:1.25}
-    .badge-price-chart thead th{background:#f1f5ff;color:var(--ink);font-weight:800}
-    .badge-price-chart tbody th{font-weight:800}
+    .badge-price-chart__list{display:grid;gap:10px}
+    .badge-price-chart__row{display:grid;gap:8px;border:1px solid var(--line);border-radius:6px;padding:10px;background:#fbfcff}
+    .badge-price-chart__row>strong{display:block;font-size:13px;line-height:1.25;color:var(--ink)}
+    .badge-price-chart__prices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .badge-price-chart__prices span{display:grid;gap:2px;min-width:0;border:1px solid #e1e6ef;border-radius:4px;background:#fff;padding:6px;text-align:center;font-size:12px;line-height:1.15}
+    .badge-price-chart__prices b{display:block;color:#344055;font-size:10px;letter-spacing:.02em}
     .badge-price-chart p{margin:10px 0 0;color:var(--muted);font-size:13px}
     h1{margin:0 0 10px;font-size:clamp(34px,5vw,58px);line-height:1}
     .intro{margin:0 0 20px;color:var(--muted);font-size:18px}
