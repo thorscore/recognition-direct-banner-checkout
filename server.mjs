@@ -32,6 +32,7 @@ const ORDER_DIR = join(DATA_DIR, "orders");
 const EXPRESS_ONE_FILE = join(DATA_DIR, "express-one-customers.json");
 const EXPRESS_ONE_RELEASE_DIR = join(DATA_DIR, "express-one-releases");
 const EXPRESS_ONE_EMAIL_DIR = join(DATA_DIR, "express-one-email-queue");
+const EXPRESS_ONE_SHIPPING_ESTIMATE = 12.95;
 const MAX_FILE_MB = Number(process.env.MAX_FILE_MB || 100);
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 const MAX_BODY_BYTES = (MAX_FILE_MB + 10) * 1024 * 1024;
@@ -490,6 +491,12 @@ function expressOnePortalUrl(customer) {
 function expressOneReorderUrl(customer, item) {
   const baseUrl = customer.reorderUrl || `${APP_BASE_URL}/name-badges`;
   return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}express_one=reorder&customer=${encodeURIComponent(customer.id)}&item=${encodeURIComponent(item.id)}`;
+}
+
+function expressOneShippingPaymentLabel(value) {
+  if (value === "pay-now") return "Customer wants to pay shipping now";
+  if (value === "add-balance") return "Add shipping to QuickBooks balance";
+  return value || "Not selected";
 }
 
 async function queueExpressOneLowInventoryEmail(customer, item) {
@@ -1556,6 +1563,7 @@ function expressOneLoginHtml() {
       <p class="note">Recognition Direct</p>
       <h1>Express One Portal</h1>
       <p>Customers with an Express One account can view held badge inventory, request releases, track shipping balance, and reorder when inventory is low.</p>
+      <p class="note">Shipping balances are handled by Recognition Direct and can be invoiced through QuickBooks when needed.</p>
       <form action="${APP_BASE_URL}/express-one/open" method="get">
         <div>
           <label for="customer">Customer ID</label>
@@ -1611,8 +1619,9 @@ function expressOneDashboardHtml(customer) {
             <label>Shipping payment</label>
             <select name="shipping_payment">
               <option value="pay-now">Pay shipping for this release now</option>
-              <option value="add-balance">Add shipping to balance for next reorder</option>
+              <option value="add-balance">Add shipping to my account balance</option>
             </select>
+            <p class="help">Account balances are invoiced by Recognition Direct through QuickBooks.</p>
           </div>
           <div class="full">
             <label>Ship-to / pickup notes</label>
@@ -1665,6 +1674,7 @@ function expressOneDashboardHtml(customer) {
     label{display:block;margin-bottom:5px;font-size:13px;font-weight:900;color:#344055}
     input,select,textarea{width:100%;min-height:44px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit}
     textarea{min-height:90px;resize:vertical}
+    .help{margin:6px 0 0;font-size:12px;color:var(--muted)}
     button,.button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:0;background:var(--blue);color:#fff;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer}
     @media(max-width:820px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.item{grid-template-columns:1fr}.stats,.release-form{grid-template-columns:1fr}}
   </style>
@@ -1719,25 +1729,33 @@ async function handleExpressOneRelease(req, res) {
   const releaseQuantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("release_quantity"), "Release quantity")));
   if (releaseQuantity > status.quantityRemaining) throw new Error("Release quantity is greater than inventory remaining.");
   const shippingPayment = field(formData, "shipping_payment", 80);
-  const releaseShippingEstimate = 12.95;
+  const releaseShippingEstimate = EXPRESS_ONE_SHIPPING_ESTIMATE;
   const newShippingBalance = shippingPayment === "add-balance"
     ? Number((Number(customer.shippingBalance || 0) + releaseShippingEstimate).toFixed(2))
     : Number(customer.shippingBalance || 0);
+  const shippingPaymentLabel = expressOneShippingPaymentLabel(shippingPayment);
   const release = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
+    status: "needs-review",
     customerId: customer.id,
     company: customer.company,
+    contactName: customer.contactName,
     customerEmail: customer.email,
+    customerPhone: customer.phone,
     itemId: item.id,
     itemTitle: item.title,
+    itemDescription: item.description,
     quantityRequested: releaseQuantity,
     quantityRemainingBeforeRelease: status.quantityRemaining,
     quantityRemainingAfterRelease: status.quantityRemaining - releaseQuantity,
     shippingPayment,
+    shippingPaymentLabel,
     releaseShippingEstimate,
     currentShippingBalance: Number(customer.shippingBalance || 0),
     newShippingBalance,
+    quickBooksAction: shippingPayment === "add-balance" ? "Add shipping to customer's QuickBooks invoice balance" : "Collect shipping payment for this release",
+    quickBooksInvoiceStatus: shippingPayment === "add-balance" ? "pending-manual-invoice" : "not-needed-yet",
     deliveryNotes: field(formData, "delivery_notes", 2500),
   };
   customer.items[itemIndex] = { ...item, quantityRemaining: release.quantityRemainingAfterRelease };
