@@ -1607,7 +1607,7 @@ function expressOneDashboardHtml(customer) {
           <span>Original order price: <b>$${Number(item.originalOrderPrice || customer.originalOrderPrice || 0).toFixed(2)}</b></span>
         </div>
         ${status.lowInventory ? `<div class="alert"><b>Low inventory:</b> This item is below 10%. <a href="${escapeHtml(reorderUrl)}" target="_blank" rel="noopener">Start reorder</a></div>` : ""}
-        <form action="${APP_BASE_URL}/api/express-one-release" method="post" class="release-form">
+        <form action="${APP_BASE_URL}/api/express-one-release" method="post" enctype="multipart/form-data" class="release-form">
           <input type="hidden" name="customer_id" value="${escapeHtml(customer.id)}">
           <input type="hidden" name="code" value="${escapeHtml(customer.accessCode || "")}">
           <input type="hidden" name="item_id" value="${escapeHtml(item.id)}">
@@ -1622,6 +1622,19 @@ function expressOneDashboardHtml(customer) {
               <option value="add-balance">Add shipping to my account balance</option>
             </select>
             <p class="help">Account balances are invoiced by Recognition Direct through QuickBooks.</p>
+          </div>
+          <div class="full">
+            <label>Badge names</label>
+            <div class="name-list" data-name-list>
+              <input name="badge_names" type="text" placeholder="Example: Jane Smith - Sales">
+            </div>
+            <button type="button" class="add-name" data-add-name>Add another name</button>
+            <p class="help">Add one name per badge, or upload a text file with the full list below.</p>
+          </div>
+          <div class="full">
+            <label>Upload names text file</label>
+            <input name="names_file" type="file" accept=".txt,.csv,text/plain,text/csv">
+            <p class="help">Accepted files: TXT or CSV.</p>
           </div>
           <div class="full">
             <label>Ship-to / pickup notes</label>
@@ -1676,6 +1689,8 @@ function expressOneDashboardHtml(customer) {
     textarea{min-height:90px;resize:vertical}
     .help{margin:6px 0 0;font-size:12px;color:var(--muted)}
     button,.button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:0;background:var(--blue);color:#fff;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer}
+    .name-list{display:grid;gap:8px}
+    .add-name{margin-top:8px;background:#fff;color:var(--blue);border:1px solid var(--blue)}
     @media(max-width:820px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.item{grid-template-columns:1fr}.stats,.release-form{grid-template-columns:1fr}}
   </style>
 </head>
@@ -1692,6 +1707,21 @@ function expressOneDashboardHtml(customer) {
     </section>
     <section class="items">${itemCards || "<p>No Express One inventory is set up yet.</p>"}</section>
   </main>
+  <script>
+    document.addEventListener("click", function(event) {
+      var button = event.target.closest("[data-add-name]");
+      if (!button) return;
+      var form = button.closest("form");
+      var list = form ? form.querySelector("[data-name-list]") : null;
+      if (!list) return;
+      var input = document.createElement("input");
+      input.type = "text";
+      input.name = "badge_names";
+      input.placeholder = "Example: New Employee - Title";
+      list.appendChild(input);
+      input.focus();
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -1729,6 +1759,10 @@ async function handleExpressOneRelease(req, res) {
   const releaseQuantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("release_quantity"), "Release quantity")));
   if (releaseQuantity > status.quantityRemaining) throw new Error("Release quantity is greater than inventory remaining.");
   const shippingPayment = field(formData, "shipping_payment", 80);
+  const badgeNames = formData.getAll("badge_names")
+    .map((value) => cleanText(value, 180))
+    .filter(Boolean);
+  const namesFileUrl = await saveUpload(formData.get("names_file"));
   const releaseShippingEstimate = EXPRESS_ONE_SHIPPING_ESTIMATE;
   const newShippingBalance = shippingPayment === "add-balance"
     ? Number((Number(customer.shippingBalance || 0) + releaseShippingEstimate).toFixed(2))
@@ -1756,6 +1790,8 @@ async function handleExpressOneRelease(req, res) {
     newShippingBalance,
     quickBooksAction: shippingPayment === "add-balance" ? "Add shipping to customer's QuickBooks invoice balance" : "Collect shipping payment for this release",
     quickBooksInvoiceStatus: shippingPayment === "add-balance" ? "pending-manual-invoice" : "not-needed-yet",
+    badgeNames,
+    namesFileUrl,
     deliveryNotes: field(formData, "delivery_notes", 2500),
   };
   customer.items[itemIndex] = { ...item, quantityRemaining: release.quantityRemainingAfterRelease };
