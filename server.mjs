@@ -1613,7 +1613,7 @@ function expressOneDashboardHtml(customer) {
           <input type="hidden" name="item_id" value="${escapeHtml(item.id)}">
           <div>
             <label>Quantity to release</label>
-            <input name="release_quantity" type="number" min="1" max="${status.quantityRemaining}" value="1" required>
+            <input name="release_quantity" type="number" min="1" max="${status.quantityRemaining}" value="1" required data-release-quantity>
           </div>
           <div>
             <label>Shipping payment</label>
@@ -1626,10 +1626,17 @@ function expressOneDashboardHtml(customer) {
           <div class="full">
             <label>Badge names</label>
             <div class="name-list" data-name-list>
-              <input name="badge_names" type="text" placeholder="Example: Jane Smith - Sales">
+              <div class="badge-entry" data-badge-entry>
+                <strong>Badge 1</strong>
+                <div class="badge-lines">
+                  <input name="badge_line_1" type="text" placeholder="Line 1: Name">
+                  <input name="badge_line_2" type="text" placeholder="Line 2: Title / Department optional">
+                  <input name="badge_line_3" type="text" placeholder="Line 3: Optional">
+                </div>
+              </div>
             </div>
             <button type="button" class="add-name" data-add-name>Add another name</button>
-            <p class="help">Add one name per badge, or upload a text file with the full list below.</p>
+            <p class="help">Add one badge entry per person. Your badge layout may not be set up for more than one line of text; Recognition Direct will confirm layout before production.</p>
           </div>
           <div class="full">
             <label>Upload names text file</label>
@@ -1690,8 +1697,11 @@ function expressOneDashboardHtml(customer) {
     .help{margin:6px 0 0;font-size:12px;color:var(--muted)}
     button,.button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:0;background:var(--blue);color:#fff;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer}
     .name-list{display:grid;gap:8px}
+    .badge-entry{border:1px solid var(--line);border-radius:6px;background:#fbfcff;padding:10px}
+    .badge-entry strong{display:block;margin-bottom:8px;font-size:13px;color:#344055}
+    .badge-lines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .add-name{margin-top:8px;background:#fff;color:var(--blue);border:1px solid var(--blue)}
-    @media(max-width:820px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.item{grid-template-columns:1fr}.stats,.release-form{grid-template-columns:1fr}}
+    @media(max-width:820px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.item{grid-template-columns:1fr}.stats,.release-form,.badge-lines{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -1714,12 +1724,16 @@ function expressOneDashboardHtml(customer) {
       var form = button.closest("form");
       var list = form ? form.querySelector("[data-name-list]") : null;
       if (!list) return;
-      var input = document.createElement("input");
-      input.type = "text";
-      input.name = "badge_names";
-      input.placeholder = "Example: New Employee - Title";
-      list.appendChild(input);
-      input.focus();
+      var count = list.querySelectorAll("[data-badge-entry]").length + 1;
+      var entry = document.createElement("div");
+      entry.className = "badge-entry";
+      entry.setAttribute("data-badge-entry", "");
+      entry.innerHTML = '<strong>Badge ' + count + '</strong><div class="badge-lines"><input name="badge_line_1" type="text" placeholder="Line 1: Name"><input name="badge_line_2" type="text" placeholder="Line 2: Title / Department optional"><input name="badge_line_3" type="text" placeholder="Line 3: Optional"></div>';
+      list.appendChild(entry);
+      var quantity = form.querySelector("[data-release-quantity]");
+      if (quantity) quantity.value = String(Math.min(Number(quantity.max || count), count));
+      var firstInput = entry.querySelector("input");
+      if (firstInput) firstInput.focus();
     });
   </script>
 </body>
@@ -1759,9 +1773,14 @@ async function handleExpressOneRelease(req, res) {
   const releaseQuantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("release_quantity"), "Release quantity")));
   if (releaseQuantity > status.quantityRemaining) throw new Error("Release quantity is greater than inventory remaining.");
   const shippingPayment = field(formData, "shipping_payment", 80);
-  const badgeNames = formData.getAll("badge_names")
-    .map((value) => cleanText(value, 180))
-    .filter(Boolean);
+  const line1Values = formData.getAll("badge_line_1").map((value) => cleanText(value, 180));
+  const line2Values = formData.getAll("badge_line_2").map((value) => cleanText(value, 180));
+  const line3Values = formData.getAll("badge_line_3").map((value) => cleanText(value, 180));
+  const badgeNames = line1Values.map((line1, index) => ({
+    line1,
+    line2: line2Values[index] || "",
+    line3: line3Values[index] || "",
+  })).filter((entry) => entry.line1 || entry.line2 || entry.line3);
   const namesFileUrl = await saveUpload(formData.get("names_file"));
   const releaseShippingEstimate = EXPRESS_ONE_SHIPPING_ESTIMATE;
   const newShippingBalance = shippingPayment === "add-balance"
