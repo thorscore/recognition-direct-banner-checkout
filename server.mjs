@@ -1621,7 +1621,6 @@ function expressOneDashboardHtml(customer) {
               <option value="pay-now">Pay shipping for this release now</option>
               <option value="add-balance">Add shipping to my account balance</option>
             </select>
-            <p class="help">Account balances are invoiced by Recognition Direct through QuickBooks.</p>
           </div>
           <div class="full">
             <label>Badge names</label>
