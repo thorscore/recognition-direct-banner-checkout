@@ -1009,6 +1009,109 @@ function buildBannerDesignAttributes(formData, artworkUrls) {
   ].filter(Boolean);
 }
 
+const SHIPPING_GROUPS = {
+  pickup: {
+    label: "Local Pickup",
+    tag: "shipping-pickup",
+    title: "Local Pickup",
+    rate: 0,
+    note: "No shipping charge. Customer selected local pickup.",
+  },
+  small: {
+    label: "Small Package",
+    tag: "shipping-small",
+    title: "Small Package Shipping & Handling",
+    rate: 12.95,
+    note: "Good for small personalized items, transfers, badges, plates, and light packages.",
+  },
+  standard: {
+    label: "Standard Package",
+    tag: "shipping-standard",
+    title: "Standard Shipping & Handling",
+    rate: 19.95,
+    note: "Good for most awards, drinkware, posters, small signs, and standard packages.",
+  },
+  large: {
+    label: "Large Package",
+    tag: "shipping-large",
+    title: "Large Item Shipping & Handling",
+    rate: 39.95,
+    note: "Good for banners, stands, flags, yard signs, rigid signs, and larger packages.",
+  },
+  oversized: {
+    label: "Oversized / Special Handling",
+    tag: "shipping-oversized",
+    title: "Oversized Shipping & Handling",
+    rate: 75,
+    note: "Used for bulky display items where packing and freight risk are higher.",
+  },
+};
+
+function elevateShippingGroup(groupKey, quantity, thresholds = {}) {
+  const order = ["small", "standard", "large", "oversized"];
+  let index = Math.max(0, order.indexOf(groupKey));
+  if (quantity >= (thresholds.oversized || 24)) index = Math.max(index, order.indexOf("oversized"));
+  else if (quantity >= (thresholds.large || 12)) index = Math.max(index, order.indexOf("large"));
+  else if (quantity >= (thresholds.standard || 6)) index = Math.max(index, order.indexOf("standard"));
+  return order[index] || groupKey;
+}
+
+function shippingPlan(groupKey, deliveryMethod, quantity = 1, thresholds) {
+  const isPickup = deliveryMethod !== "Ship";
+  const key = isPickup ? "pickup" : elevateShippingGroup(groupKey, quantity, thresholds);
+  return SHIPPING_GROUPS[key] || SHIPPING_GROUPS.standard;
+}
+
+function shippingAttributes(plan) {
+  return [
+    attribute("Shipping Handling Group", plan.label),
+    attribute("Shipping Handling Charge", plan.rate > 0 ? `$${plan.rate.toFixed(2)}` : "Free pickup"),
+    attribute("Shipping Handling Note", plan.note),
+  ].filter(Boolean);
+}
+
+function shippingTags(plan) {
+  return [plan.tag].filter(Boolean);
+}
+
+function draftOrderShippingLine(plan) {
+  if (!plan.rate) return undefined;
+  return {
+    title: plan.title,
+    priceWithCurrency: { amount: plan.rate.toFixed(2), currencyCode: "USD" },
+  };
+}
+
+function classifyCatalogShipping(product, input, quantity) {
+  const text = [
+    product?.title,
+    product?.url,
+    input?.values ? Object.values(input.values).join(" ") : "",
+  ].join(" ").toLowerCase();
+  const squareFeetEach = Number(input?.squareFeetEach || 0);
+
+  if (/(event tent|canopy|tradeshow|trade show|seg|tension fabric|fabric display|backdrop)/.test(text)) {
+    return shippingPlan("oversized", input?.deliveryMethod || "Ship", quantity, { standard: 2, large: 4, oversized: 8 });
+  }
+  if (/(flag|retractable|banner stand|x-stand|x stand|a-frame|a frame|signicade|real estate post|table throw|table cover|pole banner|banner frame)/.test(text)) {
+    return shippingPlan("large", input?.deliveryMethod || "Ship", quantity, { standard: 2, large: 4, oversized: 10 });
+  }
+  if (/(banner|coroplast|yard sign|foam|pvc|acm|aluminum|rigid|magnet|dry erase|poster)/.test(text) || squareFeetEach >= 6) {
+    return shippingPlan(squareFeetEach >= 20 ? "large" : "standard", input?.deliveryMethod || "Ship", quantity, { standard: 5, large: 12, oversized: 25 });
+  }
+  if (/(dtf|transfer|decal|sticker|adhesive|vinyl|plate|small)/.test(text)) {
+    return shippingPlan("small", input?.deliveryMethod || "Ship", quantity, { standard: 10, large: 30, oversized: 75 });
+  }
+  return shippingPlan("standard", input?.deliveryMethod || "Ship", quantity);
+}
+
+function classifyPremierAwardShipping(catalog, product, quantity, deliveryMethod) {
+  const text = [catalog?.id, catalog?.title, product?.title, product?.displayName, product?.size, product?.optionValue].join(" ").toLowerCase();
+  if (/(knife|bison river|office accessories)/.test(text)) return shippingPlan("small", deliveryMethod, quantity, { standard: 4, large: 12, oversized: 36 });
+  if (/(plaque|clock|cutting board|executive|glass|crystal|acrylic)/.test(text)) return shippingPlan("standard", deliveryMethod, quantity, { standard: 4, large: 12, oversized: 30 });
+  return shippingPlan("standard", deliveryMethod, quantity, { standard: 6, large: 18, oversized: 48 });
+}
+
 async function createDraftOrder(input) {
   const mutation = `#graphql
     mutation CreateBannerDraftOrder($input: DraftOrderInput!) {
@@ -1061,7 +1164,11 @@ async function handleCheckout(req, res) {
   formData.set("banner_size", `${width} ${unitLabel} x ${height} ${unitLabel}`);
   formData.set("square_footage_each", `${squareFeetEach.toFixed(2)} sq ft`);
   formData.set("total_square_footage", `${(squareFeetEach * quantity).toFixed(2)} sq ft`);
-  const attributes = buildAttributes(formData, artworkUrls);
+  const shipping = shippingPlan("large", deliveryMethod, quantity, { standard: 2, large: 5, oversized: 12 });
+  const attributes = [
+    ...buildAttributes(formData, artworkUrls),
+    ...shippingAttributes(shipping),
+  ];
   const email = field(formData, "email", 320);
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
@@ -1086,8 +1193,9 @@ async function handleCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship"],
+    tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: "Custom 13oz Vinyl Banner",
       quantity,
@@ -1100,6 +1208,7 @@ async function handleCheckout(req, res) {
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
+      { key: "Shipping Handling Group", value: shipping.label },
     ],
   });
 
@@ -1138,6 +1247,7 @@ async function handleCatalogCheckout(req, res) {
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
   const unitLabel = units === "inches" ? "in" : "ft";
+  const shipping = classifyCatalogShipping(product, { ...input, deliveryMethod }, quantity);
   const attributes = [
     attribute("Configured Product", catalogDisplayTitle(product)),
     attribute("Original Catalog URL", `https://recognition-direct.bs.run${product.url}`),
@@ -1150,6 +1260,7 @@ async function handleCatalogCheckout(req, res) {
     attribute("Notes", field(formData, "notes", 1500)),
     attribute("Artwork", artworkUrl),
     ...buildBannerDesignAttributes(formData, bannerArtworkUrls),
+    ...shippingAttributes(shipping),
   ].filter(Boolean);
 
   const orderRecord = {
@@ -1176,8 +1287,9 @@ async function handleCatalogCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship"],
+    tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: catalogDisplayTitle(product),
       quantity,
@@ -1190,6 +1302,7 @@ async function handleCatalogCheckout(req, res) {
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
+      { key: "Shipping Handling Group", value: shipping.label },
     ],
   });
 
@@ -1214,6 +1327,7 @@ async function handleNameBadgeCheckout(req, res) {
   const expressOne = formData.get("express_one") === "yes";
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
+  const shipping = shippingPlan("small", deliveryMethod, input.quantity, { standard: 50, large: 250, oversized: 1000 });
   const attributes = [
     attribute("Product", "Name Badges"),
     attribute("Badge Size", nameBadgeLabel(input.size)),
@@ -1229,6 +1343,7 @@ async function handleNameBadgeCheckout(req, res) {
     attribute("Phone", field(formData, "phone")),
     attribute("Notes", field(formData, "notes", 1500)),
     attribute("Artwork", artworkUrl),
+    ...shippingAttributes(shipping),
   ].filter(Boolean);
 
   const orderRecord = {
@@ -1256,8 +1371,9 @@ async function handleNameBadgeCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct name badge order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["name-badges", "proof-required", isPickup ? field(formData, "delivery_method") : "ship"],
+    tags: ["name-badges", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: "Name Badges",
       quantity: input.quantity,
@@ -1270,6 +1386,7 @@ async function handleNameBadgeCheckout(req, res) {
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
+      { key: "Shipping Handling Group", value: shipping.label },
     ],
   });
 
@@ -1362,6 +1479,7 @@ async function handleSolarPlacardCheckout(req, res) {
   const customSize = product.key === "plate-custom" && customArea !== null
     ? `${field(formData, "custom_width")} in x ${field(formData, "custom_height")} in`
     : "";
+  const shipping = shippingPlan(product.type === "placard" ? "standard" : "small", deliveryMethod, quantity, { standard: 10, large: 40, oversized: 100 });
   const attributes = [
     attribute("Product", product.title),
     attribute("Product Type", product.type === "placard" ? "Solar Placard" : "Solar Plate"),
@@ -1376,6 +1494,7 @@ async function handleSolarPlacardCheckout(req, res) {
     attribute("Phone", field(formData, "phone")),
     attribute("Company", field(formData, "company")),
     attribute("Notes", field(formData, "notes", 2500)),
+    ...shippingAttributes(shipping),
   ].filter(Boolean);
 
   const orderRecord = {
@@ -1415,8 +1534,9 @@ async function handleSolarPlacardCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct solar placard/plate order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["solar-placards", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship"],
+    tags: ["solar-placards", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: product.title,
       quantity,
@@ -1429,6 +1549,7 @@ async function handleSolarPlacardCheckout(req, res) {
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
+      { key: "Shipping Handling Group", value: shipping.label },
     ],
   });
 
@@ -1470,6 +1591,7 @@ async function handlePremierAwardCheckout(req, res) {
   const namesFileUrl = await saveUpload(formData.get("names_file"));
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
   const isPickup = deliveryMethod !== "Ship";
+  const shipping = classifyPremierAwardShipping(catalog, product, quantity, deliveryMethod);
   const attributes = [
     attribute("Vendor", "JDS / Premier Sport Awards"),
     attribute("SKU", product.sku),
@@ -1487,6 +1609,7 @@ async function handlePremierAwardCheckout(req, res) {
     attribute("Company", field(formData, "company")),
     attribute("Notes", field(formData, "notes", 2500)),
     attribute("Proof Required", "Yes"),
+    ...shippingAttributes(shipping),
   ].filter(Boolean);
 
   const orderRecord = {
@@ -1526,8 +1649,9 @@ async function handlePremierAwardCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct ${catalog.noteLabel} order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship"],
+    tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: productDisplayName,
       quantity,
@@ -1540,6 +1664,7 @@ async function handlePremierAwardCheckout(req, res) {
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
+      { key: "Shipping Handling Group", value: shipping.label },
     ],
   });
 
@@ -1581,6 +1706,7 @@ async function handlePolarCamelCheckout(req, res) {
   const personalizationFileUrl = await saveUpload(formData.get("personalization_file"));
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
   const isPickup = deliveryMethod !== "Ship";
+  const shipping = shippingPlan("standard", deliveryMethod, quantity, { standard: 6, large: Math.max(12, Number(variant.caseQuantity || 12)), oversized: 48 });
   const attributes = [
     attribute("Vendor", "JDS Polar Camel"),
     attribute("SKU", variant.sku),
@@ -1598,6 +1724,7 @@ async function handlePolarCamelCheckout(req, res) {
     attribute("Company", field(formData, "company")),
     attribute("Notes", field(formData, "notes", 2500)),
     attribute("Proof Required", "Yes"),
+    ...shippingAttributes(shipping),
   ].filter(Boolean);
 
   const orderRecord = {
@@ -1637,8 +1764,9 @@ async function handlePolarCamelCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct Polar Camel order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["polar-camel", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship"],
+    tags: ["polar-camel", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: `${product.title} - ${variant.optionValue}`,
       quantity,
@@ -1651,6 +1779,7 @@ async function handlePolarCamelCheckout(req, res) {
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
+      { key: "Shipping Handling Group", value: shipping.label },
     ],
   });
 
