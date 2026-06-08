@@ -1588,8 +1588,16 @@ function expressOneDashboardHtml(customer) {
     const status = expressOneItemStatus(item);
     const percent = Math.max(0, Math.min(100, status.percentRemaining));
     const reorderUrl = expressOneReorderUrl(customer, item);
+    const originalOrderPrice = Number(item.originalOrderPrice || customer.originalOrderPrice || 0);
+    const originalUnitPrice = status.originalQuantity > 0 ? originalOrderPrice / status.originalQuantity : 0;
+    const originalQuantityLabel = status.originalQuantity > 0
+      ? `${status.originalQuantity} @ $${originalUnitPrice.toFixed(2)} each`
+      : "Not set";
     return `<article class="item${status.lowInventory ? " low" : ""}">
-      <div class="item-media"><img src="${escapeHtml(item.image || "/assets/name-badges/1x3-white-no-frame.png")}" alt="${escapeHtml(item.title || "Name badge")}"></div>
+      <div class="item-media">
+        <img src="${escapeHtml(item.image || "/assets/name-badges/1x3-white-no-frame.png")}" alt="${escapeHtml(item.title || "Name badge")}">
+        <p class="media-description">${escapeHtml(item.description || "Name badge")}</p>
+      </div>
       <div class="item-body">
         <div class="item-head">
           <div>
@@ -1601,10 +1609,10 @@ function expressOneDashboardHtml(customer) {
         <p>${escapeHtml(item.description || "")}</p>
         <div class="meter" aria-label="${percent.toFixed(1)}% remaining"><span style="width:${percent.toFixed(1)}%"></span></div>
         <div class="stats">
-          <span>Original qty: <b>${status.originalQuantity}</b></span>
+          <span>Original qty: <b>${escapeHtml(originalQuantityLabel)}</b></span>
           <span>Remaining: <b>${status.quantityRemaining}</b></span>
           <span>Used: <b>${Math.max(0, status.originalQuantity - status.quantityRemaining)}</b></span>
-          <span>Original order price: <b>$${Number(item.originalOrderPrice || customer.originalOrderPrice || 0).toFixed(2)}</b></span>
+          <span>Original order price: <b>$${originalOrderPrice.toFixed(2)}</b></span>
         </div>
         ${status.lowInventory ? `<div class="alert"><b>Low inventory:</b> This item is below 10%. <a href="${escapeHtml(reorderUrl)}" target="_blank" rel="noopener">Start reorder</a></div>` : ""}
         <form action="${APP_BASE_URL}/api/express-one-release" method="post" enctype="multipart/form-data" class="release-form">
@@ -1631,6 +1639,10 @@ function expressOneDashboardHtml(customer) {
                   <input name="badge_line_1" type="text" placeholder="Line 1: Name">
                   <input name="badge_line_2" type="text" placeholder="Line 2: Title / Department optional">
                   <input name="badge_line_3" type="text" placeholder="Line 3: Optional">
+                  <select name="badge_fastener">
+                    <option value="Magnet">Magnet</option>
+                    <option value="Pin">Pin</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -1676,6 +1688,7 @@ function expressOneDashboardHtml(customer) {
     .item.low{border-color:var(--red);box-shadow:0 0 0 1px rgba(198,38,46,.18)}
     .item-media{background:#f3f6fb;display:grid;place-items:center;padding:20px}
     .item-media img{display:block;max-width:100%;height:auto;border-radius:8px}
+    .media-description{margin:12px 0 0;color:#344055;font-size:14px;text-align:center}
     .item-body{padding:20px;display:grid;gap:12px}
     .item-head{display:flex;align-items:start;justify-content:space-between;gap:16px}
     .item-head h2{margin:4px 0 0;font-size:24px}
@@ -1698,7 +1711,7 @@ function expressOneDashboardHtml(customer) {
     .name-list{display:grid;gap:8px}
     .badge-entry{border:1px solid var(--line);border-radius:6px;background:#fbfcff;padding:10px}
     .badge-entry strong{display:block;margin-bottom:8px;font-size:13px;color:#344055}
-    .badge-lines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .badge-lines{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     .add-name{margin-top:8px;background:#fff;color:var(--blue);border:1px solid var(--blue)}
     @media(max-width:820px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.item{grid-template-columns:1fr}.stats,.release-form,.badge-lines{grid-template-columns:1fr}}
   </style>
@@ -1727,7 +1740,7 @@ function expressOneDashboardHtml(customer) {
       var entry = document.createElement("div");
       entry.className = "badge-entry";
       entry.setAttribute("data-badge-entry", "");
-      entry.innerHTML = '<strong>Badge ' + count + '</strong><div class="badge-lines"><input name="badge_line_1" type="text" placeholder="Line 1: Name"><input name="badge_line_2" type="text" placeholder="Line 2: Title / Department optional"><input name="badge_line_3" type="text" placeholder="Line 3: Optional"></div>';
+      entry.innerHTML = '<strong>Badge ' + count + '</strong><div class="badge-lines"><input name="badge_line_1" type="text" placeholder="Line 1: Name"><input name="badge_line_2" type="text" placeholder="Line 2: Title / Department optional"><input name="badge_line_3" type="text" placeholder="Line 3: Optional"><select name="badge_fastener"><option value="Magnet">Magnet</option><option value="Pin">Pin</option></select></div>';
       list.appendChild(entry);
       var quantity = form.querySelector("[data-release-quantity]");
       if (quantity) quantity.value = String(Math.min(Number(quantity.max || count), count));
@@ -1775,10 +1788,12 @@ async function handleExpressOneRelease(req, res) {
   const line1Values = formData.getAll("badge_line_1").map((value) => cleanText(value, 180));
   const line2Values = formData.getAll("badge_line_2").map((value) => cleanText(value, 180));
   const line3Values = formData.getAll("badge_line_3").map((value) => cleanText(value, 180));
+  const fastenerValues = formData.getAll("badge_fastener").map((value) => cleanText(value, 80));
   const badgeNames = line1Values.map((line1, index) => ({
     line1,
     line2: line2Values[index] || "",
     line3: line3Values[index] || "",
+    fastener: fastenerValues[index] || "",
   })).filter((entry) => entry.line1 || entry.line2 || entry.line3);
   const namesFileUrl = await saveUpload(formData.get("names_file"));
   const releaseShippingEstimate = EXPRESS_ONE_SHIPPING_ESTIMATE;
