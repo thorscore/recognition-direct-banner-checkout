@@ -2293,7 +2293,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
         <div class="award-grid" data-award-grid>${premierAwardCardsHtml(products)}</div>
       </section>
 
-      <section class="selected">
+      <section class="selected" data-selected-panel>
         <img class="preview" data-preview src="${escapeHtml(first.image)}" alt="${escapeHtml(first.imageAlt || first.displayName || first.title)}">
         <div class="panel">
           <h2 data-selected-title>${escapeHtml(first.displayName || first.title)}</h2>
@@ -2383,6 +2383,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
     const priceTotal = document.querySelector('[data-price-total]');
     const priceMessage = document.querySelector('[data-price-message]');
     const search = document.querySelector('[data-search]');
+    const selectedPanel = document.querySelector('[data-selected-panel]');
     let selectedProduct = products[0];
 
     function money(value) {
@@ -2431,7 +2432,14 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
       sendHeight();
     }
 
-    function selectProduct(sku) {
+    function scrollToSelectedPanel() {
+      if (!selectedPanel || !window.matchMedia('(max-width: 980px)').matches) return;
+      window.setTimeout(() => {
+        selectedPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    }
+
+    function selectProduct(sku, shouldScroll = false) {
       selectedProduct = products.find((product) => product.sku === sku) || products[0];
       form.elements.sku.value = selectedProduct.sku;
       preview.src = selectedProduct.image;
@@ -2441,6 +2449,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
       renderTiers(selectedProduct);
       cards.forEach((card) => card.classList.toggle('active', card.dataset.sku === selectedProduct.sku));
       updatePrice();
+      if (shouldScroll) scrollToSelectedPanel();
     }
 
     function filterProducts() {
@@ -2457,7 +2466,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
       window.parent?.postMessage({ type: 'rd-awards-height', height: document.documentElement.scrollHeight }, '*');
     }
 
-    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.sku)));
+    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.sku, true)));
     form.elements.order_quantity.addEventListener('input', updatePrice);
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
