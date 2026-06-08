@@ -29,6 +29,9 @@ const POLAR_CAMEL_FILE = join(import.meta.dirname, "catalog", "polar-camel.json"
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
+const EXPRESS_ONE_FILE = join(DATA_DIR, "express-one-customers.json");
+const EXPRESS_ONE_RELEASE_DIR = join(DATA_DIR, "express-one-releases");
+const EXPRESS_ONE_EMAIL_DIR = join(DATA_DIR, "express-one-email-queue");
 const MAX_FILE_MB = Number(process.env.MAX_FILE_MB || 100);
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 const MAX_BODY_BYTES = (MAX_FILE_MB + 10) * 1024 * 1024;
@@ -77,6 +80,8 @@ let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
 
 await mkdir(UPLOAD_DIR, { recursive: true });
 await mkdir(ORDER_DIR, { recursive: true });
+await mkdir(EXPRESS_ONE_RELEASE_DIR, { recursive: true });
+await mkdir(EXPRESS_ONE_EMAIL_DIR, { recursive: true });
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierSoccerAwardsData = JSON.parse((await readFile(PREMIER_SOCCER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
@@ -411,6 +416,103 @@ function priceForQuantity(priceBreaks, quantity, label) {
   }
   if (price === null) throw new Error(`${label} pricing is not configured yet.`);
   return Number(price.toFixed(2));
+}
+
+const DEFAULT_EXPRESS_ONE_CUSTOMERS = [
+  {
+    id: "demo-express-one",
+    accessCode: "demo",
+    company: "Demo Express One Customer",
+    contactName: "Sample Customer",
+    email: "customer@example.com",
+    phone: "619-000-0000",
+    shippingBalance: 18.95,
+    originalOrderPrice: 550,
+    originalOrderDate: "2026-06-01",
+    reorderUrl: `${APP_BASE_URL}/name-badges`,
+    notes: "Replace this demo record with a real customer when you are ready.",
+    items: [
+      {
+        id: "staff-white-1x3",
+        title: 'White 1" x 3" Staff Name Badge',
+        description: "White badge, no frame, magnetic fastener. Proof before production.",
+        image: "/assets/name-badges/1x3-white-no-frame.png",
+        originalQuantity: 500,
+        quantityRemaining: 42,
+        originalOrderPrice: 2750,
+      },
+    ],
+  },
+];
+
+async function readJsonFile(pathname, fallback) {
+  try {
+    return JSON.parse(await readFile(pathname, "utf8"));
+  } catch {
+    await writeFile(pathname, JSON.stringify(fallback, null, 2));
+    return fallback;
+  }
+}
+
+async function expressOneCustomers() {
+  const customers = await readJsonFile(EXPRESS_ONE_FILE, DEFAULT_EXPRESS_ONE_CUSTOMERS);
+  return Array.isArray(customers) ? customers : DEFAULT_EXPRESS_ONE_CUSTOMERS;
+}
+
+async function writeExpressOneCustomers(customers) {
+  await writeFile(EXPRESS_ONE_FILE, JSON.stringify(customers, null, 2));
+}
+
+async function expressOneCustomer(id, accessCode = "") {
+  const customers = await expressOneCustomers();
+  const customer = customers.find((entry) => entry.id === id);
+  if (!customer) return null;
+  if (customer.accessCode && customer.accessCode !== accessCode) return null;
+  return customer;
+}
+
+function expressOneItemStatus(item) {
+  const originalQuantity = Math.max(0, Number(item.originalQuantity || 0));
+  const quantityRemaining = Math.max(0, Number(item.quantityRemaining || 0));
+  const percentRemaining = originalQuantity > 0 ? (quantityRemaining / originalQuantity) * 100 : 0;
+  return {
+    originalQuantity,
+    quantityRemaining,
+    percentRemaining,
+    lowInventory: originalQuantity > 0 && percentRemaining < 10,
+  };
+}
+
+function expressOnePortalUrl(customer) {
+  return `${APP_BASE_URL}/express-one/customer/${encodeURIComponent(customer.id)}?code=${encodeURIComponent(customer.accessCode || "")}`;
+}
+
+function expressOneReorderUrl(customer, item) {
+  const baseUrl = customer.reorderUrl || `${APP_BASE_URL}/name-badges`;
+  return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}express_one=reorder&customer=${encodeURIComponent(customer.id)}&item=${encodeURIComponent(item.id)}`;
+}
+
+async function queueExpressOneLowInventoryEmail(customer, item) {
+  if (!customer.email) return null;
+  const status = expressOneItemStatus(item);
+  if (!status.lowInventory) return null;
+  const queued = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    type: "express-one-low-inventory",
+    to: customer.email,
+    customerId: customer.id,
+    company: customer.company,
+    itemId: item.id,
+    itemTitle: item.title,
+    quantityRemaining: status.quantityRemaining,
+    percentRemaining: Number(status.percentRemaining.toFixed(1)),
+    reorderUrl: expressOneReorderUrl(customer, item),
+    subject: `Express One reorder reminder for ${item.title}`,
+    body: `Your Express One inventory for ${item.title} is below 10%. You have ${status.quantityRemaining} remaining. Reorder here: ${expressOneReorderUrl(customer, item)}`,
+  };
+  await writeFile(join(EXPRESS_ONE_EMAIL_DIR, `${queued.id}.json`), JSON.stringify(queued, null, 2));
+  return queued;
 }
 
 function nameBadgeUnitPrice(quantity, frame, fastener, finish) {
@@ -1422,6 +1524,229 @@ async function handleCustomNameBadgeInquiry(req, res) {
   };
   await writeFile(join(ORDER_DIR, `${inquiry.id}.json`), JSON.stringify(inquiry, null, 2));
   res.writeHead(303, { Location: `${APP_BASE_URL}/custom-name-badges/thanks?id=${encodeURIComponent(inquiry.id)}` });
+  res.end();
+}
+
+function expressOneLoginHtml() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Express One Customer Portal | Recognition Direct</title>
+  <meta name="description" content="Express One customer portal for held name badge inventory and release orders.">
+  <style>
+    :root{--ink:#172033;--muted:#5d6675;--line:#d9dee7;--blue:#3154b8;--red:#c6262e;--soft:#f6f8fc}
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
+    .wrap{width:min(880px,calc(100% - 32px));margin:0 auto;padding:52px 0}
+    .panel{border:1px solid var(--line);border-radius:8px;background:#fff;padding:24px;box-shadow:0 18px 45px rgba(24,33,47,.08)}
+    h1{margin:0 0 10px;font-size:clamp(34px,5vw,58px);line-height:1}
+    p{color:var(--muted)}
+    form{display:grid;gap:14px;margin-top:20px}
+    label{display:block;font-weight:800;font-size:13px;color:#344055}
+    input{width:100%;min-height:46px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit}
+    button,.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;border:0;background:var(--blue);color:#fff;padding:0 18px;font-weight:900;text-decoration:none;cursor:pointer}
+    .note{font-size:13px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="panel">
+      <p class="note">Recognition Direct</p>
+      <h1>Express One Portal</h1>
+      <p>Customers with an Express One account can view held badge inventory, request releases, track shipping balance, and reorder when inventory is low.</p>
+      <form action="${APP_BASE_URL}/express-one/open" method="get">
+        <div>
+          <label for="customer">Customer ID</label>
+          <input id="customer" name="customer" placeholder="Example: demo-express-one" required>
+        </div>
+        <div>
+          <label for="code">Access code</label>
+          <input id="code" name="code" placeholder="Example: demo" required>
+        </div>
+        <button type="submit">Open portal</button>
+      </form>
+      <p class="note">Demo login: customer ID <strong>demo-express-one</strong>, access code <strong>demo</strong>.</p>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
+function expressOneDashboardHtml(customer) {
+  const items = Array.isArray(customer.items) ? customer.items : [];
+  const itemCards = items.map((item) => {
+    const status = expressOneItemStatus(item);
+    const percent = Math.max(0, Math.min(100, status.percentRemaining));
+    const reorderUrl = expressOneReorderUrl(customer, item);
+    return `<article class="item${status.lowInventory ? " low" : ""}">
+      <div class="item-media"><img src="${escapeHtml(item.image || "/assets/name-badges/1x3-white-no-frame.png")}" alt="${escapeHtml(item.title || "Name badge")}"></div>
+      <div class="item-body">
+        <div class="item-head">
+          <div>
+            <small>Badge inventory</small>
+            <h2>${escapeHtml(item.title || "Name Badge")}</h2>
+          </div>
+          <strong>${status.quantityRemaining} left</strong>
+        </div>
+        <p>${escapeHtml(item.description || "")}</p>
+        <div class="meter" aria-label="${percent.toFixed(1)}% remaining"><span style="width:${percent.toFixed(1)}%"></span></div>
+        <div class="stats">
+          <span>Original qty: <b>${status.originalQuantity}</b></span>
+          <span>Remaining: <b>${status.quantityRemaining}</b></span>
+          <span>Used: <b>${Math.max(0, status.originalQuantity - status.quantityRemaining)}</b></span>
+          <span>Original order price: <b>$${Number(item.originalOrderPrice || customer.originalOrderPrice || 0).toFixed(2)}</b></span>
+        </div>
+        ${status.lowInventory ? `<div class="alert"><b>Low inventory:</b> This item is below 10%. <a href="${escapeHtml(reorderUrl)}" target="_blank" rel="noopener">Start reorder</a></div>` : ""}
+        <form action="${APP_BASE_URL}/api/express-one-release" method="post" class="release-form">
+          <input type="hidden" name="customer_id" value="${escapeHtml(customer.id)}">
+          <input type="hidden" name="code" value="${escapeHtml(customer.accessCode || "")}">
+          <input type="hidden" name="item_id" value="${escapeHtml(item.id)}">
+          <div>
+            <label>Quantity to release</label>
+            <input name="release_quantity" type="number" min="1" max="${status.quantityRemaining}" value="1" required>
+          </div>
+          <div>
+            <label>Shipping payment</label>
+            <select name="shipping_payment">
+              <option value="pay-now">Pay shipping for this release now</option>
+              <option value="add-balance">Add shipping to balance for next reorder</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Ship-to / pickup notes</label>
+            <textarea name="delivery_notes" placeholder="Tell us where to ship, who it is for, or if pickup is preferred."></textarea>
+          </div>
+          <button type="submit">Request badge release</button>
+        </form>
+      </div>
+    </article>`;
+  }).join("");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(customer.company)} Express One Portal | Recognition Direct</title>
+  <style>
+    :root{--ink:#172033;--muted:#5d6675;--line:#d9dee7;--blue:#3154b8;--red:#c6262e;--soft:#f6f8fc;--green:#18864b}
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:var(--ink);font:16px/1.45 Arial,Helvetica,sans-serif}
+    .wrap{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:34px 0 54px}
+    .eyebrow{color:var(--red);font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    h1{margin:6px 0 8px;font-size:clamp(34px,5vw,56px);line-height:1}
+    p{color:var(--muted)}
+    .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px 0}
+    .metric,.item,.panel{border:1px solid var(--line);border-radius:8px;background:#fff}
+    .metric{padding:16px;background:#fbfcff}
+    .metric small,.item small{display:block;color:var(--muted);font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}
+    .metric strong{display:block;margin-top:5px;font-size:24px}
+    .items{display:grid;gap:18px}
+    .item{display:grid;grid-template-columns:280px minmax(0,1fr);overflow:hidden}
+    .item.low{border-color:var(--red);box-shadow:0 0 0 1px rgba(198,38,46,.18)}
+    .item-media{background:#f3f6fb;display:grid;place-items:center;padding:20px}
+    .item-media img{display:block;max-width:100%;height:auto;border-radius:8px}
+    .item-body{padding:20px;display:grid;gap:12px}
+    .item-head{display:flex;align-items:start;justify-content:space-between;gap:16px}
+    .item-head h2{margin:4px 0 0;font-size:24px}
+    .item-head strong{font-size:26px;color:var(--green)}
+    .meter{height:10px;border-radius:999px;background:#e8edf6;overflow:hidden}
+    .meter span{display:block;height:100%;background:var(--blue)}
+    .item.low .meter span{background:var(--red)}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .stats span{border:1px solid var(--line);border-radius:6px;padding:8px;color:var(--muted);font-size:13px}
+    .stats b{display:block;color:var(--ink);font-size:15px}
+    .alert{border-left:4px solid var(--red);background:#fff5f5;padding:10px 12px}
+    .alert a{color:var(--blue);font-weight:900}
+    .release-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border-top:1px solid var(--line);padding-top:14px}
+    .full{grid-column:1/-1}
+    label{display:block;margin-bottom:5px;font-size:13px;font-weight:900;color:#344055}
+    input,select,textarea{width:100%;min-height:44px;border:1px solid #b9c3d2;border-radius:4px;padding:10px;font:inherit}
+    textarea{min-height:90px;resize:vertical}
+    button,.button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:0;background:var(--blue);color:#fff;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer}
+    @media(max-width:820px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.item{grid-template-columns:1fr}.stats,.release-form{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="eyebrow">Express One Customer Portal</div>
+    <h1>${escapeHtml(customer.company)}</h1>
+    <p>${escapeHtml(customer.contactName || "")}${customer.email ? ` · ${escapeHtml(customer.email)}` : ""}${customer.phone ? ` · ${escapeHtml(customer.phone)}` : ""}</p>
+    <section class="summary">
+      <div class="metric"><small>Shipping balance</small><strong>$${Number(customer.shippingBalance || 0).toFixed(2)}</strong></div>
+      <div class="metric"><small>Badge styles</small><strong>${items.length}</strong></div>
+      <div class="metric"><small>Original order</small><strong>$${Number(customer.originalOrderPrice || 0).toFixed(2)}</strong></div>
+      <div class="metric"><small>Reorder status</small><strong>${items.some((item) => expressOneItemStatus(item).lowInventory) ? "Review" : "Good"}</strong></div>
+    </section>
+    <section class="items">${itemCards || "<p>No Express One inventory is set up yet.</p>"}</section>
+  </main>
+</body>
+</html>`;
+}
+
+function expressOneNotFoundHtml() {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Express One Portal</title></head><body style="font:16px Arial;padding:40px"><h1>Portal not found</h1><p>Please check the customer ID and access code.</p><p><a href="${APP_BASE_URL}/express-one">Return to Express One login</a></p></body></html>`;
+}
+
+function expressOneReleaseThanksHtml(id) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Release Request Received</title></head><body style="font:16px Arial;padding:40px"><h1>Release request received</h1><p>We saved request ${escapeHtml(id)} and will review the badge release.</p><p><a href="${APP_BASE_URL}/express-one">Back to Express One portal</a></p></body></html>`;
+}
+
+async function handleExpressOneOpen(req, res, url) {
+  const customerId = cleanText(url.searchParams.get("customer"), 120);
+  const code = cleanText(url.searchParams.get("code"), 120);
+  const customer = await expressOneCustomer(customerId, code);
+  if (!customer) return html(res, 404, expressOneNotFoundHtml());
+  res.writeHead(303, { Location: expressOnePortalUrl(customer) });
+  res.end();
+}
+
+async function handleExpressOneRelease(req, res) {
+  const formData = await requestFormData(req);
+  const customerId = field(formData, "customer_id", 120);
+  const code = field(formData, "code", 120);
+  const customers = await expressOneCustomers();
+  const customerIndex = customers.findIndex((entry) => entry.id === customerId && (!entry.accessCode || entry.accessCode === code));
+  const customer = customers[customerIndex];
+  if (!customer) throw new Error("Express One customer was not found.");
+  const itemId = field(formData, "item_id", 120);
+  const itemIndex = (customer.items || []).findIndex((entry) => entry.id === itemId);
+  const item = customer.items?.[itemIndex];
+  if (!item) throw new Error("Express One inventory item was not found.");
+  const status = expressOneItemStatus(item);
+  const releaseQuantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("release_quantity"), "Release quantity")));
+  if (releaseQuantity > status.quantityRemaining) throw new Error("Release quantity is greater than inventory remaining.");
+  const shippingPayment = field(formData, "shipping_payment", 80);
+  const releaseShippingEstimate = 12.95;
+  const newShippingBalance = shippingPayment === "add-balance"
+    ? Number((Number(customer.shippingBalance || 0) + releaseShippingEstimate).toFixed(2))
+    : Number(customer.shippingBalance || 0);
+  const release = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    customerId: customer.id,
+    company: customer.company,
+    customerEmail: customer.email,
+    itemId: item.id,
+    itemTitle: item.title,
+    quantityRequested: releaseQuantity,
+    quantityRemainingBeforeRelease: status.quantityRemaining,
+    quantityRemainingAfterRelease: status.quantityRemaining - releaseQuantity,
+    shippingPayment,
+    releaseShippingEstimate,
+    currentShippingBalance: Number(customer.shippingBalance || 0),
+    newShippingBalance,
+    deliveryNotes: field(formData, "delivery_notes", 2500),
+  };
+  customer.items[itemIndex] = { ...item, quantityRemaining: release.quantityRemainingAfterRelease };
+  customer.shippingBalance = newShippingBalance;
+  customers[customerIndex] = customer;
+  await writeExpressOneCustomers(customers);
+  await writeFile(join(EXPRESS_ONE_RELEASE_DIR, `${release.id}.json`), JSON.stringify(release, null, 2));
+  await queueExpressOneLowInventoryEmail(customer, customer.items[itemIndex]);
+  res.writeHead(303, { Location: `${APP_BASE_URL}/express-one/release-thanks?id=${encodeURIComponent(release.id)}` });
   res.end();
 }
 
@@ -3146,6 +3471,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/solar-placard-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/premier-award-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/polar-camel-")) return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "OPTIONS" && url.pathname.startsWith("/api/express-one-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
@@ -3158,6 +3484,14 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/name-badges") return html(res, 200, nameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/custom-name-badges") return html(res, 200, customNameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/custom-name-badges/thanks") return html(res, 200, customNameBadgeThanksHtml(url));
+    if (req.method === "GET" && url.pathname === "/express-one") return html(res, 200, expressOneLoginHtml());
+    if (req.method === "GET" && url.pathname === "/express-one/open") return await handleExpressOneOpen(req, res, url);
+    if (req.method === "GET" && url.pathname === "/express-one/release-thanks") return html(res, 200, expressOneReleaseThanksHtml(url.searchParams.get("id") || ""));
+    if (req.method === "GET" && url.pathname.startsWith("/express-one/customer/")) {
+      const customerId = decodeURIComponent(url.pathname.slice("/express-one/customer/".length));
+      const customer = await expressOneCustomer(customerId, url.searchParams.get("code") || "");
+      return customer ? html(res, 200, expressOneDashboardHtml(customer)) : html(res, 404, expressOneNotFoundHtml());
+    }
     if (req.method === "GET" && url.pathname === "/solar-placards") return html(res, 200, solarPlacardsPageHtml());
     if (req.method === "GET" && url.pathname === "/solar-placards/thanks") return html(res, 200, solarPlacardsThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball"));
@@ -3190,6 +3524,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/solar-placard-checkout") return await handleSolarPlacardCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/premier-award-checkout") return await handlePremierAwardCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/polar-camel-checkout") return await handlePolarCamelCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/express-one-release") return await handleExpressOneRelease(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
