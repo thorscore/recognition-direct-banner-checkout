@@ -2778,6 +2778,10 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
     function scrollToSelectedPanel() {
       if (!selectedPanel || !window.matchMedia('(max-width: 980px)').matches) return;
       window.setTimeout(() => {
+        window.parent?.postMessage({
+          type: 'rd-awards-select',
+          offsetTop: selectedPanel.offsetTop
+        }, '*');
         selectedPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 60);
     }
