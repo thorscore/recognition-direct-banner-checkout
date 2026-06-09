@@ -44,6 +44,17 @@ const ALLOWED_ORIGINS = new Set(
 );
 ALLOWED_ORIGINS.add(APP_BASE_URL);
 const ALLOWED_FILE_EXTENSIONS = new Set([".pdf", ".ai", ".eps", ".psd", ".jpg", ".jpeg", ".png", ".txt", ".csv"]);
+const PICKUP_TAX_ADDRESS = {
+  company: "Recognition Direct",
+  firstName: "Recognition",
+  lastName: "Direct",
+  address1: "8680 Troy Street",
+  city: "Spring Valley",
+  provinceCode: "CA",
+  zip: "91977",
+  countryCode: "US",
+  phone: "619-465-0055",
+};
 const CATALOG_PRICE_OVERRIDES = new Map([
   ["fabric-block-out", { squareFootRate: 3.98 }],
 ]);
@@ -1184,11 +1195,21 @@ function shippingTags(plan) {
 }
 
 function draftOrderShippingLine(plan) {
+  if (plan === SHIPPING_GROUPS.pickup) {
+    return {
+      title: plan.title,
+      priceWithCurrency: { amount: "0.00", currencyCode: "USD" },
+    };
+  }
   if (!plan.rate) return undefined;
   return {
     title: plan.title,
     priceWithCurrency: { amount: plan.rate.toFixed(2), currencyCode: "USD" },
   };
+}
+
+function draftOrderPickupAddress(isPickup) {
+  return isPickup ? { shippingAddress: PICKUP_TAX_ADDRESS } : {};
 }
 
 function classifyCatalogShipping(product, input, quantity) {
@@ -1305,12 +1326,13 @@ async function handleCheckout(req, res) {
     tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
+    ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: "Custom 13oz Vinyl Banner",
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: !isPickup,
+      requiresShipping: true,
       taxable: true,
       customAttributes: attributes,
     }],
@@ -1400,12 +1422,13 @@ async function handleCatalogCheckout(req, res) {
     tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
+    ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: catalogDisplayTitle(product),
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: !isPickup,
+      requiresShipping: true,
       taxable: true,
       customAttributes: attributes,
     }],
@@ -1485,12 +1508,13 @@ async function handleNameBadgeCheckout(req, res) {
     tags: ["name-badges", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
+    ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: "Name Badges",
       quantity: input.quantity,
       originalUnitPriceWithCurrency: { amount: input.unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: !isPickup,
+      requiresShipping: true,
       taxable: true,
       customAttributes: attributes,
     }],
@@ -1952,12 +1976,13 @@ async function handleSolarPlacardCheckout(req, res) {
     tags: ["solar-placards", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
+    ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: product.title,
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: !isPickup,
+      requiresShipping: true,
       taxable: true,
       customAttributes: attributes,
     }],
@@ -2068,12 +2093,13 @@ async function handlePremierAwardCheckout(req, res) {
     tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
+    ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: productDisplayName,
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: !isPickup,
+      requiresShipping: true,
       taxable: true,
       customAttributes: attributes,
     }],
@@ -2184,12 +2210,13 @@ async function handlePolarCamelCheckout(req, res) {
     tags: ["polar-camel", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
+    ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: `${product.title} - ${variant.optionValue}`,
       quantity,
       originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: !isPickup,
+      requiresShipping: true,
       taxable: true,
       customAttributes: attributes,
     }],
