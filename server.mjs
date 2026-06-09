@@ -1304,6 +1304,7 @@ async function handleCheckout(req, res) {
     note: `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    taxExempt: false,
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: "Custom 13oz Vinyl Banner",
@@ -1398,6 +1399,7 @@ async function handleCatalogCheckout(req, res) {
     note: `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    taxExempt: false,
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: catalogDisplayTitle(product),
@@ -1482,6 +1484,7 @@ async function handleNameBadgeCheckout(req, res) {
     note: `Recognition Direct name badge order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: ["name-badges", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    taxExempt: false,
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: "Name Badges",
@@ -1948,6 +1951,7 @@ async function handleSolarPlacardCheckout(req, res) {
     note: `Recognition Direct solar placard/plate order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: ["solar-placards", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    taxExempt: false,
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: product.title,
@@ -2063,6 +2067,7 @@ async function handlePremierAwardCheckout(req, res) {
     note: `Recognition Direct ${catalog.noteLabel} order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    taxExempt: false,
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: productDisplayName,
@@ -2178,6 +2183,7 @@ async function handlePolarCamelCheckout(req, res) {
     note: `Recognition Direct Polar Camel order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: ["polar-camel", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
+    taxExempt: false,
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [{
       title: `${product.title} - ${variant.optionValue}`,
