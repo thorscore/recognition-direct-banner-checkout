@@ -2885,6 +2885,11 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
           offsetTop: selectedPanel.offsetTop
         }, '*');
         selectedPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const heading = selectedPanel.querySelector('h2');
+        if (heading) {
+          heading.setAttribute('tabindex', '-1');
+          window.setTimeout(() => heading.focus({ preventScroll: true }), 220);
+        }
       }, 60);
     }
 
@@ -3165,6 +3170,7 @@ function polarCamelPageHtml() {
     const priceMessage = document.querySelector('[data-price-message]');
     const search = document.querySelector('[data-search]');
     const typeFilter = document.querySelector('[data-type-filter]');
+    const selectedPanel = document.querySelector('.selected');
     let selectedProduct = products[0];
     let selectedVariant = selectedProduct?.variants?.[0];
 
@@ -3241,7 +3247,22 @@ function polarCamelPageHtml() {
       renderTiers(selectedVariant);
       updatePrice();
     }
-    function selectProduct(handle) {
+    function scrollToSelectedPanel() {
+      if (!selectedPanel || !window.matchMedia('(max-width: 980px)').matches) return;
+      window.setTimeout(() => {
+        window.parent?.postMessage({
+          type: 'rd-polar-camel-select',
+          offsetTop: selectedPanel.offsetTop
+        }, '*');
+        selectedPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const heading = selectedPanel.querySelector('h2');
+        if (heading) {
+          heading.setAttribute('tabindex', '-1');
+          window.setTimeout(() => heading.focus({ preventScroll: true }), 220);
+        }
+      }, 60);
+    }
+    function selectProduct(handle, shouldScroll = false) {
       selectedProduct = products.find((product) => product.handle === handle) || products[0];
       selectedVariant = selectedProduct.variants[0];
       selectedTitle.textContent = selectedProduct.title;
@@ -3251,6 +3272,7 @@ function polarCamelPageHtml() {
       variantPicks.querySelectorAll('[data-sku]').forEach((button) => button.addEventListener('click', () => selectVariant(button.dataset.sku)));
       cards.forEach((card) => card.classList.toggle('active', card.dataset.handle === selectedProduct.handle));
       selectVariant(selectedVariant.sku);
+      if (shouldScroll) scrollToSelectedPanel();
     }
     function filterProducts() {
       const term = search.value.trim().toLowerCase();
@@ -3266,7 +3288,7 @@ function polarCamelPageHtml() {
     function sendHeight() {
       window.parent?.postMessage({ type: 'rd-polar-camel-height', height: document.documentElement.scrollHeight }, '*');
     }
-    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.handle)));
+    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.handle, true)));
     variantSelect.addEventListener('change', () => selectVariant(variantSelect.value));
     form.elements.order_quantity.addEventListener('input', updatePrice);
     search.addEventListener('input', filterProducts);
@@ -3484,6 +3506,7 @@ function solarPlacardsPageHtml() {
     const priceLabel = document.querySelector('[data-price-label]');
     const priceTotal = document.querySelector('[data-price-total]');
     const priceMessage = document.querySelector('[data-price-message]');
+    const selectedPanel = document.querySelector('.selected');
     let selectedProduct = products[0];
     function money(value) {
       return '$' + Number(value).toFixed(2);
@@ -3520,7 +3543,19 @@ function solarPlacardsPageHtml() {
         priceMessage.textContent = 'Submit this item and we will confirm pricing before production.';
       }
     }
-    function selectProduct(key) {
+    function scrollToSelectedPanel() {
+      if (!selectedPanel || !window.matchMedia('(max-width: 920px)').matches) return;
+      window.setTimeout(() => {
+        window.parent?.postMessage({
+          type: 'rd-solar-select',
+          offsetTop: selectedPanel.offsetTop
+        }, '*');
+        selectedPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const firstField = selectedPanel.querySelector('input, select, textarea, button');
+        if (firstField) window.setTimeout(() => firstField.focus({ preventScroll: true }), 220);
+      }, 60);
+    }
+    function selectProduct(key, shouldScroll = false) {
       const product = products.find((entry) => entry.key === key) || products[0];
       selectedProduct = product;
       form.elements.product_key.value = product.key;
@@ -3535,8 +3570,9 @@ function solarPlacardsPageHtml() {
       customSizeFields.forEach((field) => { field.hidden = product.key !== 'plate-custom'; });
       cards.forEach((card) => card.classList.toggle('active', card.dataset.productKey === product.key));
       updatePrice();
+      if (shouldScroll) scrollToSelectedPanel();
     }
-    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.productKey)));
+    cards.forEach((card) => card.addEventListener('click', () => selectProduct(card.dataset.productKey, true)));
     form.elements.order_quantity.addEventListener('input', updatePrice);
     form.elements.custom_width.addEventListener('input', updatePrice);
     form.elements.custom_height.addEventListener('input', updatePrice);
