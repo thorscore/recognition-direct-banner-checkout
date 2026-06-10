@@ -2312,7 +2312,15 @@ function nameBadgePageHtml() {
     button{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
     button:disabled{background:#98a1af;cursor:not-allowed}
     .status{min-height:22px;color:var(--muted);font-size:14px}
+    .mobile-checkout{display:none}
     @media(max-width:820px){.hero,.grid{grid-template-columns:1fr}.art{min-height:260px}}
+    @media(max-width:820px){
+      .wrap{padding-bottom:128px}
+      .mobile-checkout{position:fixed;right:12px;bottom:12px;left:12px;z-index:30;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:var(--ink);box-shadow:0 18px 44px rgba(24,33,47,.25);color:#fff;padding:12px}
+      .mobile-checkout strong{display:block;font-size:20px;line-height:1.1}
+      .mobile-checkout span{display:block;color:#d7dde8;font-size:12px;line-height:1.25}
+      .mobile-checkout button{min-height:44px;padding:0 16px}
+    }
   </style>
 </head>
 <body>
@@ -2438,12 +2446,22 @@ function nameBadgePageHtml() {
         </form>
       </div>
     </div>
+    <div class="mobile-checkout" aria-live="polite">
+      <div>
+        <strong data-mobile-total>$0.00</strong>
+        <span data-mobile-status>Choose options, then continue.</span>
+      </div>
+      <button type="button" data-mobile-continue>Checkout</button>
+    </div>
   </main>
   <script>
     const form = document.querySelector('#badge-form');
     const total = document.querySelector('[data-total]');
     const status = document.querySelector('[data-status]');
     const button = form.querySelector('button');
+    const mobileTotal = document.querySelector('[data-mobile-total]');
+    const mobileStatus = document.querySelector('[data-mobile-status]');
+    const mobileContinue = document.querySelector('[data-mobile-continue]');
     const preview = document.querySelector('[data-badge-preview]');
     const previewCaption = document.querySelector('[data-badge-preview-caption]');
     const previewImages = {
@@ -2483,9 +2501,23 @@ function nameBadgePageHtml() {
       preview.alt = labels[color] + ' ' + labels[size] + ' badge preview, ' + labels[frame];
       previewCaption.textContent = labels[color] + ' ' + labels[size] + ' badge, ' + labels[frame];
     }
+    function syncMobileCheckout() {
+      if (mobileTotal) mobileTotal.textContent = total.textContent || '$0.00';
+      if (mobileStatus) mobileStatus.textContent = status.textContent || 'Choose options, then continue.';
+    }
+    function scrollToCheckout() {
+      const firstInvalid = Array.from(form.elements).find((field) => field.willValidate && !field.checkValidity());
+      const target = firstInvalid || button || form;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => {
+        if (typeof target.focus === 'function') target.focus({ preventScroll: true });
+        if (firstInvalid) form.reportValidity();
+      }, 300);
+    }
     async function price() {
       updatePreview();
       status.textContent = 'Checking price...';
+      syncMobileCheckout();
       try {
         const response = await fetch('${APP_BASE_URL}/api/name-badge-price', { method: 'POST', body: new FormData(form) });
         const payload = await response.json();
@@ -2493,12 +2525,15 @@ function nameBadgePageHtml() {
         total.textContent = '$' + payload.totalPrice.toFixed(2);
         status.textContent = '$' + payload.unitPrice.toFixed(2) + ' each based on quantity.';
         button.disabled = false;
+        syncMobileCheckout();
       } catch (error) {
         total.textContent = '$0.00';
         status.textContent = error.message || 'Pricing is not available yet.';
         button.disabled = true;
+        syncMobileCheckout();
       }
     }
+    if (mobileContinue) mobileContinue.addEventListener('click', scrollToCheckout);
     form.addEventListener('input', price);
     form.addEventListener('change', price);
     updatePreview();
