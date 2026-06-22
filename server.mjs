@@ -1252,7 +1252,7 @@ function shippingTags(plan) {
 
 function draftOrderShippingLine(plan) {
   return {
-    title: plan === SHIPPING_GROUPS.pickup ? plan.title : "No additional shipping charge",
+    title: plan === SHIPPING_GROUPS.pickup ? plan.title : "Shipping & Handling charged above",
     priceWithCurrency: { amount: "0.00", currencyCode: "USD" },
   };
 }
