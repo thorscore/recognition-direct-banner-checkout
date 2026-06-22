@@ -1251,21 +1251,29 @@ function shippingTags(plan) {
 }
 
 function draftOrderShippingLine(plan) {
-  if (plan === SHIPPING_GROUPS.pickup) {
-    return {
-      title: plan.title,
-      priceWithCurrency: { amount: "0.00", currencyCode: "USD" },
-    };
-  }
-  if (!plan.rate) return undefined;
   return {
-    title: plan.title,
-    priceWithCurrency: { amount: plan.rate.toFixed(2), currencyCode: "USD" },
+    title: plan === SHIPPING_GROUPS.pickup ? plan.title : "Shipping & Handling paid as taxable item",
+    priceWithCurrency: { amount: "0.00", currencyCode: "USD" },
   };
 }
 
 function draftOrderPickupAddress(isPickup) {
   return isPickup ? { shippingAddress: PICKUP_TAX_ADDRESS } : {};
+}
+
+function draftOrderShippingHandlingLine(plan) {
+  if (!plan?.rate) return [];
+  return [{
+    title: "Shipping & Handling",
+    quantity: 1,
+    originalUnitPriceWithCurrency: { amount: plan.rate.toFixed(2), currencyCode: "USD" },
+    requiresShipping: false,
+    taxable: true,
+    customAttributes: [
+      attribute("Shipping Handling Group", plan.label),
+      attribute("Shipping Handling Note", plan.note),
+    ].filter(Boolean),
+  }];
 }
 
 function classifyCatalogShipping(product, input, quantity) {
@@ -1384,14 +1392,17 @@ async function handleCheckout(req, res) {
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
-    lineItems: [{
-      title: "Custom 13oz Vinyl Banner",
-      quantity,
-      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: true,
-      taxable: true,
-      customAttributes: attributes,
-    }],
+    lineItems: [
+      {
+        title: "Custom 13oz Vinyl Banner",
+        quantity,
+        originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+        requiresShipping: true,
+        taxable: true,
+        customAttributes: attributes,
+      },
+      ...draftOrderShippingHandlingLine(shipping),
+    ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
@@ -1485,14 +1496,17 @@ async function handleCatalogCheckout(req, res) {
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
-    lineItems: [{
-      title: catalogDisplayTitle(product),
-      quantity,
-      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: true,
-      taxable: true,
-      customAttributes: attributes,
-    }],
+    lineItems: [
+      {
+        title: catalogDisplayTitle(product),
+        quantity,
+        originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+        requiresShipping: true,
+        taxable: true,
+        customAttributes: attributes,
+      },
+      ...draftOrderShippingHandlingLine(shipping),
+    ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
@@ -1571,14 +1585,17 @@ async function handleNameBadgeCheckout(req, res) {
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
-    lineItems: [{
-      title: "Name Badges",
-      quantity: input.quantity,
-      originalUnitPriceWithCurrency: { amount: input.unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: true,
-      taxable: true,
-      customAttributes: attributes,
-    }],
+    lineItems: [
+      {
+        title: "Name Badges",
+        quantity: input.quantity,
+        originalUnitPriceWithCurrency: { amount: input.unitPrice.toFixed(2), currencyCode: "USD" },
+        requiresShipping: true,
+        taxable: true,
+        customAttributes: attributes,
+      },
+      ...draftOrderShippingHandlingLine(shipping),
+    ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
@@ -2039,14 +2056,17 @@ async function handleSolarPlacardCheckout(req, res) {
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
-    lineItems: [{
-      title: product.title,
-      quantity,
-      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: true,
-      taxable: true,
-      customAttributes: attributes,
-    }],
+    lineItems: [
+      {
+        title: product.title,
+        quantity,
+        originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+        requiresShipping: true,
+        taxable: true,
+        customAttributes: attributes,
+      },
+      ...draftOrderShippingHandlingLine(shipping),
+    ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
@@ -2156,14 +2176,17 @@ async function handlePremierAwardCheckout(req, res) {
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
-    lineItems: [{
-      title: productDisplayName,
-      quantity,
-      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: true,
-      taxable: true,
-      customAttributes: attributes,
-    }],
+    lineItems: [
+      {
+        title: productDisplayName,
+        quantity,
+        originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+        requiresShipping: true,
+        taxable: true,
+        customAttributes: attributes,
+      },
+      ...draftOrderShippingHandlingLine(shipping),
+    ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
@@ -2273,14 +2296,17 @@ async function handlePolarCamelCheckout(req, res) {
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup),
     shippingLine: draftOrderShippingLine(shipping),
-    lineItems: [{
-      title: `${product.title} - ${variant.optionValue}`,
-      quantity,
-      originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-      requiresShipping: true,
-      taxable: true,
-      customAttributes: attributes,
-    }],
+    lineItems: [
+      {
+        title: `${product.title} - ${variant.optionValue}`,
+        quantity,
+        originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
+        requiresShipping: true,
+        taxable: true,
+        customAttributes: attributes,
+      },
+      ...draftOrderShippingHandlingLine(shipping),
+    ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
