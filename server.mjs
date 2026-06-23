@@ -1252,28 +1252,13 @@ function shippingTags(plan) {
 
 function draftOrderShippingLine(plan) {
   return {
-    title: plan === SHIPPING_GROUPS.pickup ? plan.title : "Shipping & Handling charged above",
-    priceWithCurrency: { amount: "0.00", currencyCode: "USD" },
+    title: plan.title,
+    priceWithCurrency: { amount: plan.rate.toFixed(2), currencyCode: "USD" },
   };
 }
 
 function draftOrderPickupAddress(isPickup) {
   return isPickup ? { shippingAddress: PICKUP_TAX_ADDRESS } : {};
-}
-
-function draftOrderShippingHandlingLine(plan) {
-  if (!plan?.rate) return [];
-  return [{
-    title: "Shipping & Handling",
-    quantity: 1,
-    originalUnitPriceWithCurrency: { amount: plan.rate.toFixed(2), currencyCode: "USD" },
-    requiresShipping: false,
-    taxable: true,
-    customAttributes: [
-      attribute("Shipping Handling Group", plan.label),
-      attribute("Shipping Handling Note", plan.note),
-    ].filter(Boolean),
-  }];
 }
 
 function classifyCatalogShipping(product, input, quantity) {
@@ -1401,7 +1386,6 @@ async function handleCheckout(req, res) {
         taxable: true,
         customAttributes: attributes,
       },
-      ...draftOrderShippingHandlingLine(shipping),
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
@@ -1505,7 +1489,6 @@ async function handleCatalogCheckout(req, res) {
         taxable: true,
         customAttributes: attributes,
       },
-      ...draftOrderShippingHandlingLine(shipping),
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
@@ -1594,7 +1577,6 @@ async function handleNameBadgeCheckout(req, res) {
         taxable: true,
         customAttributes: attributes,
       },
-      ...draftOrderShippingHandlingLine(shipping),
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
@@ -2065,7 +2047,6 @@ async function handleSolarPlacardCheckout(req, res) {
         taxable: true,
         customAttributes: attributes,
       },
-      ...draftOrderShippingHandlingLine(shipping),
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
@@ -2185,7 +2166,6 @@ async function handlePremierAwardCheckout(req, res) {
         taxable: true,
         customAttributes: attributes,
       },
-      ...draftOrderShippingHandlingLine(shipping),
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
@@ -2305,7 +2285,6 @@ async function handlePolarCamelCheckout(req, res) {
         taxable: true,
         customAttributes: attributes,
       },
-      ...draftOrderShippingHandlingLine(shipping),
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
