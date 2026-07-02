@@ -1203,6 +1203,9 @@ function buildYouthSportsBannerPrompt(formData, artworkUrls = {}) {
 
   const prompt = [
     "Create a high-resolution, print-ready youth sports banner design for Recognition Direct.",
+    "Build this as a custom production-style sports banner, not a generic template.",
+    "Use the exact customer text supplied below. Do not invent player numbers, names, logos, mascots, or sponsors.",
+    "If any requested detail is missing, leave it out cleanly and note what is missing before production.",
     "",
     promptLine("Banner size", field(formData, "banner_size")),
     promptLine("Quantity ordered", field(formData, "order_quantity")),
@@ -1223,11 +1226,19 @@ function buildYouthSportsBannerPrompt(formData, artworkUrls = {}) {
     ...(artworkNotes.length ? ["", ...artworkNotes] : []),
     "",
     "Design requirements:",
-    "- Make the main team name large and easy to read from a distance.",
-    "- Use professional sports-banner styling that matches the sport, team colors, and any customer notes.",
+    "- Start by choosing the strongest layout concept for this team instead of making a flat text-only layout.",
+    "- Make the main team name the visual hero: large, bold, dimensional, and readable from a distance.",
+    "- Use an eye-catching youth sports style with motion, depth, contrast, and energy.",
+    "- Match the sport with soccer-specific visual elements such as field texture, stadium lights, ball motion, goal net, grass, action streaks, shield shapes, or dynamic diagonal panels.",
+    "- Match the team colors without making the design one-note; use dark and light contrast so the text pops.",
+    "- Use professional typography hierarchy: league/age group smaller, team name largest, roster and coaches organized clearly.",
+    "- Keep player names accurate and readable. If numbers are not supplied, use names only and do not make up numbers.",
+    "- Use clean outlined or shadowed text where needed so names remain readable over the background.",
     "- Keep important text, faces, logos, and player names at least 1 inch from the edges.",
-    "- Leave room for sponsor logos or extra names if requested.",
-    "- Create a clean, high-resolution print-ready concept suitable for a full color vinyl banner.",
+    "- Use the lower area for a clean roster section if player names are provided.",
+    "- Leave room for sponsor logos or extra names only if requested.",
+    "- Create a polished, high-resolution print-ready concept suitable for a full color vinyl banner.",
+    "- If possible, provide a print-ready PDF/vector version and a full-size PNG preview.",
     "- If any uploaded image is low quality, still create the best layout and note what should be cleaned up before production.",
   ].filter((line) => line !== "").join("\n");
 
