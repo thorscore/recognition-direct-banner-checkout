@@ -1185,6 +1185,55 @@ function buildBannerDesignAttributes(formData, artworkUrls) {
   ].filter(Boolean);
 }
 
+function isYouthSportsBanner(formData) {
+  return /youth\s*sports/i.test(field(formData, "banner_type", 200));
+}
+
+function promptLine(label, value) {
+  return value ? `${label}: ${value}` : "";
+}
+
+function buildYouthSportsBannerPrompt(formData, artworkUrls = {}) {
+  if (!isYouthSportsBanner(formData)) return "";
+
+  const artworkNotes = [
+    promptLine("Print-ready artwork upload", artworkUrls.youthArtwork),
+    promptLine("Design idea image upload", artworkUrls.youthIdeaImage),
+  ].filter(Boolean);
+
+  const prompt = [
+    "Create a high-resolution, print-ready youth sports banner design for Recognition Direct.",
+    "",
+    promptLine("Banner size", field(formData, "banner_size")),
+    promptLine("Quantity ordered", field(formData, "order_quantity")),
+    promptLine("Sport", field(formData, "sport")),
+    promptLine("League name", field(formData, "league_name")),
+    promptLine("Age group", field(formData, "age_group")),
+    promptLine("Team name", field(formData, "team_name")),
+    promptLine("Team colors", field(formData, "team_colors")),
+    "",
+    promptLine("Players names and numbers", field(formData, "players", 2000)),
+    promptLine("Coaches names", field(formData, "coaches", 1000)),
+    promptLine("Team parents / volunteers", field(formData, "volunteers", 1000)),
+    "",
+    promptLine("Customer design ideas", field(formData, "youth_design_ideas", 1500)),
+    promptLine("Banner description", field(formData, "banner_description", 1500)),
+    promptLine("Need-by date", field(formData, "need_by")),
+    promptLine("Customer notes", field(formData, "notes", 1500)),
+    ...(artworkNotes.length ? ["", ...artworkNotes] : []),
+    "",
+    "Design requirements:",
+    "- Make the main team name large and easy to read from a distance.",
+    "- Use professional sports-banner styling that matches the sport, team colors, and any customer notes.",
+    "- Keep important text, faces, logos, and player names at least 1 inch from the edges.",
+    "- Leave room for sponsor logos or extra names if requested.",
+    "- Create a clean, high-resolution print-ready concept suitable for a full color vinyl banner.",
+    "- If any uploaded image is low quality, still create the best layout and note what should be cleaned up before production.",
+  ].filter((line) => line !== "").join("\n");
+
+  return cleanText(prompt, 7000);
+}
+
 const SHIPPING_GROUPS = {
   pickup: {
     label: "Local Pickup",
@@ -1348,6 +1397,7 @@ async function handleCheckout(req, res) {
     ...buildAttributes(formData, artworkUrls),
     ...shippingAttributes(shipping),
   ];
+  const aiDesignPrompt = buildYouthSportsBannerPrompt(formData, artworkUrls);
   const email = field(formData, "email", 320);
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
@@ -1361,6 +1411,7 @@ async function handleCheckout(req, res) {
     deliveryMethod,
     attributes,
     artworkUrls,
+    aiDesignPrompt,
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
@@ -1371,7 +1422,10 @@ async function handleCheckout(req, res) {
 
   const draftOrder = await createDraftOrder({
     email,
-    note: `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    note: [
+      `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+      aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
+    ].filter(Boolean).join("\n\n"),
     tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
@@ -1435,6 +1489,9 @@ async function handleCatalogCheckout(req, res) {
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
 
   const unitLabel = units === "inches" ? "in" : "ft";
+  if (squareFeetEach > 0) {
+    formData.set("banner_size", `${width} ${unitLabel} x ${height} ${unitLabel}`);
+  }
   const shipping = classifyCatalogShipping(product, { ...input, deliveryMethod }, quantity);
   const attributes = [
     attribute("Configured Product", catalogDisplayTitle(product)),
@@ -1450,6 +1507,7 @@ async function handleCatalogCheckout(req, res) {
     ...buildBannerDesignAttributes(formData, bannerArtworkUrls),
     ...shippingAttributes(shipping),
   ].filter(Boolean);
+  const aiDesignPrompt = buildYouthSportsBannerPrompt(formData, bannerArtworkUrls);
 
   const orderRecord = {
     id: randomUUID(),
@@ -1464,6 +1522,7 @@ async function handleCatalogCheckout(req, res) {
     attributes,
     artworkUrl,
     bannerArtworkUrls,
+    aiDesignPrompt,
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
@@ -1474,7 +1533,10 @@ async function handleCatalogCheckout(req, res) {
 
   const draftOrder = await createDraftOrder({
     email,
-    note: `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+    note: [
+      `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+      aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
+    ].filter(Boolean).join("\n\n"),
     tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
