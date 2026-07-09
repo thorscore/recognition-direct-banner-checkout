@@ -1326,8 +1326,26 @@ function draftOrderShippingLine(plan) {
   };
 }
 
-function draftOrderPickupAddress(isPickup) {
-  return isPickup ? { shippingAddress: PICKUP_TAX_ADDRESS } : {};
+function customerPickupName(formData) {
+  const name = field(formData, "name", 120) || field(formData, "customer_name", 120) || field(formData, "contact_name", 120);
+  if (!name) return { firstName: "Pickup", lastName: "Customer" };
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return { firstName: parts[0], lastName: "Customer" };
+  return { firstName: parts.slice(0, -1).join(" "), lastName: parts.at(-1) };
+}
+
+function draftOrderPickupAddress(isPickup, formData) {
+  if (!isPickup) return {};
+  const customerCompany = field(formData, "company", 120);
+  const customerPhone = field(formData, "phone", 40);
+  return {
+    shippingAddress: {
+      ...PICKUP_TAX_ADDRESS,
+      ...customerPickupName(formData),
+      company: customerCompany,
+      phone: customerPhone || PICKUP_TAX_ADDRESS.phone,
+    },
+  };
 }
 
 function classifyCatalogShipping(product, input, quantity) {
@@ -1449,7 +1467,7 @@ async function handleCheckout(req, res) {
     tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
-    ...draftOrderPickupAddress(isPickup),
+    ...draftOrderPickupAddress(isPickup, formData),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [
       {
@@ -1560,7 +1578,7 @@ async function handleCatalogCheckout(req, res) {
     tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
-    ...draftOrderPickupAddress(isPickup),
+    ...draftOrderPickupAddress(isPickup, formData),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [
       {
@@ -1648,7 +1666,7 @@ async function handleNameBadgeCheckout(req, res) {
     tags: ["name-badges", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
-    ...draftOrderPickupAddress(isPickup),
+    ...draftOrderPickupAddress(isPickup, formData),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [
       {
@@ -2118,7 +2136,7 @@ async function handleSolarPlacardCheckout(req, res) {
     tags: ["solar-placards", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
-    ...draftOrderPickupAddress(isPickup),
+    ...draftOrderPickupAddress(isPickup, formData),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [
       {
@@ -2237,7 +2255,7 @@ async function handlePremierAwardCheckout(req, res) {
     tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
-    ...draftOrderPickupAddress(isPickup),
+    ...draftOrderPickupAddress(isPickup, formData),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [
       {
@@ -2356,7 +2374,7 @@ async function handlePolarCamelCheckout(req, res) {
     tags: ["polar-camel", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
-    ...draftOrderPickupAddress(isPickup),
+    ...draftOrderPickupAddress(isPickup, formData),
     shippingLine: draftOrderShippingLine(shipping),
     lineItems: [
       {
