@@ -2438,14 +2438,53 @@ function nameBadgePageHtml() {
   const priceBreakText = NAME_BADGE_BASE_PRICE_BREAKS.length
     ? NAME_BADGE_BASE_PRICE_BREAKS.map((priceBreak) => `${priceBreak.minimumQuantity}+ framed badges: $${priceBreak.unitPrice.toFixed(2)} each`).join(" | ")
     : "Quantity pricing is not configured yet.";
+  const faqSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "Can I order custom name badges online?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Recognition Direct lets customers order custom name badges online with size, badge color, frame, fastener, finish, and name list options."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "Will I receive a proof before name badges are made?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Recognition Direct sends a proof before production so badge layout, names, logo placement, and options can be reviewed."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "What is Express One for name badges?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Express One allows customers to order a larger badge quantity to receive quantity pricing, while Recognition Direct holds extra badge stock for later releases."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "Can I upload a name list for badges?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Customers can type badge names into the order form or upload a text or CSV file with the badge names."
+        }
+      }
+    ]
+  }).replace(/</g, "\\u003c");
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Name Badges | Recognition Direct</title>
-  <meta name="description" content="Order custom name badges from Recognition Direct with size, badge color, frame, and fastener options.">
+  <title>Custom Name Badges San Diego | Recognition Direct</title>
+  <meta name="description" content="Order custom name badges online from Recognition Direct. Choose badge size, color, frame, fastener, epoxy dome finish, and upload names or artwork. Proof before production with local pickup or shipping.">
+  <script type="application/ld+json">${faqSchema}</script>
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
     *{box-sizing:border-box}
@@ -2487,6 +2526,19 @@ function nameBadgePageHtml() {
     button:disabled{background:#98a1af;cursor:not-allowed}
     .status{min-height:22px;color:var(--muted);font-size:14px}
     .mobile-checkout{display:none}
+    .seo-band{margin-top:30px;border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:8px;background:#fff;padding:24px}
+    .seo-band p{margin:0;color:var(--muted)}
+    .seo-band h2{margin:0 0 12px;font-size:28px;line-height:1.15}
+    .seo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
+    .seo-card{border:1px solid var(--line);border-radius:8px;background:#f7f9fd;padding:16px}
+    .seo-card strong{display:block;margin-bottom:6px}
+    .seo-card span{display:block;color:var(--muted);font-size:14px}
+    .faq{margin-top:24px}
+    .faq h3{margin:0 0 8px;font-size:20px}
+    .faq details{border-top:1px solid var(--line);padding:14px 0}
+    .faq details:last-child{border-bottom:1px solid var(--line)}
+    .faq summary{cursor:pointer;font-weight:900}
+    .faq p{margin:8px 0 0;color:var(--muted)}
     @media(max-width:820px){.hero,.grid{grid-template-columns:1fr}.art{min-height:260px}}
     @media(max-width:820px){
       .wrap{padding-bottom:128px}
@@ -2494,6 +2546,7 @@ function nameBadgePageHtml() {
       .mobile-checkout strong{display:block;font-size:20px;line-height:1.1}
       .mobile-checkout span{display:block;color:#d7dde8;font-size:12px;line-height:1.25}
       .mobile-checkout button{min-height:44px;padding:0 16px}
+      .seo-grid{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -2510,7 +2563,7 @@ function nameBadgePageHtml() {
       <div>
         <p class="note">Recognition Direct</p>
         <h1>Name Badges</h1>
-        <p class="intro">Order custom name badges with your choice of size, badge color, frame, and fastener. You will receive a proof before production.</p>
+        <p class="intro">Order custom name badges online with your choice of badge size, color, frame, finish, and fastener. We send a proof before production so your badge names, logo, and layout can be reviewed.</p>
 
         <form id="badge-form" action="${APP_BASE_URL}/api/name-badge-checkout" method="post" enctype="multipart/form-data">
           <div class="panel grid">
@@ -2627,6 +2680,46 @@ function nameBadgePageHtml() {
       </div>
       <button type="button" data-mobile-continue>Checkout</button>
     </div>
+
+    <section class="seo-band" aria-labelledby="name-badge-seo-heading">
+      <p class="note">Local name badge ordering</p>
+      <h2 id="name-badge-seo-heading">Custom name badges for San Diego, East County, Spring Valley, La Mesa, and beyond</h2>
+      <p>Recognition Direct has helped local companies, schools, offices, restaurants, medical teams, real estate offices, and service businesses order professional name badges for years. Choose standard badge options online, upload your logo or name list, and receive a proof before production.</p>
+      <div class="seo-grid">
+        <div class="seo-card">
+          <strong>Badge options online</strong>
+          <span>Choose 1&quot; x 3&quot; or 1.5&quot; x 3&quot; badges, white, brushed gold, or brushed silver, with no frame, silver frame, or gold frame.</span>
+        </div>
+        <div class="seo-card">
+          <strong>Express One reorders</strong>
+          <span>Order a larger quantity to receive quantity pricing, then let us hold badge stock for fast future employee or staff badge releases.</span>
+        </div>
+        <div class="seo-card">
+          <strong>Proof before production</strong>
+          <span>We review names, logo placement, frame choice, fastener, and finish before making your badges.</span>
+        </div>
+      </div>
+
+      <div class="faq" aria-label="Name badge frequently asked questions">
+        <h3>Name Badge Ordering Questions</h3>
+        <details>
+          <summary>Can I upload a list of names?</summary>
+          <p>Yes. You can type names directly into the order form or upload a text or CSV file with the badge names.</p>
+        </details>
+        <details>
+          <summary>What badge options are available?</summary>
+          <p>Standard options include 1&quot; x 3&quot; and 1.5&quot; x 3&quot; sizes, white, brushed gold, and brushed silver badge colors, no frame, silver frame, gold frame, magnetic fastener, pin fastener, and epoxy dome finish.</p>
+        </details>
+        <details>
+          <summary>What is Express One?</summary>
+          <p>Express One is for customers with ongoing badge needs. You can order a larger quantity to receive quantity pricing, and Recognition Direct can hold extra badge stock for later release orders.</p>
+        </details>
+        <details>
+          <summary>Do I get a proof before production?</summary>
+          <p>Yes. We send a proof before production so you can review the design before the badges are made.</p>
+        </details>
+      </div>
+    </section>
   </main>
   <script>
     const form = document.querySelector('#badge-form');
