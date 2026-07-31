@@ -1276,6 +1276,13 @@ const SHIPPING_GROUPS = {
     rate: 19.95,
     note: "Good for most awards, drinkware, posters, small signs, and standard packages.",
   },
+  solar: {
+    label: "Solar Placards",
+    tag: "shipping-solar-placards",
+    title: "Solar Placard Shipping & Handling",
+    rate: 10,
+    note: "Flat shipping and handling for solar placards and plates.",
+  },
   large: {
     label: "Large Package",
     tag: "shipping-large",
@@ -1303,6 +1310,7 @@ function elevateShippingGroup(groupKey, quantity, thresholds = {}) {
 
 function shippingPlan(groupKey, deliveryMethod, quantity = 1, thresholds) {
   const isPickup = deliveryMethod !== "Ship";
+  if (!isPickup && groupKey === "solar") return SHIPPING_GROUPS.solar;
   const key = isPickup ? "pickup" : elevateShippingGroup(groupKey, quantity, thresholds);
   return SHIPPING_GROUPS[key] || SHIPPING_GROUPS.standard;
 }
@@ -2078,7 +2086,7 @@ async function handleSolarPlacardCheckout(req, res) {
   const customSize = product.key === "plate-custom" && customArea !== null
     ? `${field(formData, "custom_width")} in x ${field(formData, "custom_height")} in`
     : "";
-  const shipping = shippingPlan(product.type === "placard" ? "standard" : "small", deliveryMethod, quantity, { standard: 10, large: 40, oversized: 100 });
+  const shipping = shippingPlan("solar", deliveryMethod, quantity);
   const attributes = [
     attribute("Product", product.title),
     attribute("Product Type", product.type === "placard" ? "Solar Placard" : "Solar Plate"),
