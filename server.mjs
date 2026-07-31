@@ -696,6 +696,7 @@ function deliveryMethodLabel(value) {
   if (value === "pickup-la-mesa") return "Pickup at La Mesa Street Side Pickup";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
   if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
+  if (value === "league-billed") return "League billed / no payment due";
   return "Ship";
 }
 
@@ -1492,6 +1493,94 @@ async function handleCheckout(req, res) {
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
+    ],
+  });
+
+  orderRecord.shopifyDraftOrderId = draftOrder.id;
+  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+  res.writeHead(303, { Location: draftOrder.invoiceUrl });
+  res.end();
+}
+
+async function handleJamulAysoBannerOrder(req, res) {
+  const origin = req.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
+
+  const formData = await requestFormData(req);
+  const email = field(formData, "email", 320);
+  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+
+  formData.set("width", "5");
+  formData.set("height", "3");
+  formData.set("units", "feet");
+  formData.set("order_quantity", "1");
+  formData.set("banner_type", "Youth Sports Banner");
+  formData.set("sport", "Soccer");
+  formData.set("league_name", "Jamul AYSO");
+  formData.set("delivery_method", "league-billed");
+  formData.set("banner_size", "5 ft x 3 ft");
+  formData.set("square_footage_each", "15.00 sq ft");
+  formData.set("total_square_footage", "15.00 sq ft");
+
+  const artworkUrls = {
+    youthArtwork: await saveUpload(formData.get("youth_artwork")),
+    youthIdeaImage: await saveUpload(formData.get("youth_idea_image")),
+    standardArtwork: "",
+    standardIdeaImage: "",
+  };
+
+  const attributes = [
+    attribute("League Billing", "No charge at checkout. Invoice Jamul AYSO after team orders are collected."),
+    attribute("League Order Page", "Jamul AYSO 3 ft x 5 ft Team Banner"),
+    attribute("Order Charge", "$0.00 due today"),
+    ...buildAttributes(formData, artworkUrls),
+  ].filter(Boolean);
+  const aiDesignPrompt = buildYouthSportsBannerPrompt(formData, artworkUrls);
+  const orderRecord = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    email,
+    quantity: 1,
+    unitPrice: 0,
+    totalPrice: 0,
+    deliveryMethod: "League billed / no payment due",
+    billingMethod: "Invoice Jamul AYSO after team orders are collected",
+    attributes,
+    artworkUrls,
+    aiDesignPrompt,
+  };
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+
+  if (MOCK_SHOPIFY) {
+    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
+    return res.end();
+  }
+
+  const draftOrder = await createDraftOrder({
+    email,
+    note: [
+      `Jamul AYSO league-billed 3 ft x 5 ft banner order ${orderRecord.id}. No payment due at checkout. Invoice Jamul AYSO after team orders are collected.`,
+      aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
+    ].filter(Boolean).join("\n\n"),
+    tags: ["jamul-ayso", "league-billed", "custom-banner", "youth-sports-banner", "proof-required", "no-charge-checkout"],
+    allowDiscountCodesInCheckout: false,
+    taxExempt: true,
+    lineItems: [
+      {
+        title: "Jamul AYSO 3' x 5' Team Banner",
+        quantity: 1,
+        originalUnitPriceWithCurrency: { amount: "0.00", currencyCode: "USD" },
+        requiresShipping: false,
+        taxable: false,
+        customAttributes: attributes,
+      },
+    ],
+    customAttributes: [
+      { key: "Configuration ID", value: orderRecord.id },
+      { key: "League Billing", value: "Invoice Jamul AYSO after team orders are collected" },
+      { key: "Proof Required", value: "Yes" },
+      { key: "Order Charge", value: "$0.00 due today" },
     ],
   });
 
@@ -4026,6 +4115,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/premier-award-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/polar-camel-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/express-one-")) return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "OPTIONS" && url.pathname.startsWith("/api/jamul-ayso-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
@@ -4034,6 +4124,9 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/polar-camel-price") return await handlePolarCamelPrice(req, res);
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
+    }
+    if (req.method === "GET" && url.pathname === "/jamul-ayso-banners") {
+      return await servePublicFile(res, "jamul-ayso-banners.html", "text/html; charset=utf-8");
     }
     if (req.method === "GET" && url.pathname === "/name-badges") return html(res, 200, nameBadgePageHtml());
     if (req.method === "GET" && url.pathname === "/custom-name-badges") return html(res, 200, customNameBadgePageHtml());
@@ -4072,6 +4165,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname.startsWith("/uploads/")) return await handleUpload(req, res, url.pathname);
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/jamul-ayso-banner-order") return await handleJamulAysoBannerOrder(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-checkout") return await handleNameBadgeCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/custom-name-badge-inquiry") return await handleCustomNameBadgeInquiry(req, res);
