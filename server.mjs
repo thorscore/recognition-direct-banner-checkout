@@ -3548,13 +3548,52 @@ function solarPlacardsPageHtml() {
   const otherPlacards = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "placard" && !product.featured);
   const plates = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "plate");
   const first = SOLAR_PLACARD_PRODUCTS[0];
+  const faqSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What should I upload for a solar placard order?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Upload the PDF plan sheet or reference file that contains the solar placard design, layout, and required labeling. Recognition Direct reviews the file and sends a proof before production."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "Can Recognition Direct make custom solar plates?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Custom solar plates can be ordered by entering the requested text and size. The maximum custom plate size is 12 inches by 24 inches or 24 inches by 12 inches."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "Do you offer local pickup for solar placards?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Solar placard orders can be shipped or picked up locally at La Mesa or Spring Valley when available."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "Will I receive a proof before production?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Recognition Direct sends a proof before production so the final solar placard or plate can be reviewed before it is made."
+        }
+      }
+    ]
+  }).replace(/</g, "\\u003c");
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Solar Placards | Recognition Direct</title>
-  <meta name="description" content="Order solar placards and engraved solar plates from Recognition Direct. Upload PDF plans or enter custom plate text.">
+  <title>Solar Placards San Diego | Same-Day PV Labels | Recognition Direct</title>
+  <meta name="description" content="Order solar placards and PV warning plates in San Diego. Upload your PDF plan sheet, choose standard placard or custom plate sizes, and get proof-before-production with same-day pickup or shipping when available.">
+  <script type="application/ld+json">${faqSchema}</script>
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8;--soft:#f5f7fb}
     *{box-sizing:border-box}
@@ -3593,16 +3632,28 @@ function solarPlacardsPageHtml() {
     .estimate strong{display:block;margin:4px 0;font-size:34px;line-height:1}
     .estimate span{color:#d7dde8}
     button.submit{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
+    .seo-band{margin-top:30px;border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:8px;background:#fff;padding:24px}
+    .seo-band p{margin:0;color:var(--muted)}
+    .seo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
+    .seo-card{border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:16px}
+    .seo-card strong{display:block;margin-bottom:6px;font-size:15px}
+    .seo-card span{display:block;color:var(--muted);font-size:14px}
+    .faq{margin-top:24px}
+    .faq details{border-top:1px solid var(--line);padding:14px 0}
+    .faq details:last-child{border-bottom:1px solid var(--line)}
+    .faq summary{cursor:pointer;font-weight:900}
+    .faq p{margin:8px 0 0;color:var(--muted)}
+    .service-area{margin-top:14px;color:var(--muted);font-size:14px}
     [hidden]{display:none!important}
-    @media(max-width:920px){.layout{grid-template-columns:1fr}.product-grid{grid-template-columns:1fr 1fr}}
-    @media(max-width:560px){.product-grid,.grid{grid-template-columns:1fr}}
+    @media(max-width:920px){.layout{grid-template-columns:1fr}.product-grid{grid-template-columns:1fr 1fr}.seo-grid{grid-template-columns:1fr}}
+    @media(max-width:560px){.product-grid,.grid{grid-template-columns:1fr}.seo-band{padding:18px}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <p class="eyebrow">Recognition Direct</p>
     <h1>Solar Placards</h1>
-    <p class="intro">Choose a solar placard size and upload the PDF plan sheet that contains the design, or choose a solar plate and enter the text you want printed. You will receive a proof before production.</p>
+    <p class="intro">Order solar placards, PV warning labels, and custom red-and-white solar plates for San Diego solar installs. Upload your PDF plan sheet or enter plate text online, then receive a proof before production.</p>
 
     <div class="layout">
       <section class="panel gallery" aria-label="Solar placard products">
@@ -3698,6 +3749,47 @@ function solarPlacardsPageHtml() {
         </form>
       </section>
     </div>
+
+    <section class="seo-band" aria-labelledby="solar-seo-heading">
+      <p class="eyebrow">Solar installer support</p>
+      <h2 id="solar-seo-heading">Solar placards for San Diego, East County, Spring Valley, La Mesa, and beyond</h2>
+      <p>Recognition Direct helps solar contractors, project coordinators, and homeowners order clear solar placards without slowing down the job. Choose a standard placard size, upload the PDF plan sheet that contains the design, or order a custom plate with the exact text you need.</p>
+      <div class="seo-grid">
+        <div class="seo-card">
+          <strong>Upload the plan sheet</strong>
+          <span>Send the PDF that shows the placard design or PV labeling details, and we will review it before production.</span>
+        </div>
+        <div class="seo-card">
+          <strong>Same-day focus</strong>
+          <span>Many solar placard orders can be picked up locally or shipped the same day when the file is ready and production capacity allows.</span>
+        </div>
+        <div class="seo-card">
+          <strong>Proof before production</strong>
+          <span>We send a proof so your solar placard, warning label, or custom plate can be checked before it is made.</span>
+        </div>
+      </div>
+      <p class="service-area">Note: solar code, utility, and inspection requirements can vary by project. Installers and customers are responsible for confirming final requirements with the city, county, utility, or inspector for the job.</p>
+
+      <div class="faq" aria-label="Solar placard frequently asked questions">
+        <h3>Solar Placard Ordering Questions</h3>
+        <details>
+          <summary>What file should I upload?</summary>
+          <p>Upload the PDF plan sheet or reference file that contains the solar placard design, layout, and required labeling. If something is unclear, we will contact you before production.</p>
+        </details>
+        <details>
+          <summary>Can you make custom solar plates?</summary>
+          <p>Yes. Choose the custom plate option, enter the size and exact text, and upload any artwork or reference file. Custom plates can be up to 12&quot; x 24&quot; or 24&quot; x 12&quot;.</p>
+        </details>
+        <details>
+          <summary>Do you offer pickup for local solar companies?</summary>
+          <p>Yes. Solar placard orders can be shipped or picked up locally at La Mesa or Spring Valley when available.</p>
+        </details>
+        <details>
+          <summary>Will I receive a proof?</summary>
+          <p>Yes. You will receive a proof before production so the placard or plate can be reviewed before it is made.</p>
+        </details>
+      </div>
+    </section>
   </main>
   <script>
     const products = ${JSON.stringify(SOLAR_PLACARD_PRODUCTS)};
