@@ -696,7 +696,7 @@ function deliveryMethodLabel(value) {
   if (value === "pickup-la-mesa") return "Pickup at La Mesa Street Side Pickup";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
   if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
-  if (value === "league-billed") return "League billed / no payment due";
+  if (value === "league-billed") return "Billed to Jamul Little League";
   return "Ship";
 }
 
@@ -1531,7 +1531,7 @@ async function handleJamulAysoBannerOrder(req, res) {
   };
 
   const attributes = [
-    attribute("League Billing", "No charge at checkout. Invoice Jamul AYSO after team orders are collected."),
+    attribute("League Billing", "Your order will be billed to Jamul Little League."),
     attribute("League Order Page", "Jamul AYSO 3 ft x 5 ft Team Banner"),
     attribute("Order Charge", "$0.00 due today"),
     ...buildAttributes(formData, artworkUrls),
@@ -1544,8 +1544,8 @@ async function handleJamulAysoBannerOrder(req, res) {
     quantity: 1,
     unitPrice: 0,
     totalPrice: 0,
-    deliveryMethod: "League billed / no payment due",
-    billingMethod: "Invoice Jamul AYSO after team orders are collected",
+    deliveryMethod: "Billed to Jamul Little League",
+    billingMethod: "Your order will be billed to Jamul Little League.",
     attributes,
     artworkUrls,
     aiDesignPrompt,
@@ -1553,14 +1553,14 @@ async function handleJamulAysoBannerOrder(req, res) {
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
   if (MOCK_SHOPIFY) {
-    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
+    res.writeHead(303, { Location: `${APP_BASE_URL}/league-banner-order-received?id=${encodeURIComponent(orderRecord.id)}` });
     return res.end();
   }
 
   const draftOrder = await createDraftOrder({
     email,
     note: [
-      `Jamul AYSO league-billed 3 ft x 5 ft banner order ${orderRecord.id}. No payment due at checkout. Invoice Jamul AYSO after team orders are collected.`,
+      `Jamul AYSO league-billed 3 ft x 5 ft banner order ${orderRecord.id}. Your order will be billed to Jamul Little League.`,
       aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
     ].filter(Boolean).join("\n\n"),
     tags: ["jamul-ayso", "league-billed", "custom-banner", "youth-sports-banner", "proof-required", "no-charge-checkout"],
@@ -1578,7 +1578,7 @@ async function handleJamulAysoBannerOrder(req, res) {
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
-      { key: "League Billing", value: "Invoice Jamul AYSO after team orders are collected" },
+      { key: "League Billing", value: "Your order will be billed to Jamul Little League" },
       { key: "Proof Required", value: "Yes" },
       { key: "Order Charge", value: "$0.00 due today" },
     ],
@@ -1586,8 +1586,9 @@ async function handleJamulAysoBannerOrder(req, res) {
 
   orderRecord.shopifyDraftOrderId = draftOrder.id;
   orderRecord.checkoutUrl = draftOrder.invoiceUrl;
+  orderRecord.customerConfirmationUrl = `${APP_BASE_URL}/league-banner-order-received?id=${encodeURIComponent(orderRecord.id)}`;
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
-  res.writeHead(303, { Location: draftOrder.invoiceUrl });
+  res.writeHead(303, { Location: orderRecord.customerConfirmationUrl });
   res.end();
 }
 
@@ -4088,6 +4089,39 @@ function solarPlacardsThanksHtml(url) {
 </html>`;
 }
 
+function leagueBannerThanksHtml(url) {
+  const id = escapeHtml(url.searchParams.get("id") || "");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Banner Order Sent | Recognition Direct</title>
+  <style>
+    body{margin:0;font:16px/1.45 Arial,Helvetica,sans-serif;color:#18212f;background:#f7f9fc}
+    .wrap{width:min(760px,calc(100% - 32px));margin:0 auto;padding:56px 0}
+    .box{background:#fff;border:1px solid #d9dee7;border-radius:8px;padding:28px}
+    h1{margin:0 0 12px;font-size:38px;line-height:1}
+    p{color:#4d5868}
+    .billing{margin:18px 0;padding:18px;border-left:4px solid #3154b8;background:#f1f5ff;font-size:20px;font-weight:800;color:#14213d}
+    .button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:10px;padding:0 18px;background:#3154b8;color:#fff;text-decoration:none;border-radius:4px;font-weight:800}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="box">
+      <h1>Banner order received</h1>
+      <p>Thank you. Your Jamul team banner details have been sent to Recognition Direct for design and proofing.</p>
+      <div class="billing">Your order will be billed to Jamul Little League.</div>
+      <p>No payment is due from you today. We will prepare the banner proof and follow the league billing process.</p>
+      ${id ? `<p>Order reference: ${id}</p>` : ""}
+      <a class="button" href="${APP_BASE_URL}/jamul-ayso-banners">Submit another banner</a>
+    </div>
+  </main>
+</body>
+</html>`;
+}
+
 async function handleMockCheckout(res, url) {
   const id = url.searchParams.get("id") || "";
   try {
@@ -4141,6 +4175,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "GET" && url.pathname === "/solar-placards") return html(res, 200, solarPlacardsPageHtml());
     if (req.method === "GET" && url.pathname === "/solar-placards/thanks") return html(res, 200, solarPlacardsThanksHtml(url));
+    if (req.method === "GET" && url.pathname === "/league-banner-order-received") return html(res, 200, leagueBannerThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball"));
     if (req.method === "GET" && url.pathname === "/soccer-resin-trophies") return html(res, 200, premierAwardsPageHtml("soccer"));
     if (req.method === "GET" && url.pathname === "/acrylic-awards") return html(res, 200, premierAwardsPageHtml("acrylic"));
