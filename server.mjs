@@ -1409,6 +1409,40 @@ async function createDraftOrder(input) {
   return result.draftOrder;
 }
 
+async function completeDraftOrder(id) {
+  const mutation = `#graphql
+    mutation CompleteBannerDraftOrder($id: ID!, $paymentPending: Boolean) {
+      draftOrderComplete(id: $id, paymentPending: $paymentPending) {
+        draftOrder {
+          id
+          order {
+            id
+            name
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }`;
+
+  async function run(paymentPending) {
+    const data = await shopifyGraphql(mutation, { id, paymentPending });
+    const result = data.draftOrderComplete;
+    if (result.userErrors?.length) throw new Error(result.userErrors.map((error) => error.message).join(" "));
+    if (!result.draftOrder?.order?.id) throw new Error("Shopify did not return a completed order.");
+    return result.draftOrder;
+  }
+
+  try {
+    return await run(true);
+  } catch (error) {
+    if (!/payment|pending|zero|amount/i.test(error.message)) throw error;
+    return await run(false);
+  }
+}
+
 async function handleCheckout(req, res) {
   const origin = req.headers.origin || "";
   if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
@@ -1585,6 +1619,9 @@ async function handleJamulAysoBannerOrder(req, res) {
   });
 
   orderRecord.shopifyDraftOrderId = draftOrder.id;
+  const completedDraftOrder = await completeDraftOrder(draftOrder.id);
+  orderRecord.shopifyOrderId = completedDraftOrder.order.id;
+  orderRecord.shopifyOrderName = completedDraftOrder.order.name;
   orderRecord.checkoutUrl = draftOrder.invoiceUrl;
   orderRecord.customerConfirmationUrl = `${APP_BASE_URL}/league-banner-order-received?id=${encodeURIComponent(orderRecord.id)}`;
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
