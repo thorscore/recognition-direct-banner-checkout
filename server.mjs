@@ -1415,10 +1415,6 @@ async function completeDraftOrder(id) {
       draftOrderComplete(id: $id, paymentPending: $paymentPending) {
         draftOrder {
           id
-          order {
-            id
-            name
-          }
         }
         userErrors {
           field
@@ -1431,7 +1427,7 @@ async function completeDraftOrder(id) {
     const data = await shopifyGraphql(mutation, { id, paymentPending });
     const result = data.draftOrderComplete;
     if (result.userErrors?.length) throw new Error(result.userErrors.map((error) => error.message).join(" "));
-    if (!result.draftOrder?.order?.id) throw new Error("Shopify did not return a completed order.");
+    if (!result.draftOrder?.id) throw new Error("Shopify did not return a completed draft order.");
     return result.draftOrder;
   }
 
@@ -1619,9 +1615,8 @@ async function handleJamulAysoBannerOrder(req, res) {
   });
 
   orderRecord.shopifyDraftOrderId = draftOrder.id;
-  const completedDraftOrder = await completeDraftOrder(draftOrder.id);
-  orderRecord.shopifyOrderId = completedDraftOrder.order.id;
-  orderRecord.shopifyOrderName = completedDraftOrder.order.name;
+  await completeDraftOrder(draftOrder.id);
+  orderRecord.shopifyOrderCompleted = true;
   orderRecord.checkoutUrl = draftOrder.invoiceUrl;
   orderRecord.customerConfirmationUrl = `${APP_BASE_URL}/league-banner-order-received?id=${encodeURIComponent(orderRecord.id)}`;
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
