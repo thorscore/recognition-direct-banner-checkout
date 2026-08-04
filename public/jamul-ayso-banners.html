@@ -77,6 +77,55 @@
       font-size: 13px;
       line-height: 1.45;
     }
+    .related-links {
+      padding: 18px;
+      border-top: 1px solid var(--line);
+      background: #f8fbff;
+    }
+    .related-links h2 {
+      margin: 0 0 11px;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+    .related-links p {
+      margin: 0 0 13px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .related-link-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .related-link {
+      display: block;
+      min-height: 82px;
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .related-link strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--blue);
+      font-size: 14px;
+      line-height: 1.25;
+    }
+    .related-link span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .related-link:hover,
+    .related-link:focus {
+      border-color: var(--blue);
+      outline: none;
+    }
     .eyebrow {
       margin: 0 0 10px;
       color: var(--red);
@@ -197,7 +246,8 @@
       .hero,
       .form-grid,
       .summary,
-      .benefits {
+      .benefits,
+      .related-link-grid {
         grid-template-columns: 1fr;
       }
       .benefit,
@@ -228,6 +278,28 @@
           <div class="benefit">
             <strong>League billed</strong>
             <span>Your order will be billed to Jamul Little League.</span>
+          </div>
+        </div>
+        <div class="related-links" aria-label="More Recognition Direct products">
+          <h2>More Recognition Direct Products</h2>
+          <p>Need something else for the team, league, or event? These links open the main store.</p>
+          <div class="related-link-grid">
+            <a class="related-link" href="https://recognition-direct.com/pages/trophies">
+              <strong>Trophies</strong>
+              <span>Baseball and soccer resin trophies with personalized plates.</span>
+            </a>
+            <a class="related-link" href="https://recognition-direct.com/pages/polar-camel">
+              <strong>Polar Camel Water Bottles</strong>
+              <span>Personalized bottles, tumblers, and drinkware.</span>
+            </a>
+            <a class="related-link" href="https://recognition-direct.com/collections/custom-event-tents">
+              <strong>Event Tents</strong>
+              <span>Custom tents, walls, and event displays.</span>
+            </a>
+            <a class="related-link" href="https://recognition-direct.com/collections/advertising-flags">
+              <strong>Advertising Flags</strong>
+              <span>Feather flags and outdoor display products.</span>
+            </a>
           </div>
         </div>
       </div>
