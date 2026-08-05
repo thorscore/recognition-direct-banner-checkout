@@ -169,6 +169,35 @@
       color: var(--muted);
       line-height: 1.45;
     }
+    .design-help {
+      margin: 0 0 18px;
+      padding: 15px 17px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      background: #f8fbff;
+    }
+    .design-help strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+    .design-help p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .design-help a {
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+    .design-help a:hover,
+    .design-help a:focus {
+      text-decoration: underline;
+    }
     .summary {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -320,6 +349,12 @@
           <div><span>Size</span><strong>3' x 5'</strong></div>
           <div><span>Material</span><strong>13oz vinyl</strong></div>
           <div><span>Price today</span><strong>$0.00</strong></div>
+        </div>
+
+        <div class="design-help">
+          <strong>Want help coming up with banner ideas?</strong>
+          <p>Use our ChatGPT banner design guide to create ideas, wording, and style notes before submitting your order.</p>
+          <a href="https://recognition-direct.com/pages/how-to-use-chatgpt-to-design-banners" target="_blank" rel="noopener noreferrer">Open ChatGPT banner design guide</a>
         </div>
 
         <form class="form-card" action="/api/jamul-ayso-banner-order" method="post" enctype="multipart/form-data">
