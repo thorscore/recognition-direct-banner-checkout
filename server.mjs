@@ -696,7 +696,7 @@ function deliveryMethodLabel(value) {
   if (value === "pickup-la-mesa") return "Pickup at La Mesa Street Side Pickup";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
   if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
-  if (value === "league-billed") return "Billed to Jamul Little League";
+  if (value === "league-billed") return "Billed to Jamul AYSO";
   return "Ship";
 }
 
@@ -1561,7 +1561,7 @@ async function handleJamulAysoBannerOrder(req, res) {
   };
 
   const attributes = [
-    attribute("League Billing", "Your order will be billed to Jamul Little League."),
+    attribute("League Billing", "Your order will be billed to Jamul AYSO."),
     attribute("League Order Page", "Jamul AYSO 3 ft x 5 ft Team Banner"),
     attribute("Order Charge", "$0.00 due today"),
     ...buildAttributes(formData, artworkUrls),
@@ -1574,8 +1574,8 @@ async function handleJamulAysoBannerOrder(req, res) {
     quantity: 1,
     unitPrice: 0,
     totalPrice: 0,
-    deliveryMethod: "Billed to Jamul Little League",
-    billingMethod: "Your order will be billed to Jamul Little League.",
+    deliveryMethod: "Billed to Jamul AYSO",
+    billingMethod: "Your order will be billed to Jamul AYSO.",
     attributes,
     artworkUrls,
     aiDesignPrompt,
@@ -1590,7 +1590,7 @@ async function handleJamulAysoBannerOrder(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: [
-      `Jamul AYSO league-billed 3 ft x 5 ft banner order ${orderRecord.id}. Your order will be billed to Jamul Little League.`,
+      `Jamul AYSO league-billed 3 ft x 5 ft banner order ${orderRecord.id}. Your order will be billed to Jamul AYSO.`,
       aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
     ].filter(Boolean).join("\n\n"),
     tags: ["jamul-ayso", "league-billed", "custom-banner", "youth-sports-banner", "proof-required", "no-charge-checkout"],
@@ -1608,7 +1608,7 @@ async function handleJamulAysoBannerOrder(req, res) {
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
-      { key: "League Billing", value: "Your order will be billed to Jamul Little League" },
+      { key: "League Billing", value: "Your order will be billed to Jamul AYSO" },
       { key: "Proof Required", value: "Yes" },
       { key: "Order Charge", value: "$0.00 due today" },
     ],
@@ -4144,7 +4144,7 @@ function leagueBannerThanksHtml(url) {
     <div class="box">
       <h1>Banner order received</h1>
       <p>Thank you. Your Jamul team banner details have been sent to Recognition Direct for design and proofing.</p>
-      <div class="billing">Your order will be billed to Jamul Little League.</div>
+      <div class="billing">Your order will be billed to Jamul AYSO.</div>
       <p>No payment is due from you today. We will prepare the banner proof and follow the league billing process.</p>
       ${id ? `<p>Order reference: ${id}</p>` : ""}
       <a class="button" href="${APP_BASE_URL}/jamul-ayso-banners">Submit another banner</a>
