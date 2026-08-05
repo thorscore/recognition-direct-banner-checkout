@@ -3960,7 +3960,8 @@ function solarPlacardsPageHtml() {
             <strong data-price-total>Quote</strong>
       <span data-price-message>You will receive a proof before production.</span>
           </div>
-          <button class="submit" type="submit">Add solar item to checkout</button>
+          <button class="submit" type="submit">Add solar item to cart</button>
+          <p class="note"><strong>You can keep building your order.</strong> After this item is added, you can add another solar placard or plate before checking out.</p>
         </form>
       </section>
     </div>
