@@ -3960,8 +3960,8 @@ function solarPlacardsPageHtml() {
             <strong data-price-total>Quote</strong>
       <span data-price-message>You will receive a proof before production.</span>
           </div>
-          <button class="submit" type="submit">Continue to checkout</button>
-          <p class="note"><strong>Need more than one solar item?</strong> Use the quantity box for matching items. For different placards or plates, return to this page after checkout starts or contact us and we can help combine the order.</p>
+          <button class="submit" type="submit">Add item, then keep shopping or checkout</button>
+          <p class="note"><strong>Add as many solar items as you need.</strong> This adds the current item to your cart. You can return to this page to add another placard or plate, or go to checkout when finished.</p>
         </form>
       </section>
     </div>
