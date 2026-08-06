@@ -29,6 +29,7 @@ const POLAR_CAMEL_FILE = join(import.meta.dirname, "catalog", "polar-camel.json"
 const OLD_CATALOG_BASE_URL = "https://recognition-direct.bs.run";
 const UPLOAD_DIR = join(DATA_DIR, "uploads");
 const ORDER_DIR = join(DATA_DIR, "orders");
+const CUSTOM_CART_DIR = join(DATA_DIR, "custom-carts");
 const EXPRESS_ONE_FILE = join(DATA_DIR, "express-one-customers.json");
 const EXPRESS_ONE_RELEASE_DIR = join(DATA_DIR, "express-one-releases");
 const EXPRESS_ONE_EMAIL_DIR = join(DATA_DIR, "express-one-email-queue");
@@ -97,6 +98,7 @@ let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
 
 await mkdir(UPLOAD_DIR, { recursive: true });
 await mkdir(ORDER_DIR, { recursive: true });
+await mkdir(CUSTOM_CART_DIR, { recursive: true });
 await mkdir(EXPRESS_ONE_RELEASE_DIR, { recursive: true });
 await mkdir(EXPRESS_ONE_EMAIL_DIR, { recursive: true });
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
@@ -383,10 +385,11 @@ function corsHeaders(req) {
     : {};
 }
 
-function html(res, status, markup) {
+function html(res, status, markup, headers = {}) {
   res.writeHead(status, {
     "Content-Type": "text/html; charset=utf-8",
     "X-Robots-Tag": "noindex, nofollow",
+    ...headers,
   });
   res.end(markup);
 }
@@ -1439,6 +1442,339 @@ async function completeDraftOrder(id) {
   }
 }
 
+const CUSTOM_CART_COOKIE = "rd_custom_cart";
+const CUSTOM_CART_TTL_SECONDS = 60 * 60 * 24 * 14;
+
+function parseCookies(req) {
+  return Object.fromEntries(
+    String(req.headers.cookie || "")
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .filter(Boolean)
+      .map((cookie) => {
+        const index = cookie.indexOf("=");
+        if (index === -1) return [cookie, ""];
+        return [cookie.slice(0, index), decodeURIComponent(cookie.slice(index + 1))];
+      }),
+  );
+}
+
+function validCustomCartId(value) {
+  return /^[a-f0-9-]{36}$/i.test(String(value || ""));
+}
+
+function customCartPath(cartId) {
+  if (!validCustomCartId(cartId)) throw new Error("Invalid cart ID.");
+  return join(CUSTOM_CART_DIR, `${cartId}.json`);
+}
+
+async function readCustomOrderCart(cartId) {
+  if (!validCustomCartId(cartId)) return null;
+  try {
+    const cart = JSON.parse(await readFile(customCartPath(cartId), "utf8"));
+    return cart?.status === "open" ? cart : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCustomOrderCart(cart) {
+  cart.updatedAt = new Date().toISOString();
+  await writeFile(customCartPath(cart.id), JSON.stringify(cart, null, 2));
+}
+
+function customCartCookie(cartId) {
+  return `${CUSTOM_CART_COOKIE}=${encodeURIComponent(cartId)}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${CUSTOM_CART_TTL_SECONDS}`;
+}
+
+function clearCustomCartCookie() {
+  return `${CUSTOM_CART_COOKIE}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0`;
+}
+
+function cartIdFromReferer(req) {
+  try {
+    const referer = req.headers.referer || "";
+    return referer ? new URL(referer).searchParams.get("cart") : "";
+  } catch {
+    return "";
+  }
+}
+
+async function getOrCreateCustomOrderCart(req, url) {
+  const candidates = [
+    url?.searchParams?.get("cart"),
+    cartIdFromReferer(req),
+    parseCookies(req)[CUSTOM_CART_COOKIE],
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const cart = await readCustomOrderCart(candidate);
+    if (cart) return cart;
+  }
+
+  const now = new Date().toISOString();
+  return { id: randomUUID(), status: "open", createdAt: now, updatedAt: now, items: [] };
+}
+
+function wantsJson(req) {
+  const accept = String(req.headers.accept || "");
+  const fetchMode = String(req.headers["sec-fetch-mode"] || "");
+  return /\bapplication\/json\b/i.test(accept) || fetchMode === "cors";
+}
+
+function moneyNumber(value) {
+  const number = Number.parseFloat(String(value || 0));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatMoney(value) {
+  return `$${moneyNumber(value).toFixed(2)}`;
+}
+
+function draftLineSubtotal(draftInput) {
+  return (draftInput.lineItems || []).reduce((total, item) => {
+    return total + moneyNumber(item.originalUnitPriceWithCurrency?.amount) * Math.max(1, Number(item.quantity || 1));
+  }, 0);
+}
+
+function draftItemQuantity(draftInput) {
+  return (draftInput.lineItems || []).reduce((total, item) => total + Math.max(1, Number(item.quantity || 1)), 0);
+}
+
+function draftShippingAmount(draftInput) {
+  return moneyNumber(draftInput.shippingLine?.priceWithCurrency?.amount);
+}
+
+function combinedCartShippingLine(cart) {
+  const shippingLines = (cart.items || []).map((item) => item.draftInput?.shippingLine).filter(Boolean);
+  if (!shippingLines.length) return null;
+  return shippingLines.reduce((highest, line) => {
+    return draftShippingAmount({ shippingLine: line }) > draftShippingAmount({ shippingLine: highest }) ? line : highest;
+  }, shippingLines[0]);
+}
+
+function cartProductSubtotal(cart) {
+  return (cart.items || []).reduce((total, item) => total + draftLineSubtotal(item.draftInput), 0);
+}
+
+function cartShippingSubtotal(cart) {
+  const shippingLine = combinedCartShippingLine(cart);
+  return shippingLine ? draftShippingAmount({ shippingLine }) : 0;
+}
+
+function storeCartLink(path, cartId) {
+  const link = new URL(path, "https://recognition-direct.com");
+  link.searchParams.set("cart", cartId);
+  return link.toString();
+}
+
+async function persistOrderRecord(orderRecord) {
+  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
+}
+
+async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary = {}) {
+  const url = new URL(req.url, APP_BASE_URL);
+  const cart = await getOrCreateCustomOrderCart(req, url);
+  const cartItemId = randomUUID();
+  const itemSummary = {
+    title: summary.title || draftInput.lineItems?.[0]?.title || "Custom item",
+    description: summary.description || "",
+    quantity: summary.quantity || draftItemQuantity(draftInput),
+    subtotal: draftLineSubtotal(draftInput),
+  };
+
+  cart.items.push({
+    id: cartItemId,
+    orderId: orderRecord.id,
+    addedAt: new Date().toISOString(),
+    summary: itemSummary,
+    draftInput,
+  });
+
+  orderRecord.cartId = cart.id;
+  orderRecord.cartItemId = cartItemId;
+  orderRecord.checkoutUrl = `${APP_BASE_URL}/custom-order-cart?cart=${encodeURIComponent(cart.id)}&added=1`;
+  await persistOrderRecord(orderRecord);
+  await writeCustomOrderCart(cart);
+
+  const headers = { ...corsHeaders(req), "Set-Cookie": customCartCookie(cart.id) };
+  if (wantsJson(req)) {
+    return json(res, 200, {
+      ok: true,
+      cartId: cart.id,
+      cartUrl: orderRecord.checkoutUrl,
+      checkoutUrl: orderRecord.checkoutUrl,
+      itemCount: cart.items.length,
+    }, headers);
+  }
+
+  res.writeHead(303, { Location: orderRecord.checkoutUrl, ...headers });
+  res.end();
+}
+
+function combineCustomCartDraftInput(cart) {
+  const items = cart.items || [];
+  if (!items.length) throw new Error("Your custom order cart is empty.");
+  const firstInput = items[0].draftInput || {};
+  const lineItems = items.flatMap((item) => item.draftInput?.lineItems || []);
+  const tags = Array.from(new Set(items.flatMap((item) => item.draftInput?.tags || [])));
+  const notes = items
+    .map((item) => item.draftInput?.note)
+    .filter(Boolean)
+    .join("\n\n---\n\n");
+  const customAttributes = [
+    { key: "Custom Cart ID", value: cart.id },
+    { key: "Custom Cart Item Count", value: String(items.length) },
+    ...items.map((item, index) => ({ key: `Cart Item ${index + 1}`, value: `${item.summary?.title || "Custom item"} (${item.orderId})` })),
+  ];
+
+  const shippingLine = combinedCartShippingLine(cart);
+  return {
+    email: firstInput.email,
+    note: notes,
+    tags,
+    allowDiscountCodesInCheckout: true,
+    taxExempt: false,
+    shippingAddress: firstInput.shippingAddress,
+    billingAddress: firstInput.billingAddress,
+    shippingLine,
+    lineItems,
+    customAttributes,
+  };
+}
+
+async function handleCustomOrderCartCheckout(req, res) {
+  const url = new URL(req.url, APP_BASE_URL);
+  const cart = await getOrCreateCustomOrderCart(req, url);
+  if (!cart.items?.length) {
+    res.writeHead(303, { Location: `${APP_BASE_URL}/custom-order-cart?cart=${encodeURIComponent(cart.id)}` });
+    return res.end();
+  }
+
+  if (MOCK_SHOPIFY) {
+    cart.status = "checked_out";
+    cart.checkoutUrl = `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(cart.id)}`;
+    await writeCustomOrderCart(cart);
+    res.writeHead(303, { Location: cart.checkoutUrl, "Set-Cookie": clearCustomCartCookie() });
+    return res.end();
+  }
+
+  const draftOrder = await createDraftOrder(combineCustomCartDraftInput(cart));
+  cart.status = "checked_out";
+  cart.shopifyDraftOrderId = draftOrder.id;
+  cart.checkoutUrl = draftOrder.invoiceUrl;
+  await writeCustomOrderCart(cart);
+
+  for (const item of cart.items || []) {
+    try {
+      const record = JSON.parse(await readFile(join(ORDER_DIR, `${item.orderId}.json`), "utf8"));
+      record.shopifyDraftOrderId = draftOrder.id;
+      record.checkoutUrl = draftOrder.invoiceUrl;
+      record.cartStatus = "checked_out";
+      await persistOrderRecord(record);
+    } catch {
+      // The checkout should still succeed even if an old local order record is unavailable.
+    }
+  }
+
+  res.writeHead(303, { Location: draftOrder.invoiceUrl, "Set-Cookie": clearCustomCartCookie() });
+  res.end();
+}
+
+async function handleCustomOrderCartPage(req, res, url) {
+  const cart = await getOrCreateCustomOrderCart(req, url);
+  await writeCustomOrderCart(cart);
+
+  const items = cart.items || [];
+  const productSubtotal = cartProductSubtotal(cart);
+  const shippingSubtotal = cartShippingSubtotal(cart);
+  const total = productSubtotal + shippingSubtotal;
+  const added = url.searchParams.get("added") === "1";
+  const rows = items.length
+    ? items.map((item) => `
+        <tr>
+          <td>
+            <strong>${escapeHtml(item.summary?.title || "Custom item")}</strong>
+            ${item.summary?.description ? `<small>${escapeHtml(item.summary.description)}</small>` : ""}
+          </td>
+          <td>${escapeHtml(item.summary?.quantity || "")}</td>
+          <td>${formatMoney(item.summary?.subtotal)}</td>
+        </tr>
+      `).join("")
+    : `<tr><td colspan="3">Your custom order cart is empty.</td></tr>`;
+
+  return html(res, 200, `<!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Custom Order Cart | Recognition Direct</title>
+        <style>
+          :root { color-scheme: light; --blue: #3154b7; --ink: #111827; --line: #d8deea; --soft: #f3f6fb; }
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: var(--ink); background: #fff; }
+          .wrap { width: min(1040px, calc(100% - 32px)); margin: 36px auto; }
+          .brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+          .brand a { color: var(--blue); text-decoration: none; font-weight: 700; }
+          h1 { font-size: clamp(32px, 5vw, 58px); line-height: 1; margin: 0 0 12px; }
+          p { line-height: 1.55; color: #3f4b63; }
+          .notice { border-left: 5px solid #d71920; background: var(--soft); padding: 16px 18px; margin: 18px 0 24px; }
+          table { width: 100%; border-collapse: collapse; margin: 24px 0; border: 1px solid var(--line); }
+          th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+          th { background: var(--soft); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
+          small { display: block; color: #5b6578; margin-top: 6px; }
+          .totals { display: grid; justify-content: end; gap: 8px; margin: 20px 0 28px; }
+          .totals div { display: flex; justify-content: space-between; gap: 48px; min-width: 300px; }
+          .totals strong { font-size: 22px; }
+          .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+          .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--blue); color: var(--blue); background: #fff; text-decoration: none; font-weight: 700; cursor: pointer; }
+          .button.primary { background: var(--blue); color: #fff; }
+          .shop-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 26px; }
+          @media (max-width: 640px) {
+            .brand { align-items: flex-start; flex-direction: column; }
+            th:nth-child(2), td:nth-child(2) { display: none; }
+            .totals { justify-content: stretch; }
+            .totals div { min-width: 0; }
+            .actions .button, .actions form { width: 100%; }
+            .actions form .button { width: 100%; }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="wrap">
+          <div class="brand">
+            <strong>Recognition Direct</strong>
+            <a href="https://recognition-direct.com">Return to website</a>
+          </div>
+          <h1>Custom Order Cart</h1>
+          <p>Add banners, solar placards, name badges, awards, and other configured products before checking out.</p>
+          ${added ? `<div class="notice"><strong>Item added.</strong> You can checkout now or keep shopping and add more items.</div>` : ""}
+          <table>
+            <thead><tr><th>Item</th><th>Quantity</th><th>Subtotal</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <section class="totals" aria-label="Cart totals">
+            <div><span>Products</span><span>${formatMoney(productSubtotal)}</span></div>
+            <div><span>Shipping & handling</span><span>${shippingSubtotal ? formatMoney(shippingSubtotal) : "Calculated at checkout"}</span></div>
+            <div><strong>Total before tax</strong><strong>${formatMoney(total)}</strong></div>
+          </section>
+          <div class="actions">
+            <form method="post" action="${APP_BASE_URL}/api/custom-order-cart/checkout?cart=${encodeURIComponent(cart.id)}">
+              <button class="button primary" type="submit" ${items.length ? "" : "disabled"}>Checkout all items</button>
+            </form>
+            <a class="button" href="${storeCartLink("/products/13oz-vinyl-banner", cart.id)}">Add a banner</a>
+            <a class="button" href="${storeCartLink("/pages/solar-placards", cart.id)}">Add solar placards</a>
+          </div>
+          <nav class="shop-links" aria-label="Continue shopping">
+            <a class="button" href="${storeCartLink("/pages/name-badges", cart.id)}">Name badges</a>
+            <a class="button" href="${storeCartLink("/pages/trophies", cart.id)}">Trophies</a>
+            <a class="button" href="${storeCartLink("/collections/all", cart.id)}">Browse all products</a>
+          </nav>
+        </main>
+      </body>
+    </html>`, { "Set-Cookie": customCartCookie(cart.id) });
+}
+
 async function handleCheckout(req, res) {
   const origin = req.headers.origin || "";
   if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin is not allowed." });
@@ -1492,12 +1828,7 @@ async function handleCheckout(req, res) {
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
-  if (MOCK_SHOPIFY) {
-    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
-    return res.end();
-  }
-
-  const draftOrder = await createDraftOrder({
+  const draftInput = {
     email,
     note: [
       `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
@@ -1524,13 +1855,14 @@ async function handleCheckout(req, res) {
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
     ],
-  });
+  };
 
-  orderRecord.shopifyDraftOrderId = draftOrder.id;
-  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
-  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
-  res.writeHead(303, { Location: draftOrder.invoiceUrl });
-  res.end();
+  return await addCustomOrderToCart(req, res, orderRecord, draftInput, {
+    title: "Custom 13oz Vinyl Banner",
+    quantity,
+    totalPrice,
+    deliveryMethod,
+  });
 }
 
 async function handleJamulAysoBannerOrder(req, res) {
@@ -1694,12 +2026,7 @@ async function handleCatalogCheckout(req, res) {
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
-  if (MOCK_SHOPIFY) {
-    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
-    return res.end();
-  }
-
-  const draftOrder = await createDraftOrder({
+  const draftInput = {
     email,
     note: [
       `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
@@ -1726,13 +2053,14 @@ async function handleCatalogCheckout(req, res) {
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
     ],
-  });
+  };
 
-  orderRecord.shopifyDraftOrderId = draftOrder.id;
-  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
-  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
-  res.writeHead(303, { Location: draftOrder.invoiceUrl });
-  res.end();
+  return await addCustomOrderToCart(req, res, orderRecord, draftInput, {
+    title: catalogDisplayTitle(product),
+    quantity,
+    totalPrice,
+    deliveryMethod,
+  });
 }
 
 async function handleNameBadgeCheckout(req, res) {
@@ -1785,12 +2113,7 @@ async function handleNameBadgeCheckout(req, res) {
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
-  if (MOCK_SHOPIFY) {
-    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
-    return res.end();
-  }
-
-  const draftOrder = await createDraftOrder({
+  const draftInput = {
     email,
     note: `Recognition Direct name badge order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: ["name-badges", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
@@ -1814,13 +2137,14 @@ async function handleNameBadgeCheckout(req, res) {
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
     ],
-  });
+  };
 
-  orderRecord.shopifyDraftOrderId = draftOrder.id;
-  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
-  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
-  res.writeHead(303, { Location: draftOrder.invoiceUrl });
-  res.end();
+  return await addCustomOrderToCart(req, res, orderRecord, draftInput, {
+    title: "Name Badges",
+    quantity: input.quantity,
+    totalPrice: input.totalPrice,
+    deliveryMethod,
+  });
 }
 
 async function handleCustomNameBadgeInquiry(req, res) {
@@ -2314,12 +2638,7 @@ async function handleSolarPlacardCheckout(req, res) {
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
-  if (MOCK_SHOPIFY) {
-    res.writeHead(303, { Location: `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}` });
-    return res.end();
-  }
-
-  const draftOrder = await createDraftOrder({
+  const draftInput = {
     email,
     note: `Recognition Direct solar placard/plate order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: [
@@ -2348,13 +2667,14 @@ async function handleSolarPlacardCheckout(req, res) {
       { key: "Shipping Handling Group", value: shipping.label },
       { key: "Solar Line Items", value: String(inputs.length) },
     ],
-  });
+  };
 
-  orderRecord.shopifyDraftOrderId = draftOrder.id;
-  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
-  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
-  res.writeHead(303, { Location: draftOrder.invoiceUrl });
-  res.end();
+  return await addCustomOrderToCart(req, res, orderRecord, draftInput, {
+    title: inputs.length === 1 ? inputs[0].product.title : "Solar Placards / Plates",
+    quantity: inputs.reduce((sum, item) => sum + item.quantity, 0),
+    totalPrice,
+    deliveryMethod,
+  });
 }
 
 async function handlePremierAwardPrice(req, res) {
@@ -2436,14 +2756,7 @@ async function handlePremierAwardCheckout(req, res) {
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
-  if (MOCK_SHOPIFY) {
-    const checkoutUrl = `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}`;
-    if (wantsJson) return json(res, 200, { checkoutUrl, orderId: orderRecord.id });
-    res.writeHead(303, { Location: checkoutUrl });
-    return res.end();
-  }
-
-  const draftOrder = await createDraftOrder({
+  const draftInput = {
     email,
     note: `Recognition Direct ${catalog.noteLabel} order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: [...catalog.tags, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
@@ -2467,14 +2780,14 @@ async function handlePremierAwardCheckout(req, res) {
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
     ],
-  });
+  };
 
-  orderRecord.shopifyDraftOrderId = draftOrder.id;
-  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
-  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
-  if (wantsJson) return json(res, 200, { checkoutUrl: draftOrder.invoiceUrl, orderId: orderRecord.id });
-  res.writeHead(303, { Location: draftOrder.invoiceUrl });
-  res.end();
+  return await addCustomOrderToCart(req, res, orderRecord, draftInput, {
+    title: productDisplayName,
+    quantity,
+    totalPrice,
+    deliveryMethod,
+  });
 }
 
 async function handlePolarCamelPrice(req, res) {
@@ -2555,14 +2868,7 @@ async function handlePolarCamelCheckout(req, res) {
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
-  if (MOCK_SHOPIFY) {
-    const checkoutUrl = `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(orderRecord.id)}`;
-    if (wantsJson) return json(res, 200, { checkoutUrl, orderId: orderRecord.id });
-    res.writeHead(303, { Location: checkoutUrl });
-    return res.end();
-  }
-
-  const draftOrder = await createDraftOrder({
+  const draftInput = {
     email,
     note: `Recognition Direct Polar Camel order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
     tags: ["polar-camel", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
@@ -2586,14 +2892,14 @@ async function handlePolarCamelCheckout(req, res) {
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
     ],
-  });
+  };
 
-  orderRecord.shopifyDraftOrderId = draftOrder.id;
-  orderRecord.checkoutUrl = draftOrder.invoiceUrl;
-  await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
-  if (wantsJson) return json(res, 200, { checkoutUrl: draftOrder.invoiceUrl, orderId: orderRecord.id });
-  res.writeHead(303, { Location: draftOrder.invoiceUrl });
-  res.end();
+  return await addCustomOrderToCart(req, res, orderRecord, draftInput, {
+    title: `${product.title} - ${variant.optionValue}`,
+    quantity,
+    totalPrice,
+    deliveryMethod,
+  });
 }
 
 async function handleUpload(req, res, pathname) {
@@ -4247,6 +4553,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/polar-camel-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/express-one-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/jamul-ayso-")) return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "OPTIONS" && url.pathname === "/api/custom-order-cart/checkout") return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
@@ -4296,6 +4603,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "GET" && url.pathname.startsWith("/uploads/")) return await handleUpload(req, res, url.pathname);
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
+    if (req.method === "GET" && url.pathname === "/custom-order-cart") return await handleCustomOrderCartPage(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/jamul-ayso-banner-order") return await handleJamulAysoBannerOrder(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
@@ -4305,6 +4613,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/premier-award-checkout") return await handlePremierAwardCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/polar-camel-checkout") return await handlePolarCamelCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/express-one-release") return await handleExpressOneRelease(req, res);
+    if (req.method === "POST" && url.pathname === "/api/custom-order-cart/checkout") return await handleCustomOrderCartCheckout(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
