@@ -2154,12 +2154,20 @@ async function handleExpressOneRelease(req, res) {
   res.end();
 }
 
-function buildSolarPlacardInput(formData) {
-  const product = solarProductByKey.get(field(formData, "product_key", 80));
+function buildSolarPlacardInput(formData, override = {}) {
+  const value = (name, maxLength = 300) => {
+    if (Object.prototype.hasOwnProperty.call(override, name)) return String(override[name] ?? "").trim().slice(0, maxLength);
+    return field(formData, name, maxLength);
+  };
+  const numericValue = (name) => {
+    if (Object.prototype.hasOwnProperty.call(override, name)) return String(override[name] ?? "");
+    return formData.get(name);
+  };
+  const product = solarProductByKey.get(value("product_key", 80));
   if (!product) throw new Error("Select a solar placard or plate.");
-  const quantity = Math.max(1, Math.floor(readPositiveNumber(formData.get("order_quantity"), "Quantity")));
-  const customWidth = Number.parseFloat(field(formData, "custom_width"));
-  const customHeight = Number.parseFloat(field(formData, "custom_height"));
+  const quantity = Math.max(1, Math.floor(readPositiveNumber(numericValue("order_quantity"), "Quantity")));
+  const customWidth = Number.parseFloat(value("custom_width"));
+  const customHeight = Number.parseFloat(value("custom_height"));
   const customArea = product.key === "plate-custom" && Number.isFinite(customWidth) && Number.isFinite(customHeight) && customWidth > 0 && customHeight > 0
     ? Number((customWidth * customHeight).toFixed(2))
     : null;
@@ -2176,7 +2184,42 @@ function buildSolarPlacardInput(formData) {
     : Number.isFinite(product.unitPrice) ? product.unitPrice : null;
   if (unitPrice === null) throw new Error("Solar pricing is not configured for this item.");
   const totalPrice = unitPrice === null ? null : Number((unitPrice * quantity).toFixed(2));
-  return { product, quantity, customArea, customWidth, customHeight, unitPrice, totalPrice };
+  const customSize = product.key === "plate-custom" && customArea !== null
+    ? `${value("custom_width")} in x ${value("custom_height")} in`
+    : "";
+  return {
+    product,
+    quantity,
+    customArea,
+    customWidth,
+    customHeight,
+    customSize,
+    plateText: value("plate_text", 3000),
+    unitPrice,
+    totalPrice,
+  };
+}
+
+function buildSolarPlacardOrderInputs(formData) {
+  const rawItems = field(formData, "solar_items_json", 50000);
+  if (!rawItems) return [buildSolarPlacardInput(formData)];
+
+  let items;
+  try {
+    items = JSON.parse(rawItems);
+  } catch {
+    throw new Error("Solar order list could not be read. Please add the items again.");
+  }
+  if (!Array.isArray(items) || items.length === 0) throw new Error("Add at least one solar placard or plate before checkout.");
+  if (items.length > 50) throw new Error("Please limit each solar checkout to 50 line items.");
+
+  return items.map((item) => buildSolarPlacardInput(formData, {
+    product_key: item.product_key,
+    order_quantity: item.quantity,
+    custom_width: item.custom_width,
+    custom_height: item.custom_height,
+    plate_text: item.plate_text,
+  }));
 }
 
 async function handleSolarPlacardPrice(req, res) {
@@ -2199,23 +2242,15 @@ async function handleSolarPlacardCheckout(req, res) {
   const formData = await requestFormData(req);
   const email = field(formData, "email", 320);
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
-  const input = buildSolarPlacardInput(formData);
-  const { product, quantity, customArea, unitPrice, totalPrice } = input;
+  const inputs = buildSolarPlacardOrderInputs(formData);
+  const totalQuantity = inputs.reduce((sum, item) => sum + item.quantity, 0);
+  const orderTotalPrice = Number(inputs.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2));
   const planUrl = await saveUpload(formData.get("plan_file"));
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
   const isPickup = deliveryMethod !== "Ship";
-  const customSize = product.key === "plate-custom" && customArea !== null
-    ? `${field(formData, "custom_width")} in x ${field(formData, "custom_height")} in`
-    : "";
-  const shipping = shippingPlan("solar", deliveryMethod, quantity);
-  const attributes = [
-    attribute("Product", product.title),
-    attribute("Product Type", product.type === "placard" ? "Solar Placard" : "Solar Plate"),
-    attribute("Size", product.key === "plate-custom" ? customSize : product.size),
-    attribute("Custom Square Inches", customArea !== null ? `${customArea.toFixed(2)} sq in` : ""),
-    attribute("Custom Square Inch Rate", product.key === "plate-custom" ? `$${SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE.toFixed(2)}` : ""),
-    attribute("Plate Text", field(formData, "plate_text", 3000)),
+  const shipping = shippingPlan("solar", deliveryMethod, totalQuantity);
+  const commonAttributes = [
     attribute("PDF Plan Sheet / Placard Design", planUrl),
     attribute("Additional Artwork", artworkUrl),
     attribute("Delivery Method", deliveryMethod),
@@ -2225,23 +2260,47 @@ async function handleSolarPlacardCheckout(req, res) {
     attribute("Notes", field(formData, "notes", 2500)),
     ...shippingAttributes(shipping),
   ].filter(Boolean);
+  const solarLineAttributes = (input, index) => [
+    attribute("Solar Item #", String(index + 1)),
+    attribute("Product", input.product.title),
+    attribute("Product Type", input.product.type === "placard" ? "Solar Placard" : "Solar Plate"),
+    attribute("Size", input.product.key === "plate-custom" ? input.customSize : input.product.size),
+    attribute("Custom Square Inches", input.customArea !== null ? `${input.customArea.toFixed(2)} sq in` : ""),
+    attribute("Custom Square Inch Rate", input.product.key === "plate-custom" ? `$${SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE.toFixed(2)}` : ""),
+    attribute("Plate Text", input.plateText),
+    ...commonAttributes,
+  ].filter(Boolean);
+  const attributes = inputs.flatMap((input, index) => solarLineAttributes(input, index));
 
   const orderRecord = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
     type: "solar-placard-order",
-    productKey: product.key,
-    productTitle: product.title,
-    productType: product.type,
-    size: product.size,
-    quantity,
-    unitPrice,
-    totalPrice,
-    customWidth: field(formData, "custom_width"),
-    customHeight: field(formData, "custom_height"),
-    customSquareInches: customArea,
-    customSquareInchRate: product.key === "plate-custom" ? SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE : null,
-    plateText: field(formData, "plate_text", 3000),
+    productKey: inputs.length === 1 ? inputs[0].product.key : "multiple-solar-items",
+    productTitle: inputs.length === 1 ? inputs[0].product.title : "Multiple Solar Placards / Plates",
+    productType: inputs.length === 1 ? inputs[0].product.type : "mixed",
+    size: inputs.length === 1 ? inputs[0].product.size : "",
+    quantity: totalQuantity,
+    unitPrice: inputs.length === 1 ? inputs[0].unitPrice : null,
+    totalPrice: orderTotalPrice,
+    customWidth: inputs.length === 1 ? field(formData, "custom_width") : "",
+    customHeight: inputs.length === 1 ? field(formData, "custom_height") : "",
+    customSquareInches: inputs.length === 1 ? inputs[0].customArea : null,
+    customSquareInchRate: inputs.some((item) => item.product.key === "plate-custom") ? SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE : null,
+    plateText: inputs.length === 1 ? inputs[0].plateText : "",
+    items: inputs.map((item) => ({
+      productKey: item.product.key,
+      productTitle: item.product.title,
+      productType: item.product.type,
+      size: item.product.key === "plate-custom" ? item.customSize : item.product.size,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+      customWidth: Number.isFinite(item.customWidth) ? item.customWidth : null,
+      customHeight: Number.isFinite(item.customHeight) ? item.customHeight : null,
+      customSquareInches: item.customArea,
+      plateText: item.plateText,
+    })),
     name: field(formData, "name"),
     company: field(formData, "company"),
     email,
@@ -2263,26 +2322,31 @@ async function handleSolarPlacardCheckout(req, res) {
   const draftOrder = await createDraftOrder({
     email,
     note: `Recognition Direct solar placard/plate order ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
-    tags: ["solar-placards", "proof-required", product.type, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
+    tags: [
+      "solar-placards",
+      "proof-required",
+      ...new Set(inputs.map((item) => item.product.type)),
+      isPickup ? field(formData, "delivery_method") : "ship",
+      ...shippingTags(shipping),
+    ],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup, formData),
     shippingLine: draftOrderShippingLine(shipping),
-    lineItems: [
-      {
-        title: product.title,
-        quantity,
-        originalUnitPriceWithCurrency: { amount: unitPrice.toFixed(2), currencyCode: "USD" },
-        requiresShipping: true,
-        taxable: true,
-        customAttributes: attributes,
-      },
-    ],
+    lineItems: inputs.map((item, index) => ({
+      title: item.product.title,
+      quantity: item.quantity,
+      originalUnitPriceWithCurrency: { amount: item.unitPrice.toFixed(2), currencyCode: "USD" },
+      requiresShipping: true,
+      taxable: true,
+      customAttributes: solarLineAttributes(item, index),
+    })),
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
+      { key: "Solar Line Items", value: String(inputs.length) },
     ],
   });
 
