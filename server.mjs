@@ -2672,7 +2672,7 @@ async function handleSolarPlacardCheckout(req, res) {
   return await addCustomOrderToCart(req, res, orderRecord, draftInput, {
     title: inputs.length === 1 ? inputs[0].product.title : "Solar Placards / Plates",
     quantity: inputs.reduce((sum, item) => sum + item.quantity, 0),
-    totalPrice,
+    totalPrice: orderTotalPrice,
     deliveryMethod,
   });
 }
