@@ -1681,6 +1681,39 @@ async function handleCustomOrderCartCheckout(req, res) {
   res.end();
 }
 
+async function handleCustomOrderCartRemove(req, res) {
+  const url = new URL(req.url, APP_BASE_URL);
+  const formData = await requestFormData(req);
+  const itemId = field(formData, "item_id", 120);
+  const cart = await getOrCreateCustomOrderCart(req, url);
+  const originalItems = cart.items || [];
+  const removedItem = originalItems.find((item) => item.id === itemId);
+
+  cart.items = originalItems.filter((item) => item.id !== itemId);
+  cart.updatedAt = new Date().toISOString();
+  await writeCustomOrderCart(cart);
+
+  if (removedItem?.orderId) {
+    try {
+      const record = JSON.parse(await readFile(join(ORDER_DIR, `${removedItem.orderId}.json`), "utf8"));
+      record.status = "removed_from_custom_cart";
+      record.removedFromCartAt = cart.updatedAt;
+      await persistOrderRecord(record);
+    } catch (error) {
+      console.warn("Unable to update removed cart order record", removedItem.orderId, error.message);
+    }
+  }
+
+  const cartUrl = `${APP_BASE_URL}/custom-order-cart?cart=${encodeURIComponent(cart.id)}${removedItem ? "&removed=1" : ""}`;
+  const headers = { ...corsHeaders(req), "Set-Cookie": customCartCookie(cart.id) };
+  if (wantsJson(req)) {
+    return json(res, 200, { ok: true, removed: Boolean(removedItem), itemCount: cart.items.length, cartUrl }, headers);
+  }
+
+  res.writeHead(303, { Location: cartUrl, ...headers });
+  res.end();
+}
+
 async function handleCustomOrderCartPage(req, res, url) {
   const cart = await getOrCreateCustomOrderCart(req, url);
   await writeCustomOrderCart(cart);
@@ -1690,6 +1723,12 @@ async function handleCustomOrderCartPage(req, res, url) {
   const shippingSubtotal = cartShippingSubtotal(cart);
   const total = productSubtotal + shippingSubtotal;
   const added = url.searchParams.get("added") === "1";
+  const removed = url.searchParams.get("removed") === "1";
+  const noticeHtml = added
+    ? `<div class="notice"><strong>Item added.</strong> You can checkout now or keep shopping and add more items.</div>`
+    : removed
+      ? `<div class="notice"><strong>Item removed.</strong> Your cart total has been updated.</div>`
+      : "";
   const rows = items.length
     ? items.map((item) => `
         <tr>
@@ -1699,9 +1738,15 @@ async function handleCustomOrderCartPage(req, res, url) {
           </td>
           <td>${escapeHtml(item.summary?.quantity || "")}</td>
           <td>${formatMoney(item.summary?.subtotal)}</td>
+          <td class="remove-cell">
+            <form class="remove-form" method="post" action="${APP_BASE_URL}/api/custom-order-cart/remove?cart=${encodeURIComponent(cart.id)}">
+              <input type="hidden" name="item_id" value="${escapeHtml(item.id)}">
+              <button class="remove-button" type="submit" aria-label="Remove ${escapeHtml(item.summary?.title || "item")}">Remove</button>
+            </form>
+          </td>
         </tr>
       `).join("")
-    : `<tr><td colspan="3">Your custom order cart is empty.</td></tr>`;
+    : `<tr><td colspan="4">Your custom order cart is empty.</td></tr>`;
 
   return html(res, 200, `<!doctype html>
     <html lang="en">
@@ -1723,6 +1768,10 @@ async function handleCustomOrderCartPage(req, res, url) {
           th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
           th { background: var(--soft); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
           small { display: block; color: #5b6578; margin-top: 6px; }
+          .remove-cell { white-space: nowrap; }
+          .remove-form { margin: 0; }
+          .remove-button { border: 0; background: transparent; color: #b91c1c; cursor: pointer; font: inherit; font-weight: 700; padding: 0; text-decoration: underline; }
+          .remove-button:hover { color: #7f1d1d; }
           .totals { display: grid; justify-content: end; gap: 8px; margin: 20px 0 28px; }
           .totals div { display: flex; justify-content: space-between; gap: 48px; min-width: 300px; }
           .totals strong { font-size: 22px; }
@@ -1748,9 +1797,9 @@ async function handleCustomOrderCartPage(req, res, url) {
           </div>
           <h1>Custom Order Cart</h1>
           <p>Add banners, solar placards, name badges, awards, and other configured products before checking out.</p>
-          ${added ? `<div class="notice"><strong>Item added.</strong> You can checkout now or keep shopping and add more items.</div>` : ""}
+          ${noticeHtml}
           <table>
-            <thead><tr><th>Item</th><th>Quantity</th><th>Subtotal</th></tr></thead>
+            <thead><tr><th>Item</th><th>Quantity</th><th>Subtotal</th><th>Action</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
           <section class="totals" aria-label="Cart totals">
@@ -4554,6 +4603,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/express-one-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/jamul-ayso-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname === "/api/custom-order-cart/checkout") return json(res, 204, {}, corsHeaders(req));
+    if (req.method === "OPTIONS" && url.pathname === "/api/custom-order-cart/remove") return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/catalog-price") return await handleCatalogPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
@@ -4613,6 +4663,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/premier-award-checkout") return await handlePremierAwardCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/polar-camel-checkout") return await handlePolarCamelCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/express-one-release") return await handleExpressOneRelease(req, res);
+    if (req.method === "POST" && url.pathname === "/api/custom-order-cart/remove") return await handleCustomOrderCartRemove(req, res);
     if (req.method === "POST" && url.pathname === "/api/custom-order-cart/checkout") return await handleCustomOrderCartCheckout(req, res);
     return json(res, 404, { error: "Not found." });
   } catch (error) {
