@@ -1613,6 +1613,13 @@ function customCartClientScript() {
     if (!button) return '';
     return button.tagName === 'INPUT' ? button.value : button.textContent;
   }
+  function normalizeCheckoutButtons(root){
+    const scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('button, input[type="submit"], a').forEach(function(button){
+      const text = (getButtonText(button) || '').replace(/\\s+/g, ' ').trim();
+      if (/^continue to secure checkout$/i.test(text)) setButtonText(button, 'Add to cart');
+    });
+  }
   function setStatus(form, message){
     let status = form.querySelector('[data-custom-cart-status]');
     if (!status) {
@@ -1632,8 +1639,9 @@ function customCartClientScript() {
     document.querySelectorAll('form').forEach(function(form){
       if (!isCustomCheckoutForm(form) || form.dataset.customCartEnhanced === 'true') return;
       form.dataset.customCartEnhanced = 'true';
-      const submit = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
-      if (submit) setButtonText(submit, 'Add to cart');
+      const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])'));
+      submitButtons.forEach(function(button){ setButtonText(button, 'Add to cart'); });
+      const submit = submitButtons[0];
       if (submit && !form.querySelector('[data-custom-cart-link]')) {
         const go = document.createElement('a');
         go.setAttribute('data-custom-cart-link', '');
@@ -1653,6 +1661,7 @@ function customCartClientScript() {
         submit.insertAdjacentElement('afterend', go);
       }
     });
+    normalizeCheckoutButtons(document);
     syncLinks();
   }
   async function submitToCart(form, submitButton) {
@@ -1677,7 +1686,14 @@ function customCartClientScript() {
   const params = new URLSearchParams(window.location.search);
   saveCartId(params.get('cart'));
   window.rdCustomCart = { getCartId, saveCartId, cartUrl, actionFor, syncLinks, enhanceForms, submitToCart };
-  document.addEventListener('DOMContentLoaded', enhanceForms);
+  document.addEventListener('DOMContentLoaded', function(){
+    enhanceForms();
+    normalizeCheckoutButtons(document);
+    if (document.body) {
+      const observer = new MutationObserver(function(){ normalizeCheckoutButtons(document); enhanceForms(); });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  });
   document.addEventListener('submit', function(event) {
     const form = event.target;
     if (!isCustomCheckoutForm(form)) return;
