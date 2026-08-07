@@ -214,8 +214,9 @@
       const cartStatus = document.querySelector("[data-cart-status]");
       const submitButton = form.querySelector('button[type="submit"]');
       function cartUrl(cartId) { return cartId ? "/custom-order-cart?cart=" + encodeURIComponent(cartId) : "/custom-order-cart"; }
-      function setGoCart(cartId) {
-        if (goCart) goCart.href = cartUrl(cartId || localStorage.getItem(storageKey) || "");
+      function setGoCart(cartId, cartHref) {
+        if (!goCart) return;
+        goCart.href = cartHref || cartUrl(cartId || localStorage.getItem(storageKey) || "");
       }
       function showCartStatus(message, isError = false) {
         if (!cartStatus) return;
@@ -240,8 +241,8 @@
           const result = await response.json();
           if (!response.ok || result.error) throw new Error(result.error || "Could not add this banner.");
           if (result.cartId) localStorage.setItem(storageKey, result.cartId);
-          setGoCart(result.cartId);
-          showCartStatus("Banner added. You can keep shopping or go to cart when ready.");
+          setGoCart(result.cartId, result.cartUrl || result.addedCartUrl);
+          showCartStatus("Added to cart. You can keep shopping or go to cart when ready.");
         } catch (error) {
           showCartStatus(error.message || "Could not add this banner. Please try again.", true);
         } finally {

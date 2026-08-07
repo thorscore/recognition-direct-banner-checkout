@@ -4396,6 +4396,9 @@ function solarPlacardsPageHtml() {
     .estimate strong{display:block;margin:4px 0;font-size:34px;line-height:1}
     .estimate span{color:#d7dde8}
     button.submit{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
+    .cart-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .cart-actions .submit{flex:1 1 220px}
+    .cart-link{display:inline-flex;align-items:center;justify-content:center;min-height:50px;flex:1 1 180px;border:1px solid var(--accent);border-radius:4px;background:#fff;color:var(--accent);font:inherit;font-weight:900;text-decoration:none}
     .seo-band{margin-top:30px;border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:8px;background:#fff;padding:24px}
     .seo-band p{margin:0;color:var(--muted)}
     .seo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
@@ -4509,8 +4512,11 @@ function solarPlacardsPageHtml() {
             <strong data-price-total>Quote</strong>
       <span data-price-message>You will receive a proof before production.</span>
           </div>
-          <button class="submit" type="submit">Add item, then keep shopping or checkout</button>
-          <p class="note"><strong>Add as many solar items as you need.</strong> This adds the current item to your cart. You can return to this page to add another placard or plate, or go to checkout when finished.</p>
+          <div class="cart-actions">
+            <button class="submit" type="submit">Add to cart</button>
+            <a class="cart-link" data-custom-cart-link href="${APP_BASE_URL}/custom-order-cart">Go to cart</a>
+          </div>
+          <p class="note"><strong>Add as many solar items as you need.</strong> Add the current item to your cart, then keep shopping or go to cart when ready.</p>
         </form>
       </section>
     </div>
