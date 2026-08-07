@@ -54,11 +54,16 @@
       .limit { color: var(--accent); font-size: 13px; font-weight: 700; }
       button { width: 100%; min-height: 48px; border: 0; border-radius: 4px; background: var(--accent); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
       button:hover { background: var(--accent-dark); }
+      .cart-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+      .cart-actions button { margin: 0; }
+      .cart-link { display: flex; align-items: center; justify-content: center; min-height: 48px; border: 1px solid var(--blue); border-radius: 4px; color: var(--blue); background: #fff; font-weight: 800; text-decoration: none; }
+      .cart-status { display: none; margin: 12px 0 0; padding: 12px 14px; border-left: 4px solid var(--accent); background: #f3f7ff; color: var(--ink); font-weight: 700; }
+      .cart-status.active { display: block; }
       .details { margin-top: 18px; padding: 19px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
       .details ul { margin: 7px 0 17px; padding-left: 19px; }
       footer { padding: 24px; background: #fff; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: 13px; }
       @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
-      @media (max-width: 540px) { main { padding: 20px 14px 34px; } .grid, .tabs { grid-template-columns: 1fr; } h1 { font-size: 29px; } }
+      @media (max-width: 540px) { main { padding: 20px 14px 34px; } .grid, .tabs, .cart-actions { grid-template-columns: 1fr; } h1 { font-size: 29px; } }
     </style>
   </head>
   <body>
@@ -153,7 +158,11 @@
             <div><label for="phone">Phone</label><input id="phone" name="phone" type="tel"></div>
             <div class="full"><label for="notes">Notes</label><textarea id="notes" name="notes" placeholder="Tell us about placement, deadline, special finishing, or artwork questions."></textarea></div>
           </div>
-          <button type="submit">Continue to Secure Checkout</button>
+          <div class="cart-actions">
+            <button type="submit">Add to cart</button>
+            <a class="cart-link" data-go-cart href="/custom-order-cart">Go to cart</a>
+          </div>
+          <p class="cart-status" data-cart-status role="status" aria-live="polite"></p>
           <p class="note">Accepted artwork: PDF, AI, EPS, PSD, JPG, PNG. You can place your order before the proof; a proof will be sent before production.</p>
         </section>
       </form>
@@ -200,10 +209,53 @@
         document.querySelector("[data-youth]").classList.toggle("active", youth);
         document.querySelector("[data-standard]").classList.toggle("active", !youth);
       }));
+      const storageKey = "rdCustomOrderCartId";
+      const goCart = document.querySelector("[data-go-cart]");
+      const cartStatus = document.querySelector("[data-cart-status]");
+      const submitButton = form.querySelector('button[type="submit"]');
+      function cartUrl(cartId) { return cartId ? "/custom-order-cart?cart=" + encodeURIComponent(cartId) : "/custom-order-cart"; }
+      function setGoCart(cartId) {
+        if (goCart) goCart.href = cartUrl(cartId || localStorage.getItem(storageKey) || "");
+      }
+      function showCartStatus(message, isError = false) {
+        if (!cartStatus) return;
+        cartStatus.textContent = message;
+        cartStatus.classList.add("active");
+        cartStatus.style.borderLeftColor = isError ? "#b91c1c" : "var(--accent)";
+      }
+      async function addBannerToCart() {
+        const originalText = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = "Adding...";
+        showCartStatus("Adding your banner to the cart...");
+        try {
+          const target = new URL(form.action, window.location.href);
+          const existingCart = localStorage.getItem(storageKey);
+          if (existingCart) target.searchParams.set("cart", existingCart);
+          const response = await fetch(target.toString(), {
+            method: "POST",
+            body: new FormData(form),
+            headers: { "Accept": "application/json", "X-Requested-With": "fetch" }
+          });
+          const result = await response.json();
+          if (!response.ok || result.error) throw new Error(result.error || "Could not add this banner.");
+          if (result.cartId) localStorage.setItem(storageKey, result.cartId);
+          setGoCart(result.cartId);
+          showCartStatus("Banner added. You can keep shopping or go to cart when ready.");
+        } catch (error) {
+          showCartStatus(error.message || "Could not add this banner. Please try again.", true);
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      }
       form.addEventListener("submit", (event) => {
         calculate();
-        if (limit.textContent) { event.preventDefault(); alert(limit.textContent); }
+        event.preventDefault();
+        if (limit.textContent) { alert(limit.textContent); return; }
+        addBannerToCart();
       });
+      setGoCart();
       calculate();
     </script>
   </body>

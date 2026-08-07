@@ -1568,6 +1568,130 @@ function storeCartLink(path, cartId) {
   return link.toString();
 }
 
+function customOrderCartUrl(cartId = "", params = {}) {
+  const link = new URL("/custom-order-cart", APP_BASE_URL);
+  if (cartId) link.searchParams.set("cart", cartId);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") link.searchParams.set(key, String(value));
+  });
+  return link.toString();
+}
+
+function customCartClientScript() {
+  return `
+<script>
+(function(){
+  const appBase = ${JSON.stringify(APP_BASE_URL)};
+  const storageKey = 'rdCustomOrderCartId';
+  function getCartId(){ return localStorage.getItem(storageKey) || ''; }
+  function saveCartId(cartId){ if (cartId) localStorage.setItem(storageKey, cartId); }
+  function cartUrl(extra){
+    const url = new URL('/custom-order-cart', appBase);
+    const id = getCartId();
+    if (id) url.searchParams.set('cart', id);
+    if (extra) Object.keys(extra).forEach(function(key){
+      const value = extra[key];
+      if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
+    });
+    return url.toString();
+  }
+  function actionFor(action){
+    const url = new URL(action, window.location.href);
+    const id = getCartId();
+    if (id) url.searchParams.set('cart', id);
+    return url.toString();
+  }
+  function syncLinks(){
+    document.querySelectorAll('[data-custom-cart-link]').forEach(function(link){ link.href = cartUrl(); });
+  }
+  function setButtonText(button, text){
+    if (!button) return;
+    if (button.tagName === 'INPUT') button.value = text;
+    else button.textContent = text;
+  }
+  function getButtonText(button){
+    if (!button) return '';
+    return button.tagName === 'INPUT' ? button.value : button.textContent;
+  }
+  function setStatus(form, message){
+    let status = form.querySelector('[data-custom-cart-status]');
+    if (!status) {
+      status = document.createElement('p');
+      status.setAttribute('data-custom-cart-status', '');
+      status.style.margin = '12px 0';
+      status.style.fontWeight = '700';
+      form.appendChild(status);
+    }
+    status.hidden = false;
+    status.textContent = message;
+  }
+  function isCustomCheckoutForm(form) {
+    return form && form.action && /\\/api\\/(banner|catalog|name-badge|solar-placard|premier-award|polar-camel)-checkout/.test(form.action);
+  }
+  function enhanceForms(){
+    document.querySelectorAll('form').forEach(function(form){
+      if (!isCustomCheckoutForm(form) || form.dataset.customCartEnhanced === 'true') return;
+      form.dataset.customCartEnhanced = 'true';
+      const submit = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+      if (submit) setButtonText(submit, 'Add to cart');
+      if (submit && !form.querySelector('[data-custom-cart-link]')) {
+        const go = document.createElement('a');
+        go.setAttribute('data-custom-cart-link', '');
+        go.href = cartUrl();
+        go.textContent = 'Go to cart';
+        go.style.display = 'inline-flex';
+        go.style.alignItems = 'center';
+        go.style.justifyContent = 'center';
+        go.style.marginTop = '10px';
+        go.style.marginLeft = '10px';
+        go.style.padding = '12px 18px';
+        go.style.border = '1px solid #3154bf';
+        go.style.color = '#163aa5';
+        go.style.textDecoration = 'none';
+        go.style.fontWeight = '700';
+        syncLinks();
+        submit.insertAdjacentElement('afterend', go);
+      }
+    });
+    syncLinks();
+  }
+  async function submitToCart(form, submitButton) {
+    const originalText = getButtonText(submitButton);
+    try {
+      if (submitButton) { submitButton.disabled = true; setButtonText(submitButton, 'Adding...'); }
+      const response = await fetch(actionFor(form.action), {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'fetch' }
+      });
+      const result = await response.json().catch(function(){ return {}; });
+      if (!response.ok || !result.cartId) throw new Error(result.error || 'Unable to add this item to cart.');
+      saveCartId(result.cartId);
+      syncLinks();
+      setStatus(form, 'Added to cart. You can keep shopping or go to cart when ready.');
+      return result;
+    } finally {
+      if (submitButton) { submitButton.disabled = false; setButtonText(submitButton, originalText || 'Add to cart'); }
+    }
+  }
+  const params = new URLSearchParams(window.location.search);
+  saveCartId(params.get('cart'));
+  window.rdCustomCart = { getCartId, saveCartId, cartUrl, actionFor, syncLinks, enhanceForms, submitToCart };
+  document.addEventListener('DOMContentLoaded', enhanceForms);
+  document.addEventListener('submit', function(event) {
+    const form = event.target;
+    if (!isCustomCheckoutForm(form)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const submitter = event.submitter || form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+    submitToCart(form, submitter).catch(function(error){
+      alert(error.message || 'Unable to add this item to cart. Please try again.');
+    });
+  }, true);
+})();
+</script>`;
+}
+
 async function persistOrderRecord(orderRecord) {
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 }
@@ -1593,7 +1717,9 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
 
   orderRecord.cartId = cart.id;
   orderRecord.cartItemId = cartItemId;
-  orderRecord.checkoutUrl = `${APP_BASE_URL}/custom-order-cart?cart=${encodeURIComponent(cart.id)}&added=1`;
+  const cartUrl = customOrderCartUrl(cart.id);
+  const addedCartUrl = customOrderCartUrl(cart.id, { added: 1 });
+  orderRecord.checkoutUrl = addedCartUrl;
   await persistOrderRecord(orderRecord);
   await writeCustomOrderCart(cart);
 
@@ -1602,13 +1728,14 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
     return json(res, 200, {
       ok: true,
       cartId: cart.id,
-      cartUrl: orderRecord.checkoutUrl,
-      checkoutUrl: orderRecord.checkoutUrl,
+      cartUrl,
+      checkoutUrl: cartUrl,
+      addedCartUrl,
       itemCount: cart.items.length,
     }, headers);
   }
 
-  res.writeHead(303, { Location: orderRecord.checkoutUrl, ...headers });
+  res.writeHead(303, { Location: addedCartUrl, ...headers });
   res.end();
 }
 
@@ -3347,6 +3474,7 @@ function nameBadgePageHtml() {
     updatePreview();
     price();
   </script>
+  ${customCartClientScript()}
 </body>
 </html>`;
 }
@@ -3796,6 +3924,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
     window.addEventListener('resize', sendHeight);
     selectProduct(products[0].sku);
   </script>
+  ${customCartClientScript()}
 </body>
 </html>`;
 }
@@ -4161,6 +4290,7 @@ function polarCamelPageHtml() {
     window.addEventListener('resize', sendHeight);
     selectProduct(products[0].handle);
   </script>
+  ${customCartClientScript()}
 </body>
 </html>`;
 }
@@ -4514,6 +4644,7 @@ function solarPlacardsPageHtml() {
     form.elements.custom_height.addEventListener('input', updatePrice);
     selectProduct('${escapeHtml(first.key)}');
   </script>
+  ${customCartClientScript()}
 </body>
 </html>`;
 }
