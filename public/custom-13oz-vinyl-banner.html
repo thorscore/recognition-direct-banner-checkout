@@ -61,8 +61,13 @@
       .cart-status.active { display: block; }
       .details { margin-top: 18px; padding: 19px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
       .details ul { margin: 7px 0 17px; padding-left: 19px; }
+      .banner-trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 22px; }
+      .banner-trust-item { border: 1px solid var(--line); background: #f8fafd; padding: 13px 15px; }
+      .banner-trust-item strong { display: block; margin-bottom: 5px; color: var(--ink); line-height: 1.2; }
+      .banner-trust-item span { display: block; color: var(--muted); font-size: 14px; line-height: 1.45; }
       footer { padding: 24px; background: #fff; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: 13px; }
       @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+      @media (max-width: 760px) { .banner-trust-grid { grid-template-columns: 1fr; margin: 14px 0 20px; } }
       @media (max-width: 540px) { main { padding: 20px 14px 34px; } .grid, .tabs, .cart-actions { grid-template-columns: 1fr; } h1 { font-size: 29px; } }
     </style>
   </head>
@@ -78,6 +83,20 @@
       <h1>Custom 13oz Vinyl Banner</h1>
       <p class="muted">Premium full-color vinyl banner with free hemming and grommets every 2 ft. Configure your banner, upload artwork when ready, and pay securely through checkout.</p>
       <img class="hero" src="/assets/full-color-banner-eye.png" alt="Full color banner promotional graphic with a rainbow iris eye">
+      <section class="banner-trust-grid" aria-label="Why order banners from Recognition Direct">
+        <div class="banner-trust-item">
+          <strong>13oz full color vinyl</strong>
+          <span>Hemming and grommets every 2 ft are included on standard banners.</span>
+        </div>
+        <div class="banner-trust-item">
+          <strong>Artwork reviewed first</strong>
+          <span>Upload art or design notes and we check the file before production.</span>
+        </div>
+        <div class="banner-trust-item">
+          <strong>Pickup or shipping</strong>
+          <span>Choose local pickup or shipping before checkout.</span>
+        </div>
+      </section>
 
       <form class="layout" action="/api/banner-checkout" method="post" enctype="multipart/form-data">
         <section class="panel">

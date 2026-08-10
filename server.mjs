@@ -414,6 +414,54 @@ function escapeHtml(value) {
   })[character]);
 }
 
+const PRODUCT_TRUST_BLOCKS = {
+  "name-badges": [
+    { title: "Name lists made easy", text: "Type badge names or upload a text file before checkout." },
+    { title: "Proof before production", text: "We send a badge layout proof before making your order." },
+    { title: "Express One ready", text: "Order extra badge inventory now and release badges as needed." },
+  ],
+  solar: [
+    { title: "Built for solar jobs", text: "Upload the PDF plan sheet or enter custom plate text online." },
+    { title: "Fast local turnaround", text: "Pick up in Spring Valley or choose shipping when you check out." },
+    { title: "Proof before production", text: "We review solar placards and plates before production starts." },
+  ],
+  awards: [
+    { title: "Personalized award text", text: "Add plate wording or engraving notes before checkout." },
+    { title: "Quantity pricing shown", text: "Tiered pricing updates as you choose the item and quantity." },
+    { title: "Proof before production", text: "We send a layout proof before personalized awards are made." },
+  ],
+  "polar-camel": [
+    { title: "Personalized drinkware", text: "Add names, logos, or artwork notes before checkout." },
+    { title: "Color and style choices", text: "Choose from available Polar Camel items and colors." },
+    { title: "Proof before production", text: "We review personalization details before production starts." },
+  ],
+  default: [
+    { title: "Proof before production", text: "We review your order and send a proof before production." },
+    { title: "Family run since 1984", text: "Local help from Recognition Direct before anything is made." },
+    { title: "Pickup or shipping", text: "Choose convenient pickup or shipping during checkout." },
+  ],
+};
+
+function productTrustBlockCss() {
+  return `
+    .rd-product-trust{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0 24px}
+    .rd-product-trust__item{border:1px solid #d9e1ef;background:#f8fafd;padding:14px 16px}
+    .rd-product-trust__title{margin:0 0 5px;font-weight:800;color:#111827;line-height:1.2}
+    .rd-product-trust__text{margin:0;color:#475569;font-size:14px;line-height:1.45}
+    @media (max-width:760px){.rd-product-trust{grid-template-columns:1fr;margin:14px 0 20px}.rd-product-trust__item{padding:12px 14px}}
+  `;
+}
+
+function productTrustBlocksHtml(kind = "default") {
+  const blocks = PRODUCT_TRUST_BLOCKS[kind] || PRODUCT_TRUST_BLOCKS.default;
+  return `<style>${productTrustBlockCss()}</style><section class="rd-product-trust" aria-label="Why order from Recognition Direct">${blocks.map((block) => `
+      <div class="rd-product-trust__item">
+        <p class="rd-product-trust__title">${escapeHtml(block.title)}</p>
+        <p class="rd-product-trust__text">${escapeHtml(block.text)}</p>
+      </div>`).join("")}
+    </section>`;
+}
+
 function parseNameBadgePriceBreaks(value) {
   return String(value || "")
     .split(",")
@@ -3262,6 +3310,7 @@ function nameBadgePageHtml() {
         <p class="note">Recognition Direct</p>
         <h1>Name Badges</h1>
         <p class="intro">Order custom name badges online with your choice of badge size, color, frame, finish, and fastener. We send a proof before production so your badge names, logo, and layout can be reviewed.</p>
+        ${productTrustBlocksHtml("name-badges")}
 
         <form id="badge-form" action="${APP_BASE_URL}/api/name-badge-checkout" method="post" enctype="multipart/form-data">
           <div class="panel grid">
@@ -3727,6 +3776,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
     <p class="eyebrow">Recognition Direct</p>
     <h1>${escapeHtml(catalog.title)}</h1>
     <p class="intro">${escapeHtml(catalog.intro)}</p>
+    ${productTrustBlocksHtml("awards")}
 
     <div class="layout">
       <section class="panel gallery" aria-label="${escapeHtml(catalog.galleryLabel)}">
@@ -4054,6 +4104,7 @@ function polarCamelPageHtml() {
     <p class="eyebrow">Recognition Direct</p>
     <h1>Polar Camel Drinkware</h1>
     <p class="intro">Choose a Polar Camel item, select the color or option, add personalization details, and checkout online. We will send a proof before production.</p>
+    ${productTrustBlocksHtml("polar-camel")}
 
     <div class="layout">
       <section class="panel gallery" aria-label="Polar Camel products">
@@ -4451,6 +4502,7 @@ function solarPlacardsPageHtml() {
     <p class="eyebrow">Recognition Direct</p>
     <h1>Solar Placards</h1>
     <p class="intro">Order solar placards, PV warning labels, and custom red-and-white solar plates for San Diego solar installs. Upload your PDF plan sheet or enter plate text online, then receive a proof before production.</p>
+    ${productTrustBlocksHtml("solar")}
 
     <div class="layout">
       <section class="panel gallery" aria-label="Solar placard products">
