@@ -1617,7 +1617,7 @@ function customCartClientScript() {
     const scope = root && root.querySelectorAll ? root : document;
     scope.querySelectorAll('button, input[type="submit"], a').forEach(function(button){
       const text = (getButtonText(button) || '').replace(/\\s+/g, ' ').trim();
-      if (/^continue to secure checkout$/i.test(text)) setButtonText(button, 'Add to cart');
+      if (/^continue to secure checkout$/i.test(text)) setButtonText(button, 'Add to Cart');
     });
   }
   function setStatus(form, message){
@@ -1640,13 +1640,13 @@ function customCartClientScript() {
       if (!isCustomCheckoutForm(form) || form.dataset.customCartEnhanced === 'true') return;
       form.dataset.customCartEnhanced = 'true';
       const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])'));
-      submitButtons.forEach(function(button){ setButtonText(button, 'Add to cart'); });
+      submitButtons.forEach(function(button){ setButtonText(button, 'Add to Cart'); });
       const submit = submitButtons[0];
       if (submit && !form.querySelector('[data-custom-cart-link]')) {
         const go = document.createElement('a');
         go.setAttribute('data-custom-cart-link', '');
         go.href = cartUrl();
-        go.textContent = 'Go to cart';
+        go.textContent = 'Go to Cart';
         go.style.display = 'inline-flex';
         go.style.alignItems = 'center';
         go.style.justifyContent = 'center';
@@ -1680,7 +1680,7 @@ function customCartClientScript() {
       setStatus(form, 'Added to cart. You can keep shopping or go to cart when ready.');
       return result;
     } finally {
-      if (submitButton) { submitButton.disabled = false; setButtonText(submitButton, originalText || 'Add to cart'); }
+      if (submitButton) { submitButton.disabled = false; setButtonText(submitButton, originalText || 'Add to Cart'); }
     }
   }
   const params = new URLSearchParams(window.location.search);
@@ -1878,18 +1878,16 @@ async function handleCustomOrderCartPage(req, res, url) {
           <td>
             <strong>${escapeHtml(item.summary?.title || "Custom item")}</strong>
             ${item.summary?.description ? `<small>${escapeHtml(item.summary.description)}</small>` : ""}
+            <form class="remove-form inline-remove" method="post" action="${APP_BASE_URL}/api/custom-order-cart/remove?cart=${encodeURIComponent(cart.id)}">
+              <input type="hidden" name="item_id" value="${escapeHtml(item.id)}">
+              <button class="remove-button" type="submit" aria-label="Remove ${escapeHtml(item.summary?.title || "item")}">Remove item</button>
+            </form>
           </td>
           <td>${escapeHtml(item.summary?.quantity || "")}</td>
           <td>${formatMoney(item.summary?.subtotal)}</td>
-          <td class="remove-cell">
-            <form class="remove-form" method="post" action="${APP_BASE_URL}/api/custom-order-cart/remove?cart=${encodeURIComponent(cart.id)}">
-              <input type="hidden" name="item_id" value="${escapeHtml(item.id)}">
-              <button class="remove-button" type="submit" aria-label="Remove ${escapeHtml(item.summary?.title || "item")}">Remove</button>
-            </form>
-          </td>
         </tr>
       `).join("")
-    : `<tr><td colspan="4">Your custom order cart is empty.</td></tr>`;
+    : `<tr><td colspan="3">Your custom order cart is empty.</td></tr>`;
 
   return html(res, 200, `<!doctype html>
     <html lang="en">
@@ -1911,8 +1909,8 @@ async function handleCustomOrderCartPage(req, res, url) {
           th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
           th { background: var(--soft); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
           small { display: block; color: #5b6578; margin-top: 6px; }
-          .remove-cell { white-space: nowrap; }
           .remove-form { margin: 0; }
+          .inline-remove { margin-top: 8px; }
           .remove-button { border: 0; background: transparent; color: #b91c1c; cursor: pointer; font: inherit; font-weight: 700; padding: 0; text-decoration: underline; }
           .remove-button:hover { color: #7f1d1d; }
           .totals { display: grid; justify-content: end; gap: 8px; margin: 20px 0 28px; }
@@ -4529,8 +4527,8 @@ function solarPlacardsPageHtml() {
       <span data-price-message>You will receive a proof before production.</span>
           </div>
           <div class="cart-actions">
-            <button class="submit" type="submit">Add to cart</button>
-            <a class="cart-link" data-custom-cart-link href="${APP_BASE_URL}/custom-order-cart">Go to cart</a>
+            <button class="submit" type="submit">Add to Cart</button>
+            <a class="cart-link" data-custom-cart-link href="${APP_BASE_URL}/custom-order-cart">Go to Cart</a>
           </div>
           <p class="note"><strong>Add as many solar items as you need.</strong> Add the current item to your cart, then keep shopping or go to cart when ready.</p>
         </form>
