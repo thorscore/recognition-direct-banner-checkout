@@ -1875,19 +1875,21 @@ async function handleCustomOrderCartPage(req, res, url) {
   const rows = items.length
     ? items.map((item) => `
         <tr>
-          <td>
+          <td data-label="Item">
             <strong>${escapeHtml(item.summary?.title || "Custom item")}</strong>
             ${item.summary?.description ? `<small>${escapeHtml(item.summary.description)}</small>` : ""}
+          </td>
+          <td data-label="Quantity">${escapeHtml(item.summary?.quantity || "")}</td>
+          <td data-label="Subtotal">${formatMoney(item.summary?.subtotal)}</td>
+          <td data-label="Action">
             <form class="remove-form inline-remove" method="post" action="${APP_BASE_URL}/api/custom-order-cart/remove?cart=${encodeURIComponent(cart.id)}">
               <input type="hidden" name="item_id" value="${escapeHtml(item.id)}">
               <button class="remove-button" type="submit" aria-label="Remove ${escapeHtml(item.summary?.title || "item")}">Remove item</button>
             </form>
           </td>
-          <td>${escapeHtml(item.summary?.quantity || "")}</td>
-          <td>${formatMoney(item.summary?.subtotal)}</td>
         </tr>
       `).join("")
-    : `<tr><td colspan="3">Your custom order cart is empty.</td></tr>`;
+    : `<tr><td colspan="4">Your custom order cart is empty.</td></tr>`;
 
   return html(res, 200, `<!doctype html>
     <html lang="en">
@@ -1920,13 +1922,27 @@ async function handleCustomOrderCartPage(req, res, url) {
           .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--blue); color: var(--blue); background: #fff; text-decoration: none; font-weight: 700; cursor: pointer; }
           .button.primary { background: var(--blue); color: #fff; }
           .shop-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 26px; }
-          @media (max-width: 640px) {
-            .brand { align-items: flex-start; flex-direction: column; }
-            th:nth-child(2), td:nth-child(2) { display: none; }
-            .totals { justify-content: stretch; }
-            .totals div { min-width: 0; }
-            .actions .button, .actions form { width: 100%; }
+          @media (max-width: 700px) {
+            .wrap { width: min(100% - 24px, 1040px); margin: 20px auto 32px; }
+            .brand { align-items: flex-start; flex-direction: column; margin-bottom: 22px; }
+            h1 { font-size: clamp(38px, 13vw, 54px); }
+            .notice { padding: 14px 16px; margin: 18px 0; }
+            table { border: 0; margin: 20px 0 16px; }
+            thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+            tbody, tr, td { display: block; width: 100%; }
+            tbody tr { border: 1px solid var(--line); margin-bottom: 12px; background: #fff; }
+            td { border-bottom: 0; padding: 11px 14px; }
+            td + td { border-top: 1px solid var(--line); }
+            td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: #536178; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+            .inline-remove { margin-top: 0; }
+            .remove-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; width: 100%; border: 1px solid #f0b4b4; background: #fff5f5; text-decoration: none; }
+            .totals { justify-content: stretch; gap: 10px; margin: 18px 0 24px; padding: 14px; border: 1px solid var(--line); background: var(--soft); }
+            .totals div { min-width: 0; gap: 18px; }
+            .totals strong { font-size: 20px; }
+            .actions { gap: 10px; }
+            .actions .button, .actions form, .shop-links .button { width: 100%; }
             .actions form .button { width: 100%; }
+            .shop-links { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
           }
         </style>
       </head>
