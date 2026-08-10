@@ -1958,7 +1958,7 @@ async function handleCustomOrderCartPage(req, res, url) {
           <nav class="shop-links" aria-label="Continue shopping">
             <a class="button" href="${storeCartLink("/pages/name-badges", cart.id)}">Name badges</a>
             <a class="button" href="${storeCartLink("/pages/trophies", cart.id)}">Trophies</a>
-            <a class="button" href="${storeCartLink("/collections/all", cart.id)}">Browse all products</a>
+            <a class="button" href="${storeCartLink("/", cart.id)}">Return to Home Page</a>
           </nav>
         </main>
       </body>
