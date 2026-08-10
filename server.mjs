@@ -4388,6 +4388,457 @@ function solarProductCardsHtml(products) {
   `).join("");
 }
 
+const LOCAL_SEO_PAGES = [
+  {
+    area: "San Diego",
+    slug: "san-diego-custom-signs-banners-name-badges",
+    title: "Custom Signs, Banners & Name Badges in San Diego | Recognition Direct",
+    description: "Order custom signs, 13oz banners, name badges, DTF transfers, solar placards, awards, and trophies in San Diego with proof before production and local pickup.",
+    h1: "Custom Signs, Banners & Name Badges for San Diego",
+    intro: "Recognition Direct helps San Diego businesses, schools, contractors, teams, and event organizers order custom print products online with real local support.",
+    localNote: "From quick banner orders to repeat name badge programs, we make ordering clear, review artwork before production, and keep pickup easy for customers across San Diego.",
+    proofNote: "Every custom order is reviewed before production, and we send a proof when the product needs artwork approval.",
+    areaServed: ["San Diego", "Spring Valley", "La Mesa", "East County", "Jamul", "San Diego County"],
+    focus: ["Custom signs", "13oz vinyl banners", "Name badges", "DTF transfers", "Solar placards", "Awards and trophies"],
+  },
+  {
+    area: "Spring Valley",
+    slug: "spring-valley-custom-signs-banners-name-badges",
+    title: "Custom Signs, Banners & Name Badges in Spring Valley | Recognition Direct",
+    description: "Spring Valley custom signs, banners, name badges, solar placards, DTF transfers, and awards with proof before production and convenient drive-by pickup.",
+    h1: "Custom Signs, Banners & Name Badges in Spring Valley",
+    intro: "Recognition Direct is based in Spring Valley and gives local customers a fast way to order banners, signs, name badges, solar placards, awards, and DTF transfers.",
+    localNote: "Our convenient drive-by pickup makes it simple for Spring Valley customers to order online, approve artwork, and pick up when the order is ready.",
+    proofNote: "We review the details before production so the finished order matches the size, wording, artwork, and deadline you requested.",
+    areaServed: ["Spring Valley", "La Mesa", "San Diego", "East County", "Jamul", "El Cajon"],
+    focus: ["Drive-by pickup", "Custom signs", "13oz banners", "Name badge reorders", "Solar placards", "Trophies and awards"],
+  },
+  {
+    area: "La Mesa",
+    slug: "la-mesa-custom-signs-banners-name-badges",
+    title: "Custom Signs, Banners & Name Badges in La Mesa | Recognition Direct",
+    description: "La Mesa custom signs, vinyl banners, name badges, awards, trophies, DTF transfers, and solar placards with online ordering and local pickup nearby.",
+    h1: "Custom Signs, Banners & Name Badges for La Mesa",
+    intro: "La Mesa businesses, schools, sports teams, and organizations can order custom banners, signs, badges, awards, and solar placards online through Recognition Direct.",
+    localNote: "We are close by in Spring Valley, making pickup convenient for La Mesa customers who want local service without a long back-and-forth ordering process.",
+    proofNote: "If a design needs review, we send a proof before production so you can approve the layout before it is made.",
+    areaServed: ["La Mesa", "Spring Valley", "San Diego", "East County", "Lemon Grove", "El Cajon"],
+    focus: ["Local pickup near La Mesa", "Custom banners", "Name badges", "Signs and magnets", "Awards", "Solar placards"],
+  },
+  {
+    area: "East County",
+    slug: "east-county-custom-signs-banners-name-badges",
+    title: "Custom Signs, Banners & Name Badges in East County | Recognition Direct",
+    description: "East County custom signs, banners, name badges, solar placards, awards, trophies, and DTF transfers with online ordering, local pickup, and proof before production.",
+    h1: "Custom Signs, Banners & Name Badges for East County",
+    intro: "Recognition Direct serves East County with custom signs, 13oz banners, name badges, trophies, awards, solar placards, DTF transfers, and repeat-order support.",
+    localNote: "We work with customers from Spring Valley, La Mesa, El Cajon, Santee, Jamul, Alpine, Lemon Grove, and beyond.",
+    proofNote: "Our process is built for speed and clarity: order online, upload artwork or details, receive a proof when needed, then pick up locally or have it shipped.",
+    areaServed: ["East County", "Spring Valley", "La Mesa", "El Cajon", "Santee", "Jamul", "Alpine", "Lemon Grove"],
+    focus: ["East County signs", "Sports banners", "Name badge programs", "Solar placards", "Awards", "DTF transfers"],
+  },
+  {
+    area: "Jamul",
+    slug: "jamul-custom-banners-signs",
+    title: "Custom Banners, Signs & Name Badges in Jamul | Recognition Direct",
+    description: "Jamul custom banners, youth sports banners, signs, name badges, awards, trophies, and solar placards with local pickup and proof before production.",
+    h1: "Custom Banners, Signs & Name Badges for Jamul",
+    intro: "Recognition Direct helps Jamul teams, leagues, businesses, schools, and families order custom banners, signs, name badges, awards, and solar placards online.",
+    localNote: "We are a local option for youth sports banners, event signs, business signage, and repeat orders that need clear communication and fast turnaround.",
+    proofNote: "For custom artwork, we review the order and send a proof before production so the final product is ready for pickup or shipping.",
+    areaServed: ["Jamul", "Spring Valley", "East County", "San Diego County"],
+    focus: ["Jamul banners", "Youth sports banners", "Custom signs", "Name badges", "Awards and trophies", "Solar placards"],
+  },
+];
+
+function localSeoCanonicalPath(page) {
+  return `/local/${page.slug}`;
+}
+
+function localSeoPathsForPage(page) {
+  return [localSeoCanonicalPath(page), `/pages/local-${page.slug}`];
+}
+
+function getLocalSeoPageByPath(pathname) {
+  return LOCAL_SEO_PAGES.find((page) => localSeoPathsForPage(page).includes(pathname));
+}
+
+function jsonLdSafe(value) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
+function localSeoPageHtml(page) {
+  const canonicalUrl = `https://recognition-direct.com${localSeoCanonicalPath(page)}`;
+  const productLinks = [
+    { href: "/products/13oz-vinyl-banner?view=catalog-configurator-v4", label: "Build a 13oz banner", note: "$2.50 per sq ft with hems and grommets included" },
+    { href: "/pages/name-badges", label: "Order name badges", note: "Badge colors, frames, fasteners, and quantity pricing" },
+    { href: "/pages/solar-placards", label: "Order solar placards", note: "Upload plan sheets or enter custom plate text" },
+    { href: "/pages/trophies", label: "Shop trophies", note: "Personalized plate text and online checkout" },
+  ];
+  const faqs = [
+    {
+      question: `Do you serve ${page.area} customers?`,
+      answer: `Yes. Recognition Direct serves ${page.area} and nearby San Diego County customers with custom signs, banners, name badges, awards, solar placards, and DTF transfers.`,
+    },
+    {
+      question: "Can I pick up my order locally?",
+      answer: "Yes. We offer convenient local pickup, including drive-by pickup when available, and we also ship orders when customers prefer delivery.",
+    },
+    {
+      question: "Will I receive a proof before production?",
+      answer: "Yes. For custom artwork and products that need approval, we send a proof before production so you can review the design.",
+    },
+  ];
+  const schema = [
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      name: "Recognition Direct",
+      url: canonicalUrl,
+      image: "https://recognition-direct.com/assets/full-color-banner-eye.png",
+      telephone: "+1-619-465-0055",
+      email: "roth@recognition-direct.com",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "8680 Troy Street",
+        addressLocality: "Spring Valley",
+        addressRegion: "CA",
+        postalCode: "91977",
+        addressCountry: "US",
+      },
+      areaServed: page.areaServed,
+      description: page.description,
+      makesOffer: productLinks.map((item) => ({
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: item.label,
+          description: item.note,
+        },
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqs.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    },
+  ];
+  const focusList = page.focus.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  const productCards = productLinks.map((item) => `
+    <a class="rd-card" href="${escapeHtml(item.href)}">
+      <strong>${escapeHtml(item.label)}</strong>
+      <span>${escapeHtml(item.note)}</span>
+    </a>
+  `).join("");
+  const localLinks = LOCAL_SEO_PAGES.map((item) => `
+    <a href="${escapeHtml(localSeoCanonicalPath(item))}"${item.slug === page.slug ? ' aria-current="page"' : ""}>${escapeHtml(item.area)}</a>
+  `).join("");
+  const faqHtml = faqs.map((item) => `
+    <details>
+      <summary>${escapeHtml(item.question)}</summary>
+      <p>${escapeHtml(item.answer)}</p>
+    </details>
+  `).join("");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(page.title)}</title>
+  <meta name="description" content="${escapeHtml(page.description)}">
+  <link rel="canonical" href="${escapeHtml(canonicalUrl)}">
+  <meta property="og:title" content="${escapeHtml(page.title)}">
+  <meta property="og:description" content="${escapeHtml(page.description)}">
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://recognition-direct.com/assets/full-color-banner-eye.png">
+  <style>
+    :root {
+      color-scheme: light;
+      --blue: #3154b8;
+      --red: #d7192a;
+      --ink: #111827;
+      --muted: #4b5563;
+      --line: #d8e0ee;
+      --soft: #f4f7fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: #fff;
+      line-height: 1.55;
+    }
+    a { color: #1f49b6; font-weight: 700; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .rd-top {
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .rd-top-inner {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      min-height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .rd-brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .rd-brand span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .rd-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      font-size: 14px;
+    }
+    .rd-sale {
+      background: var(--blue);
+      color: #fff;
+      text-align: center;
+      padding: 12px 16px;
+      font-weight: 800;
+    }
+    .rd-page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 56px;
+    }
+    .rd-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.98fr);
+      gap: 34px;
+      align-items: start;
+    }
+    .rd-hero-media {
+      border: 1px solid var(--line);
+      background: var(--soft);
+    }
+    .rd-hero-media img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 5 / 3;
+      object-fit: cover;
+    }
+    .rd-kicker {
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 8px 0 14px;
+      font-size: clamp(36px, 5vw, 60px);
+      line-height: 1.08;
+      font-weight: 500;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 25px;
+      line-height: 1.2;
+    }
+    p { color: var(--muted); margin: 0 0 18px; }
+    .rd-price {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 8px 0 22px;
+      padding: 16px 22px;
+      border-left: 5px solid var(--blue);
+      background: #eef3ff;
+      font-weight: 800;
+    }
+    .rd-price strong { font-size: 26px; }
+    .rd-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .rd-button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 48px;
+      padding: 13px 20px;
+      border: 1px solid var(--blue);
+      background: #fff;
+      color: #2247b2;
+      font-weight: 800;
+    }
+    .rd-button.primary {
+      background: var(--blue);
+      color: #fff;
+    }
+    .rd-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 28px 0;
+    }
+    .rd-card,
+    .rd-panel,
+    details {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+    .rd-card {
+      min-height: 118px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .rd-card span {
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .rd-panel {
+      margin-top: 30px;
+      padding: 24px;
+    }
+    .rd-panel ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+    .rd-local-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .rd-local-links a {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 12px;
+      background: var(--soft);
+      color: var(--ink);
+    }
+    .rd-local-links a[aria-current="page"] {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+    details {
+      padding: 16px 18px;
+      margin: 10px 0;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 800;
+    }
+    details p {
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+    .rd-footer-note {
+      margin-top: 28px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    @media (max-width: 860px) {
+      .rd-top-inner { align-items: flex-start; flex-direction: column; padding: 18px 0; }
+      .rd-hero, .rd-grid { grid-template-columns: 1fr; }
+      .rd-page { padding-top: 30px; }
+      .rd-button { width: 100%; }
+      h1 { font-size: 40px; }
+    }
+  </style>
+  <script type="application/ld+json">${jsonLdSafe(schema)}</script>
+</head>
+<body>
+  <header class="rd-top">
+    <div class="rd-top-inner">
+      <a class="rd-brand" href="https://recognition-direct.com/">
+        Recognition Direct
+        <span>Family run since 1984</span>
+      </a>
+      <nav class="rd-nav" aria-label="Main navigation">
+        <a href="https://recognition-direct.com/">Home</a>
+        <a href="https://recognition-direct.com/pages/how-ordering-works">How Ordering Works</a>
+        <a href="https://recognition-direct.com/products/13oz-vinyl-banner?view=catalog-configurator-v4">Banners</a>
+        <a href="https://recognition-direct.com/pages/name-badges">Name Badges</a>
+        <a href="https://recognition-direct.com/pages/contact">Contact</a>
+      </nav>
+    </div>
+    <div class="rd-sale">Full Color Banner Sale: 13oz banners are $2.50 per sq ft</div>
+  </header>
+  <main class="rd-page">
+    <section class="rd-hero">
+      <div class="rd-hero-media">
+        <img src="/assets/full-color-banner-eye.png" alt="Full color banner printed by Recognition Direct">
+      </div>
+      <div>
+        <div class="rd-kicker">Serving ${escapeHtml(page.area)} and beyond</div>
+        <h1>${escapeHtml(page.h1)}</h1>
+        <p>${escapeHtml(page.intro)}</p>
+        <div class="rd-price"><strong>$2.50</strong><span>per sq ft 13oz banners</span></div>
+        <div class="rd-actions">
+          <a class="rd-button primary" href="/products/13oz-vinyl-banner?view=catalog-configurator-v4">Build a 13oz banner</a>
+          <a class="rd-button" href="/pages/name-badges">Shop name badges</a>
+          <a class="rd-button" href="/">Browse all products</a>
+        </div>
+        <p>${escapeHtml(page.localNote)}</p>
+      </div>
+    </section>
+
+    <section class="rd-grid" aria-label="Popular local products">
+      ${productCards}
+    </section>
+
+    <section class="rd-panel">
+      <h2>Local ordering with proof before production</h2>
+      <p>${escapeHtml(page.proofNote)}</p>
+      <ul>
+        ${focusList}
+      </ul>
+    </section>
+
+    <section class="rd-panel">
+      <h2>Helpful banner design resources</h2>
+      <p>Need help creating a banner idea? Customers can use our ChatGPT banner design guide, then upload the design, photos, logo, or notes with the order.</p>
+      <a class="rd-button" href="/pages/custom-banners-from-chatgpt-designs">Learn how AI banner printing works</a>
+    </section>
+
+    <section class="rd-panel">
+      <h2>More local service areas</h2>
+      <p>Recognition Direct serves local customers across San Diego County with online ordering, proof support, pickup, and shipping.</p>
+      <div class="rd-local-links">${localLinks}</div>
+    </section>
+
+    <section class="rd-panel">
+      <h2>Frequently asked questions</h2>
+      ${faqHtml}
+    </section>
+
+    <p class="rd-footer-note">Recognition Direct, 8680 Troy Street, Spring Valley, CA 91977. Call 619-465-0055 or email roth@recognition-direct.com for help with custom signs, banners, name badges, solar placards, awards, and more.</p>
+  </main>
+</body>
+</html>`;
+}
+
 function solarPlacardsPageHtml() {
   const featured = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "placard" && product.featured);
   const otherPlacards = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "placard" && !product.featured);
@@ -4829,6 +5280,12 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/solar-placard-price") return await handleSolarPlacardPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/premier-award-price") return await handlePremierAwardPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/polar-camel-price") return await handlePolarCamelPrice(req, res);
+    if (req.method === "GET") {
+      const localSeoPage = getLocalSeoPageByPath(url.pathname);
+      if (localSeoPage) {
+        return html(res, 200, localSeoPageHtml(localSeoPage), { "X-Robots-Tag": "index, follow" });
+      }
+    }
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/custom-13oz-vinyl-banner")) {
       return await servePublicFile(res, "custom-13oz-vinyl-banner.html", "text/html; charset=utf-8");
     }
