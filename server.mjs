@@ -92,6 +92,7 @@ const SOLAR_CUSTOM_PLATE_SQUARE_INCH_RATE = 0.5;
 const SOLAR_CUSTOM_PLATE_MAX_LONG_SIDE_INCHES = 24;
 const SOLAR_CUSTOM_PLATE_MAX_SHORT_SIDE_INCHES = 12;
 const solarProductByKey = new Map(SOLAR_PLACARD_PRODUCTS.map((product) => [product.key, product]));
+const DEFAULT_13OZ_BANNER_DELIVERY_METHOD = "pickup-la-mesa";
 
 let cachedToken = SHOPIFY_ACCESS_TOKEN;
 let tokenExpiresAt = SHOPIFY_ACCESS_TOKEN ? Number.POSITIVE_INFINITY : 0;
@@ -753,6 +754,13 @@ function deliveryMethodLabel(value) {
   if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
   if (value === "league-billed") return "Billed to Jamul AYSO";
   return "Ship";
+}
+
+function defaultedDeliveryMethodValue(formData, defaultValue = "ship") {
+  const selected = field(formData, "delivery_method");
+  if (selected) return selected;
+  formData.set("delivery_method", defaultValue);
+  return defaultValue;
 }
 
 function premierAwardTier(product, quantity) {
@@ -2050,7 +2058,8 @@ async function handleCheckout(req, res) {
   const unitPrice = Number((squareFeetEach * 2.5).toFixed(2));
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
   const unitLabel = units === "inches" ? "in" : "ft";
-  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const deliveryMethodValue = defaultedDeliveryMethodValue(formData, DEFAULT_13OZ_BANNER_DELIVERY_METHOD);
+  const deliveryMethod = deliveryMethodLabel(deliveryMethodValue);
   const isPickup = deliveryMethod !== "Ship";
 
   const artworkUrls = {
@@ -2092,7 +2101,7 @@ async function handleCheckout(req, res) {
       `Recognition Direct banner configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
       aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
     ].filter(Boolean).join("\n\n"),
-    tags: ["custom-banner", "proof-required", isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
+    tags: ["custom-banner", "proof-required", isPickup ? deliveryMethodValue : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup, formData),
@@ -2234,7 +2243,11 @@ async function handleCatalogCheckout(req, res) {
     unitPrice = adjustedCatalogUnitPrice(product, input, quote.unitPrice);
   }
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
-  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const deliveryMethodValue = defaultedDeliveryMethodValue(
+    formData,
+    handle === "13oz-vinyl-banner" ? DEFAULT_13OZ_BANNER_DELIVERY_METHOD : "ship",
+  );
+  const deliveryMethod = deliveryMethodLabel(deliveryMethodValue);
   const isPickup = deliveryMethod !== "Ship";
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const bannerArtworkUrls = {
@@ -2290,7 +2303,7 @@ async function handleCatalogCheckout(req, res) {
       `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
       aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
     ].filter(Boolean).join("\n\n"),
-    tags: ["catalog-configuration", "proof-required", handle, isPickup ? field(formData, "delivery_method") : "ship", ...shippingTags(shipping)],
+    tags: ["catalog-configuration", "proof-required", handle, isPickup ? deliveryMethodValue : "ship", ...shippingTags(shipping)],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup, formData),
