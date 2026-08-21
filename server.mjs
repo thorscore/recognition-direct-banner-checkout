@@ -749,7 +749,7 @@ function attribute(key, value) {
 }
 
 function deliveryMethodLabel(value) {
-  if (value === "pickup-la-mesa") return "Pickup at La Mesa Street Side Pickup";
+  if (value === "pickup-la-mesa") return "Local pickup in Spring Valley (near La Mesa)";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
   if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
   if (value === "league-billed") return "Billed to Jamul AYSO";
@@ -1410,11 +1410,15 @@ function draftOrderPickupAddress(isPickup, formData) {
   if (!isPickup) return {};
   const customerCompany = field(formData, "company", 120);
   const customerPhone = field(formData, "phone", 40);
+  const pickupLabel = deliveryMethodLabel(field(formData, "delivery_method"));
+  const pickupCompany = pickupLabel === "Ship"
+    ? PICKUP_TAX_ADDRESS.company
+    : `${PICKUP_TAX_ADDRESS.company} - ${pickupLabel}`;
   return {
     shippingAddress: {
       ...PICKUP_TAX_ADDRESS,
       ...customerPickupName(formData),
-      company: customerCompany,
+      company: customerCompany ? `${pickupCompany} / ${customerCompany}` : pickupCompany,
       phone: customerPhone || PICKUP_TAX_ADDRESS.phone,
     },
   };
