@@ -380,9 +380,13 @@ function json(res, status, payload, headers = {}) {
 
 function corsHeaders(req) {
   const origin = req.headers.origin || "";
-  return origin && ALLOWED_ORIGINS.has(origin)
-    ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" }
-    : {};
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": req.headers["access-control-request-headers"] || "Content-Type, Accept, X-Requested-With",
+    "Vary": "Origin, Access-Control-Request-Headers",
+  };
 }
 
 function html(res, status, markup, headers = {}) {
@@ -2022,7 +2026,7 @@ async function handleCustomOrderCartPage(req, res, url) {
           <nav class="shop-links" aria-label="Continue shopping">
             <a class="button" href="${storeCartLink("/pages/name-badges", cart.id)}">Name badges</a>
             <a class="button" href="${storeCartLink("/pages/trophies", cart.id)}">Trophies</a>
-            <a class="button" href="${storeCartLink("/", cart.id)}">Return to Home Page</a>
+            <a class="button" href="https://recognition-direct.com/">Return to Home Page</a>
           </nav>
         </main>
       </body>
@@ -4798,7 +4802,7 @@ function localSeoPageHtml(page) {
         <div class="rd-actions">
           <a class="rd-button primary" href="/products/13oz-vinyl-banner?view=catalog-configurator-v4">Build a 13oz banner</a>
           <a class="rd-button" href="/pages/name-badges">Shop name badges</a>
-          <a class="rd-button" href="/">Browse all products</a>
+          <a class="rd-button" href="https://recognition-direct.com/">Return to Home Page</a>
         </div>
         <p>${escapeHtml(page.localNote)}</p>
       </div>
@@ -5344,7 +5348,7 @@ const server = createServer(async (req, res) => {
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
-    return json(res, 400, { error: error.message || "Unable to create checkout." });
+    return json(res, 400, { error: error.message || "Unable to create checkout." }, corsHeaders(req));
   }
 });
 
