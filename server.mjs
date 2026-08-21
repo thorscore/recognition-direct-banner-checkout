@@ -3387,7 +3387,7 @@ function nameBadgePageHtml() {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
                 <option value="pickup-spring-valley">Pickup at Spring Valley</option>
                 <option value="pickup-pine-valley">Pickup at Pine Valley</option>
               </select>
@@ -3832,7 +3832,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
                 <option value="pickup-pine-valley">Pickup at Pine Valley</option>
               </select>
             </div>
@@ -4171,7 +4171,7 @@ function polarCamelPageHtml() {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
                 <option value="pickup-pine-valley">Pickup at Pine Valley</option>
                 <option value="pickup-spring-valley">Pickup at Spring Valley</option>
               </select>
@@ -5004,7 +5004,7 @@ function solarPlacardsPageHtml() {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Pickup at La Mesa</option>
+                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
                 <option value="pickup-spring-valley">Pickup at Spring Valley</option>
               </select>
             </div>
