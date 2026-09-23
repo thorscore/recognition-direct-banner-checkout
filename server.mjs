@@ -37,6 +37,7 @@ const EXPRESS_ONE_SHIPPING_ESTIMATE = 12.95;
 const MAX_FILE_MB = Number(process.env.MAX_FILE_MB || 100);
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 const MAX_BODY_BYTES = (MAX_FILE_MB + 10) * 1024 * 1024;
+const SHOPIFY_DRAFT_NOTE_LIMIT = 5000;
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || "https://recognition-direct.com,https://www.recognition-direct.com,https://recognition-direct.bs.run,http://localhost:4173")
     .split(",")
@@ -1819,6 +1820,16 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
   res.end();
 }
 
+function truncateShopifyDraftNote(note, limit = SHOPIFY_DRAFT_NOTE_LIMIT) {
+  const text = String(note || "");
+  if (text.length <= limit) return text;
+
+  const suffix =
+    "\n\n[Note truncated to fit Shopify's 5000 character draft order note limit. Full item details remain in the custom order records and line item attributes.]";
+  const maxBodyLength = Math.max(0, limit - suffix.length);
+  return `${text.slice(0, maxBodyLength).trimEnd()}${suffix}`;
+}
+
 function combineCustomCartDraftInput(cart) {
   const items = cart.items || [];
   if (!items.length) throw new Error("Your custom order cart is empty.");
@@ -1838,7 +1849,7 @@ function combineCustomCartDraftInput(cart) {
   const shippingLine = combinedCartShippingLine(cart);
   return {
     email: firstInput.email,
-    note: notes,
+    note: truncateShopifyDraftNote(notes),
     tags,
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
