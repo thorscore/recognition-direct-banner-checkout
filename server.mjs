@@ -2273,6 +2273,12 @@ async function handleCatalogCheckout(req, res) {
   };
   const email = field(formData, "email", 320);
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
+  const customerName = field(formData, "name", 120);
+  const is13ozBanner = handle === "13oz-vinyl-banner";
+  const isYouthBanner = is13ozBanner && isYouthSportsBanner(formData);
+  if (is13ozBanner && !customerName) throw new Error("Enter the customer's name.");
+  if (isYouthBanner && !field(formData, "league_name", 120)) throw new Error("Enter the league name for this youth banner.");
+  if (isYouthBanner && !field(formData, "team_name", 120)) throw new Error("Enter the team name for this youth banner.");
 
   const unitLabel = units === "inches" ? "in" : "ft";
   if (squareFeetEach > 0) {
@@ -2280,6 +2286,8 @@ async function handleCatalogCheckout(req, res) {
   }
   const shipping = classifyCatalogShipping(product, { ...input, deliveryMethod }, quantity);
   const attributes = [
+    attribute("Customer Name", customerName),
+    attribute("Customer Email", email),
     attribute("Configured Product", catalogDisplayTitle(product)),
     attribute("Original Catalog URL", `https://recognition-direct.bs.run${product.url}`),
     attribute("Product Size", squareFeetEach > 0 ? `${width} ${unitLabel} x ${height} ${unitLabel}` : ""),
@@ -2300,6 +2308,7 @@ async function handleCatalogCheckout(req, res) {
     createdAt: new Date().toISOString(),
     productHandle: handle,
     productTitle: catalogDisplayTitle(product),
+    customerName,
     email,
     quantity,
     unitPrice,
@@ -2335,10 +2344,15 @@ async function handleCatalogCheckout(req, res) {
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
+      { key: "Customer Name", value: customerName },
+      { key: "Customer Email", value: email },
+      { key: "Banner Type", value: field(formData, "banner_type") },
+      { key: "League Name", value: field(formData, "league_name") },
+      { key: "Team Name", value: field(formData, "team_name") },
       { key: "Proof Required", value: "Yes" },
       { key: "Delivery Method", value: deliveryMethod },
       { key: "Shipping Handling Group", value: shipping.label },
-    ],
+    ].filter((attribute) => attribute.value),
   };
 
   return await addCustomOrderToCart(req, res, orderRecord, draftInput, {

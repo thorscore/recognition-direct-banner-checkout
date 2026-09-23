@@ -142,9 +142,9 @@
             <div class="grid">
               <div class="full"><label for="youth-artwork">Print-ready artwork</label><input id="youth-artwork" name="youth_artwork" type="file" accept=".pdf,.ai,.eps,.psd,.jpg,.jpeg,.png"></div>
               <div><label for="sport">Sport</label><input id="sport" name="sport"></div>
-              <div><label for="league">League name</label><input id="league" name="league_name"></div>
+              <div><label for="league">League name</label><input id="league" name="league_name" required></div>
               <div><label for="age">Age group</label><input id="age" name="age_group"></div>
-              <div><label for="team">Team name</label><input id="team" name="team_name"></div>
+              <div><label for="team">Team name</label><input id="team" name="team_name" required></div>
               <div><label for="colors">Team colors</label><input id="colors" name="team_colors"></div>
               <div class="full"><label for="players">Players names and numbers</label><textarea id="players" name="players" placeholder="AYSO does not allow numbers on banners."></textarea></div>
               <div><label for="coaches">Coaches names</label><input id="coaches" name="coaches"></div>
@@ -173,6 +173,7 @@
 
           <div class="grid">
             <div><label for="need-by">Need-by date</label><input id="need-by" name="need_by" type="date"></div>
+            <div><label for="name">Customer name</label><input id="name" name="name" autocomplete="name" required></div>
             <div><label for="email">Email</label><input id="email" name="email" type="email" required></div>
             <div><label for="phone">Phone</label><input id="phone" name="phone" type="tel"></div>
             <div class="full"><label for="notes">Notes</label><textarea id="notes" name="notes" placeholder="Tell us about placement, deadline, special finishing, or artwork questions."></textarea></div>
@@ -227,6 +228,9 @@
         const youth = document.querySelector('input[name="banner_type"]:checked').value === "Youth Sports Banner";
         document.querySelector("[data-youth]").classList.toggle("active", youth);
         document.querySelector("[data-standard]").classList.toggle("active", !youth);
+        document.querySelectorAll('[name="league_name"], [name="team_name"]').forEach((field) => {
+          field.required = youth;
+        });
       }));
       const storageKey = "rdCustomOrderCartId";
       const goCart = document.querySelector("[data-go-cart]");
