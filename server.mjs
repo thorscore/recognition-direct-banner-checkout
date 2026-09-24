@@ -1997,6 +1997,15 @@ async function handleCustomOrderCartPage(req, res, url) {
           .totals { display: grid; justify-content: end; gap: 8px; margin: 20px 0 28px; }
           .totals div { display: flex; justify-content: space-between; gap: 48px; min-width: 300px; }
           .totals strong { font-size: 22px; }
+          .cart-confidence { margin: 0 0 24px; border: 1px solid var(--line); border-left: 5px solid var(--blue); border-radius: 8px; background: #f8fafd; padding: 18px; }
+          .cart-confidence h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.2; }
+          .cart-confidence p { margin: 0 0 14px; }
+          .confidence-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; }
+          .confidence-item { min-height: 92px; border: 1px solid #dfe6f1; border-radius: 6px; background: #fff; padding: 12px; }
+          .confidence-item strong { display: block; font-size: 14px; line-height: 1.25; }
+          .confidence-item span { display: block; margin-top: 5px; color: #5b6578; font-size: 13px; line-height: 1.35; }
+          .confidence-note { margin: 14px 0 0; color: #3f4b63; font-size: 14px; }
+          .confidence-note a { color: var(--blue); font-weight: 700; }
           .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
           .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--blue); color: var(--blue); background: #fff; text-decoration: none; font-weight: 700; cursor: pointer; }
           .button.primary { background: var(--blue); color: #fff; }
@@ -2018,6 +2027,9 @@ async function handleCustomOrderCartPage(req, res, url) {
             .totals { justify-content: stretch; gap: 10px; margin: 18px 0 24px; padding: 14px; border: 1px solid var(--line); background: var(--soft); }
             .totals div { min-width: 0; gap: 18px; }
             .totals strong { font-size: 20px; }
+            .cart-confidence { margin-bottom: 22px; padding: 16px; }
+            .confidence-grid { grid-template-columns: 1fr; }
+            .confidence-item { min-height: 0; }
             .actions { gap: 10px; }
             .actions .button, .actions form, .shop-links .button { width: 100%; }
             .actions form .button { width: 100%; }
@@ -2042,6 +2054,29 @@ async function handleCustomOrderCartPage(req, res, url) {
             <div><span>Products</span><span>${formatMoney(productSubtotal)}</span></div>
             <div><span>Shipping & handling</span><span>${shippingSubtotal ? formatMoney(shippingSubtotal) : "Calculated at checkout"}</span></div>
             <div><strong>Total before tax</strong><strong>${formatMoney(total)}</strong></div>
+          </section>
+          <section class="cart-confidence" aria-labelledby="cart-confidence-heading">
+            <h2 id="cart-confidence-heading">Before checkout</h2>
+            <p>Custom orders are reviewed by Recognition Direct before production begins.</p>
+            <div class="confidence-grid">
+              <div class="confidence-item">
+                <strong>Proof before production</strong>
+                <span>We send a layout proof when your order needs artwork approval.</span>
+              </div>
+              <div class="confidence-item">
+                <strong>We check the details</strong>
+                <span>If something looks incomplete, we will contact you before making it.</span>
+              </div>
+              <div class="confidence-item">
+                <strong>Pickup or shipping</strong>
+                <span>Pickup and shipping options are handled during checkout.</span>
+              </div>
+              <div class="confidence-item">
+                <strong>Need a change?</strong>
+                <span>Add order notes at checkout or contact us with the cart details.</span>
+              </div>
+            </div>
+            <p class="confidence-note">Questions before checking out? Email <a href="mailto:info@recognition-direct.com">info@recognition-direct.com</a>.</p>
           </section>
           <div class="actions">
             <form method="post" action="${APP_BASE_URL}/api/custom-order-cart/checkout?cart=${encodeURIComponent(cart.id)}">
