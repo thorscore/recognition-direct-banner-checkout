@@ -1667,7 +1667,10 @@ function customCartClientScript() {
     return url.toString();
   }
   function syncLinks(){
-    document.querySelectorAll('[data-custom-cart-link]').forEach(function(link){ link.href = cartUrl(); });
+    document.querySelectorAll('[data-custom-cart-link]').forEach(function(link){
+      link.href = cartUrl();
+      link.target = '_top';
+    });
   }
   function setButtonText(button, text){
     if (!button) return;
@@ -1711,6 +1714,7 @@ function customCartClientScript() {
         const go = document.createElement('a');
         go.setAttribute('data-custom-cart-link', '');
         go.href = cartUrl();
+        go.target = '_top';
         go.textContent = 'Go to Cart';
         go.style.display = 'inline-flex';
         go.style.alignItems = 'center';
@@ -5093,7 +5097,7 @@ function solarPlacardsPageHtml() {
           </div>
           <div class="cart-actions">
             <button class="submit" type="submit">Add to Cart</button>
-            <a class="cart-link" data-custom-cart-link href="${APP_BASE_URL}/custom-order-cart">Go to Cart</a>
+            <a class="cart-link" data-custom-cart-link href="${APP_BASE_URL}/custom-order-cart" target="_top">Go to Cart</a>
           </div>
           <p class="note"><strong>Add as many solar items as you need.</strong> Add the current item to your cart, then keep shopping or go to cart when ready.</p>
         </form>
