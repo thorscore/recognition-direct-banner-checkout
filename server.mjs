@@ -3337,6 +3337,12 @@ function nameBadgePageHtml() {
     .badge-price-chart p{margin:10px 0 0;color:var(--muted);font-size:13px}
     h1{margin:0 0 10px;font-size:clamp(34px,5vw,58px);line-height:1}
     .intro{margin:0 0 20px;color:var(--muted);font-size:18px}
+    .badge-steps{margin:-4px 0 20px;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:8px;background:#f8fafd;padding:16px 18px}
+    .badge-steps h2{margin:0 0 12px;font-size:20px;line-height:1.2}
+    .badge-steps ol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;padding:0;list-style:none}
+    .badge-steps li{border:1px solid #dfe6f1;border-radius:6px;background:#fff;padding:12px}
+    .badge-steps strong{display:block;color:var(--ink);font-size:14px;line-height:1.25}
+    .badge-steps span{display:block;margin-top:5px;color:var(--muted);font-size:13px;line-height:1.35}
     form{display:grid;gap:16px}
     .panel{border:1px solid var(--line);border-radius:8px;padding:18px;background:#fff}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -3370,7 +3376,7 @@ function nameBadgePageHtml() {
     .faq details:last-child{border-bottom:1px solid var(--line)}
     .faq summary{cursor:pointer;font-weight:900}
     .faq p{margin:8px 0 0;color:var(--muted)}
-    @media(max-width:820px){.hero,.grid{grid-template-columns:1fr}.art{min-height:260px}}
+    @media(max-width:820px){.hero,.grid,.badge-steps ol{grid-template-columns:1fr}.art{min-height:260px}}
     @media(max-width:820px){
       .wrap{padding-bottom:128px}
       .mobile-checkout{position:fixed;right:12px;bottom:12px;left:12px;z-index:30;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:var(--ink);box-shadow:0 18px 44px rgba(24,33,47,.25);color:#fff;padding:12px}
@@ -3396,6 +3402,27 @@ function nameBadgePageHtml() {
         <h1>Name Badges</h1>
         <p class="intro">Order custom name badges online with your choice of badge size, color, frame, finish, and fastener. We send a proof before production so your badge names, logo, and layout can be reviewed.</p>
         ${productTrustBlocksHtml("name-badges")}
+        <section class="badge-steps" aria-labelledby="badge-steps-heading">
+          <h2 id="badge-steps-heading">How name badge ordering works</h2>
+          <ol>
+            <li>
+              <strong>1. Choose badge options</strong>
+              <span>Select size, color, frame, finish, and fastener.</span>
+            </li>
+            <li>
+              <strong>2. Add names</strong>
+              <span>Type badge text or upload a names list.</span>
+            </li>
+            <li>
+              <strong>3. Upload artwork</strong>
+              <span>Attach your logo or artwork file if needed.</span>
+            </li>
+            <li>
+              <strong>4. Review your proof</strong>
+              <span>We send a layout proof before production.</span>
+            </li>
+          </ol>
+        </section>
 
         <form id="badge-form" action="${APP_BASE_URL}/api/name-badge-checkout" method="post" enctype="multipart/form-data">
           <div class="panel grid">
