@@ -3783,6 +3783,12 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
     .eyebrow{margin:0 0 8px;color:var(--accent);font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
     h1{margin:0;font-size:clamp(38px,5vw,62px);line-height:1;letter-spacing:0}
     .intro{max-width:760px;margin:14px 0 26px;color:var(--muted);font-size:18px}
+    .award-steps{margin:-8px 0 24px;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:8px;background:#fff;padding:16px 18px}
+    .award-steps h2{margin:0 0 12px;font-size:20px;line-height:1.2}
+    .award-steps ol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0;padding:0;list-style:none}
+    .award-steps li{min-height:84px;border:1px solid #dfe6f1;border-radius:6px;background:#f8fafd;padding:12px}
+    .award-steps strong{display:block;color:var(--ink);font-size:14px;line-height:1.25}
+    .award-steps span{display:block;margin-top:5px;color:var(--muted);font-size:13px;line-height:1.35}
     .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.72fr);gap:28px;align-items:start}
     .panel{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px}
     .gallery{background:linear-gradient(135deg,#fff,#eef2f8)}
@@ -3817,8 +3823,8 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
     .estimate span{color:#d7dde8}
     button.submit{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
     [hidden]{display:none!important}
-    @media(max-width:980px){.layout{grid-template-columns:1fr}.award-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}.preview{height:280px}}
-    @media(max-width:560px){.award-grid,.grid{grid-template-columns:1fr}.toolbar{display:block}.toolbar>div{margin-bottom:10px}}
+    @media(max-width:980px){.layout{grid-template-columns:1fr}.award-steps ol{grid-template-columns:repeat(2,minmax(0,1fr))}.award-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}.preview{height:280px}}
+    @media(max-width:560px){.award-steps ol,.award-grid,.grid{grid-template-columns:1fr}.toolbar{display:block}.toolbar>div{margin-bottom:10px}}
   </style>
 </head>
 <body>
@@ -3827,6 +3833,27 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
     <h1>${escapeHtml(catalog.title)}</h1>
     <p class="intro">${escapeHtml(catalog.intro)}</p>
     ${productTrustBlocksHtml("awards")}
+    <section class="award-steps" aria-labelledby="award-steps-heading">
+      <h2 id="award-steps-heading">How award ordering works</h2>
+      <ol>
+        <li>
+          <strong>1. Choose an award</strong>
+          <span>Select a style and quantity to see pricing.</span>
+        </li>
+        <li>
+          <strong>2. Add personalization</strong>
+          <span>Enter plate text, engraving notes, or names.</span>
+        </li>
+        <li>
+          <strong>3. Upload files if needed</strong>
+          <span>Attach a logo, artwork, or names file.</span>
+        </li>
+        <li>
+          <strong>4. Review your proof</strong>
+          <span>We send a layout proof before production.</span>
+        </li>
+      </ol>
+    </section>
 
     <div class="layout">
       <section class="panel gallery" aria-label="${escapeHtml(catalog.galleryLabel)}">
