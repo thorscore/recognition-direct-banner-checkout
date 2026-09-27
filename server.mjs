@@ -4157,6 +4157,8 @@ function polarCamelCardsHtml(products) {
         return false;
       }
     }) || product.variants?.[0];
+    const defaultVariant = polarCamelDefaultVariant(product, index);
+    const cardImage = defaultVariant?.thumbnail || defaultVariant?.image || product.thumbnail || product.image;
     const startingPrice = firstPricedVariant ? polarCamelTier(firstPricedVariant, 1).unitPrice : 0;
     const variantCount = (product.variants || []).length;
     const optionLabel = variantCount > 1 ? `${variantCount} colors/options` : "1 option";
@@ -4167,7 +4169,7 @@ function polarCamelCardsHtml(products) {
     const moreOptions = variantCount > 6 ? `<b>+${variantCount - 6} more</b>` : "";
     return `
       <button class="product-card${index === 0 ? " active" : ""}" type="button" data-handle="${escapeHtml(product.handle)}">
-        <img src="${escapeHtml(product.thumbnail || product.image)}" alt="${escapeHtml(product.title)}" loading="lazy">
+        <img src="${escapeHtml(cardImage)}" alt="${escapeHtml(defaultVariant?.title || product.title)}" loading="lazy">
         <strong>${escapeHtml(product.title)}</strong>
         <span>${escapeHtml(product.type || "Polar Camel")} - ${escapeHtml(optionLabel)}</span>
         <span class="option-preview">${visibleOptions}${moreOptions}</span>
@@ -4176,10 +4178,27 @@ function polarCamelCardsHtml(products) {
   }).join("");
 }
 
+function polarCamelDefaultVariant(product, index = 0) {
+  const variants = product?.variants || [];
+  if (!variants.length) return undefined;
+
+  const colorfulVariants = variants.filter((variant) => {
+    const option = [variant.optionValue, variant.title, variant.sku].join(" ").toLowerCase();
+    return !/(stainless|silver)/.test(option);
+  });
+  const pool = colorfulVariants.length ? colorfulVariants : variants;
+  const key = `${product.handle || product.title || ""}-${index}`;
+  let hash = 0;
+  for (const char of key) {
+    hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+  }
+  return pool[Math.abs(hash) % pool.length];
+}
+
 function polarCamelPageHtml() {
   const products = polarCamelProducts;
   const first = products[0];
-  const firstVariant = first?.variants?.[0];
+  const firstVariant = polarCamelDefaultVariant(first, 0);
   const types = [...new Set(products.map((product) => product.type).filter(Boolean))].sort();
   return `<!doctype html>
 <html lang="en">
@@ -4364,9 +4383,25 @@ function polarCamelPageHtml() {
     const typeFilter = document.querySelector('[data-type-filter]');
     const selectedPanel = document.querySelector('.selected');
     let selectedProduct = products[0];
-    let selectedVariant = selectedProduct?.variants?.[0];
+    let selectedVariant = defaultVariantForProduct(selectedProduct, 0);
 
     function money(value) { return '$' + Number(value || 0).toFixed(2); }
+    function defaultVariantForProduct(product, index = 0) {
+      const variants = product?.variants || [];
+      if (!variants.length) return undefined;
+
+      const colorfulVariants = variants.filter((variant) => {
+        const option = [variant.optionValue, variant.title, variant.sku].join(' ').toLowerCase();
+        return !/(stainless|silver)/.test(option);
+      });
+      const pool = colorfulVariants.length ? colorfulVariants : variants;
+      const key = String(product.handle || product.title || '') + '-' + index;
+      let hash = 0;
+      for (const char of key) {
+        hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+      }
+      return pool[Math.abs(hash) % pool.length];
+    }
     function swatchStyle(value) {
       const name = String(value || '').toLowerCase();
       const colors = [
@@ -4455,8 +4490,9 @@ function polarCamelPageHtml() {
       }, 60);
     }
     function selectProduct(handle, shouldScroll = false) {
-      selectedProduct = products.find((product) => product.handle === handle) || products[0];
-      selectedVariant = selectedProduct.variants[0];
+      const productIndex = Math.max(0, products.findIndex((product) => product.handle === handle));
+      selectedProduct = products[productIndex] || products[0];
+      selectedVariant = defaultVariantForProduct(selectedProduct, productIndex);
       selectedTitle.textContent = selectedProduct.title;
       variantLabel.textContent = selectedProduct.optionName || 'Option';
       variantSelect.innerHTML = selectedProduct.variants.map((variant) => '<option value="' + variant.sku + '">' + variant.optionValue + ' - ' + variant.sku + '</option>').join('');
