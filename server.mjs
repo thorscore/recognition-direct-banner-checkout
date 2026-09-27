@@ -331,10 +331,70 @@ const premierAwardCatalogs = new Map([
 for (const catalog of premierAwardCatalogs.values()) {
   catalog.bySku = new Map(catalog.products.map((product) => [product.sku, product]));
 }
+const POLAR_CAMEL_CATEGORIES = [
+  {
+    id: "tumblers",
+    title: "Tumblers",
+    description: "Everyday Polar Camel tumblers for staff gifts, events, teams, and customer thank-you gifts.",
+    pageIntro: "Choose personalized Polar Camel tumblers, pick a color, add logo or name details, and checkout online. We will send a proof before production.",
+  },
+  {
+    id: "water-bottles",
+    title: "Water Bottles",
+    description: "Reusable bottles for teams, schools, leagues, job sites, giveaways, and company gear.",
+    pageIntro: "Order personalized Polar Camel water bottles with color choices, logo or name details, local pickup, shipping, and proof before production.",
+  },
+  {
+    id: "mugs",
+    title: "Mugs",
+    description: "Insulated mugs and travel mugs for offices, appreciation gifts, and branded merchandise.",
+    pageIntro: "Shop personalized Polar Camel mugs and travel mugs with color choices, quantity pricing, and proof before production.",
+  },
+  {
+    id: "pet-bowls",
+    title: "Pet Bowls",
+    description: "Personalized pet bowls for gifts, raffles, clubs, and branded promotions.",
+    pageIntro: "Choose personalized Polar Camel pet bowls and gift items with proof before production.",
+  },
+  {
+    id: "barware-gifts",
+    title: "Barware & Gifts",
+    description: "Beverage holders, glassware, decanters, wine items, and gift sets.",
+    pageIntro: "Shop Polar Camel barware, beverage holders, glassware, decanters, and gift sets with personalization options.",
+  },
+  {
+    id: "accessories",
+    title: "Accessories",
+    description: "Replacement lids, straws, boots, handles, and bottle accessories.",
+    pageIntro: "Find Polar Camel replacement lids, straws, boots, handles, and bottle accessories.",
+  },
+];
+const POLAR_CAMEL_CATEGORY_BY_ID = new Map(POLAR_CAMEL_CATEGORIES.map((category) => [category.id, category]));
+const POLAR_CAMEL_CATEGORY_PRIORITY = new Map(POLAR_CAMEL_CATEGORIES.map((category, index) => [category.id, index]));
+
+function polarCamelCategoryForProduct(product) {
+  const title = String(product?.title || "");
+  const type = String(product?.type || "");
+  const text = `${title} ${type}`.toLowerCase();
+
+  if (/^(slider lid|magnetic lid|snap lid|handle|straw)/i.test(title) || /\b(carabiner|boot)\b/i.test(title)) {
+    return POLAR_CAMEL_CATEGORY_BY_ID.get("accessories");
+  }
+  if (/bowl/i.test(text)) return POLAR_CAMEL_CATEGORY_BY_ID.get("pet-bowls");
+  if (/mug/i.test(text)) return POLAR_CAMEL_CATEGORY_BY_ID.get("mugs");
+  if (/water bottle/i.test(text) || type === "Water Bottle") return POLAR_CAMEL_CATEGORY_BY_ID.get("water-bottles");
+  if (/tumbler|sippy cup|pilsner/i.test(text) || /Tumbler/i.test(type)) return POLAR_CAMEL_CATEGORY_BY_ID.get("tumblers");
+  if (/beverage holder|chiller|decanter|wine|glass/i.test(text) || /Beverage Holder|Glassware|Decanter|Wine/i.test(type)) {
+    return POLAR_CAMEL_CATEGORY_BY_ID.get("barware-gifts");
+  }
+  return POLAR_CAMEL_CATEGORY_BY_ID.get("barware-gifts");
+}
+
 const polarCamelProducts = (polarCamelData.products || [])
   .filter((product) => !/sublimatable/i.test(product.title || ""))
   .map((product) => ({
     ...product,
+    categoryId: polarCamelCategoryForProduct(product)?.id || "barware-gifts",
     variants: (product.variants || []).filter((variant) => !/sublimatable/i.test([
       variant.title,
       variant.optionValue,
@@ -358,6 +418,9 @@ const polarCamelProducts = (polarCamelData.products || [])
   ]);
   const accessoryPattern = /^(slider lid|magnetic lid|snap lid|handle|polar camel water bottle carabiner)|\bboot\b/i;
   const specialtyPattern = /\/|ghost|rose gold|prism|leatherette|silicone grip/i;
+  const aCategoryPriority = POLAR_CAMEL_CATEGORY_PRIORITY.get(a.categoryId) ?? 99;
+  const bCategoryPriority = POLAR_CAMEL_CATEGORY_PRIORITY.get(b.categoryId) ?? 99;
+  if (aCategoryPriority !== bCategoryPriority) return aCategoryPriority - bCategoryPriority;
   const aAccessory = accessoryPattern.test(a.title || "") ? 20 : 0;
   const bAccessory = accessoryPattern.test(b.title || "") ? 20 : 0;
   const aSpecialty = specialtyPattern.test(a.title || "") ? 5 : 0;
@@ -4148,8 +4211,9 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
 </html>`;
 }
 
-function polarCamelCardsHtml(products) {
+function polarCamelCardsHtml(products, activeHandle = "") {
   return products.map((product, index) => {
+    const category = POLAR_CAMEL_CATEGORY_BY_ID.get(product.categoryId) || polarCamelCategoryForProduct(product);
     const firstPricedVariant = (product.variants || []).find((variant) => {
       try {
         return Number.isFinite(polarCamelTier(variant, 1).unitPrice);
@@ -4168,14 +4232,44 @@ function polarCamelCardsHtml(products) {
       .join("");
     const moreOptions = variantCount > 6 ? `<b>+${variantCount - 6} more</b>` : "";
     return `
-      <button class="product-card${index === 0 ? " active" : ""}" type="button" data-handle="${escapeHtml(product.handle)}">
+      <button class="product-card${product.handle === activeHandle ? " active" : ""}" type="button" data-handle="${escapeHtml(product.handle)}" data-category="${escapeHtml(category.id)}">
         <img src="${escapeHtml(cardImage)}" alt="${escapeHtml(defaultVariant?.title || product.title)}" loading="lazy">
         <strong>${escapeHtml(product.title)}</strong>
-        <span>${escapeHtml(product.type || "Polar Camel")} - ${escapeHtml(optionLabel)}</span>
+        <span>${escapeHtml(category.title)} - ${escapeHtml(optionLabel)}</span>
         <span class="option-preview">${visibleOptions}${moreOptions}</span>
         <em>Starts at $${startingPrice.toFixed(2)} each</em>
       </button>`;
   }).join("");
+}
+
+function polarCamelCategoryCardsHtml(activeCategoryId = "") {
+  const counts = new Map(POLAR_CAMEL_CATEGORIES.map((category) => [category.id, 0]));
+  for (const product of polarCamelProducts) {
+    counts.set(product.categoryId, (counts.get(product.categoryId) || 0) + 1);
+  }
+  const allCount = polarCamelProducts.length;
+  const cards = [
+    {
+      id: "",
+      title: "All Polar Camel",
+      description: "Browse all tumblers, bottles, mugs, bowls, barware, gifts, and accessories.",
+      count: allCount,
+      href: "/polar-camel",
+    },
+    ...POLAR_CAMEL_CATEGORIES.map((category) => ({
+      ...category,
+      count: counts.get(category.id) || 0,
+      href: `/polar-camel/${category.id}`,
+    })),
+  ];
+
+  return `<nav class="category-cards" aria-label="Shop Polar Camel categories">${cards.map((category) => `
+      <a class="category-card${category.id === activeCategoryId ? " active" : ""}" href="${escapeHtml(category.href)}">
+        <strong>${escapeHtml(category.title)}</strong>
+        <span>${escapeHtml(category.description)}</span>
+        <em>${category.count} ${category.count === 1 ? "style" : "styles"}</em>
+      </a>`).join("")}
+    </nav>`;
 }
 
 function polarCamelDefaultVariant(product, index = 0) {
@@ -4195,18 +4289,27 @@ function polarCamelDefaultVariant(product, index = 0) {
   return pool[Math.abs(hash) % pool.length];
 }
 
-function polarCamelPageHtml() {
+function polarCamelPageHtml(categorySlug = "") {
   const products = polarCamelProducts;
-  const first = products[0];
+  const activeCategory = POLAR_CAMEL_CATEGORY_BY_ID.get(String(categorySlug || "").toLowerCase()) || null;
+  const activeCategoryId = activeCategory?.id || "";
+  const visibleProducts = activeCategoryId ? products.filter((product) => product.categoryId === activeCategoryId) : products;
+  const first = visibleProducts[0] || products[0];
   const firstVariant = polarCamelDefaultVariant(first, 0);
-  const types = [...new Set(products.map((product) => product.type).filter(Boolean))].sort();
+  const pageTitle = activeCategory
+    ? `Polar Camel ${activeCategory.title} | Recognition Direct`
+    : "Polar Camel Tumblers, Bottles & Gifts | Recognition Direct";
+  const pageDescription = activeCategory
+    ? activeCategory.pageIntro
+    : "Choose personalized Polar Camel tumblers, water bottles, mugs, bowls, barware, gifts, and accessories with proof before production.";
+  const heading = activeCategory ? `Polar Camel ${activeCategory.title}` : "Polar Camel Tumblers, Bottles & Gifts";
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Polar Camel Drinkware | Recognition Direct</title>
-  <meta name="description" content="Order personalized Polar Camel tumblers, mugs, bottles, bowls, and drinkware from Recognition Direct with proof before production.">
+  <title>${escapeHtml(pageTitle)}</title>
+  <meta name="description" content="${escapeHtml(pageDescription)}">
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8;--soft:#f5f7fb}
     *{box-sizing:border-box}
@@ -4216,6 +4319,12 @@ function polarCamelPageHtml() {
     h1{margin:0;font-size:clamp(36px,5vw,62px);line-height:1;letter-spacing:0}
     h2{margin:0 0 8px;font-size:24px;line-height:1.15}
     .intro{max-width:800px;margin:14px 0 26px;color:var(--muted);font-size:18px}
+    .category-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:22px 0 28px}
+    .category-card{display:grid;gap:6px;min-height:148px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px 16px;color:var(--ink);text-decoration:none}
+    .category-card:hover,.category-card.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+    .category-card strong{font-size:16px;line-height:1.2}
+    .category-card span{color:var(--muted);font-size:13px;line-height:1.35}
+    .category-card em{align-self:end;color:var(--accent);font-size:12px;font-style:normal;font-weight:900}
     .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.72fr);gap:28px;align-items:start}
     .panel{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px}
     .gallery{background:linear-gradient(135deg,#fff,#eef2f8)}
@@ -4253,16 +4362,17 @@ function polarCamelPageHtml() {
     .estimate span{color:#d7dde8}
     button.submit{min-height:50px;border:0;border-radius:4px;background:var(--accent);color:#fff;font:inherit;font-weight:900;cursor:pointer}
     [hidden]{display:none!important}
-    @media(max-width:980px){.layout{grid-template-columns:1fr}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}.preview{height:280px}}
-    @media(max-width:560px){.toolbar,.product-grid,.grid{grid-template-columns:1fr}}
+    @media(max-width:980px){.layout{grid-template-columns:1fr}.category-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}.preview{height:280px}}
+    @media(max-width:560px){.toolbar,.category-cards,.product-grid,.grid{grid-template-columns:1fr}.category-card{min-height:0}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <p class="eyebrow">Recognition Direct</p>
-    <h1>Polar Camel Drinkware</h1>
-    <p class="intro">Choose a Polar Camel item, select the color or option, add personalization details, and checkout online. We will send a proof before production.</p>
+    <h1>${escapeHtml(heading)}</h1>
+    <p class="intro">${escapeHtml(pageDescription)}</p>
     ${productTrustBlocksHtml("polar-camel")}
+    ${polarCamelCategoryCardsHtml(activeCategoryId)}
 
     <div class="layout">
       <section class="panel gallery" aria-label="Polar Camel products">
@@ -4274,12 +4384,12 @@ function polarCamelPageHtml() {
           <div>
             <label for="polar_type">Category</label>
             <select id="polar_type" data-type-filter>
-              <option value="">All Polar Camel</option>
-              ${types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("")}
+              <option value=""${activeCategoryId ? "" : " selected"}>All Polar Camel</option>
+              ${POLAR_CAMEL_CATEGORIES.map((category) => `<option value="${escapeHtml(category.id)}"${category.id === activeCategoryId ? " selected" : ""}>${escapeHtml(category.title)}</option>`).join("")}
             </select>
           </div>
         </div>
-        <div class="product-grid" data-product-grid>${polarCamelCardsHtml(products)}</div>
+        <div class="product-grid" data-product-grid>${polarCamelCardsHtml(products, first?.handle)}</div>
       </section>
 
       <section class="selected">
@@ -4367,6 +4477,7 @@ function polarCamelPageHtml() {
   </main>
   <script>
     const products = ${JSON.stringify(products)};
+    const initialHandle = ${JSON.stringify(first?.handle || "")};
     const form = document.querySelector('[data-polar-form]');
     const cards = [...document.querySelectorAll('[data-handle]')];
     const preview = document.querySelector('[data-preview]');
@@ -4382,7 +4493,7 @@ function polarCamelPageHtml() {
     const search = document.querySelector('[data-search]');
     const typeFilter = document.querySelector('[data-type-filter]');
     const selectedPanel = document.querySelector('.selected');
-    let selectedProduct = products[0];
+    let selectedProduct = products.find((product) => product.handle === initialHandle) || products[0];
     let selectedVariant = defaultVariantForProduct(selectedProduct, 0);
 
     function money(value) { return '$' + Number(value || 0).toFixed(2); }
@@ -4504,14 +4615,18 @@ function polarCamelPageHtml() {
     }
     function filterProducts() {
       const term = search.value.trim().toLowerCase();
-      const selectedType = typeFilter.value;
+      const selectedCategory = typeFilter.value;
       cards.forEach((card) => {
         const product = products.find((entry) => entry.handle === card.dataset.handle);
         const variants = (product.variants || []).map((variant) => [variant.sku, variant.optionValue, variant.title].join(' ')).join(' ');
-        const haystack = [product.title, product.type, product.handle, variants].join(' ').toLowerCase();
-        card.hidden = (selectedType && product.type !== selectedType) || (term && !haystack.includes(term));
+        const haystack = [product.title, product.type, product.handle, product.categoryId, variants].join(' ').toLowerCase();
+        card.hidden = (selectedCategory && product.categoryId !== selectedCategory) || (term && !haystack.includes(term));
       });
       sendHeight();
+    }
+    function navigateToCategory() {
+      const category = typeFilter.value;
+      window.location.href = category ? '/polar-camel/' + category : '/polar-camel';
     }
     function sendHeight() {
       window.parent?.postMessage({ type: 'rd-polar-camel-height', height: document.documentElement.scrollHeight }, '*');
@@ -4520,7 +4635,7 @@ function polarCamelPageHtml() {
     variantSelect.addEventListener('change', () => selectVariant(variantSelect.value));
     form.elements.order_quantity.addEventListener('input', updatePrice);
     search.addEventListener('input', filterProducts);
-    typeFilter.addEventListener('change', filterProducts);
+    typeFilter.addEventListener('change', navigateToCategory);
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const submitButton = form.querySelector('button[type="submit"]');
@@ -4544,7 +4659,8 @@ function polarCamelPageHtml() {
     });
     window.addEventListener('load', sendHeight);
     window.addEventListener('resize', sendHeight);
-    selectProduct(products[0].handle);
+    selectProduct(initialHandle || products[0].handle);
+    filterProducts();
   </script>
   ${customCartClientScript()}
 </body>
@@ -5492,7 +5608,9 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/cutting-boards") return html(res, 200, premierAwardsPageHtml("cutting-boards"));
     if (req.method === "GET" && url.pathname === "/bison-river-knives") return html(res, 200, premierAwardsPageHtml("bison-river-knives"));
     if (req.method === "GET" && url.pathname === "/award-drinkware") return html(res, 200, premierAwardsPageHtml("award-drinkware"));
-    if (req.method === "GET" && url.pathname === "/polar-camel") return html(res, 200, polarCamelPageHtml());
+    if (req.method === "GET" && url.pathname === "/polar-camel") return html(res, 200, polarCamelPageHtml(url.searchParams.get("category") || ""));
+    const polarCamelCategoryMatch = url.pathname.match(/^\/polar-camel\/([a-z0-9-]+)\/?$/i);
+    if (req.method === "GET" && polarCamelCategoryMatch) return html(res, 200, polarCamelPageHtml(polarCamelCategoryMatch[1]));
     if (req.method === "GET" && /^\/assets\/name-badges\/[a-z0-9.-]+\.png$/i.test(url.pathname)) {
       return await servePublicFile(res, url.pathname.slice("/assets/".length), publicAssetResponseHeaders(url.pathname));
     }
