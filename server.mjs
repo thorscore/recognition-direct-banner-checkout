@@ -74,6 +74,19 @@ const ALUMINUM_SIGN_SIZES = [
   { key: "24x18", label: '24" x 18"', oldBasePrice: 39.6, unitPrice: 44.55 },
   { key: "36x24", label: '36" x 24"', oldBasePrice: 79.2, unitPrice: 89.1 },
 ];
+const REFLECTIVE_ALUMINUM_SIGN_HANDLE = "reflective-aluminum-sign";
+const REFLECTIVE_ALUMINUM_SIGN_SIZES = [
+  { key: "12x18", label: '12" x 18"', oldBasePrice: 42.9, unitPrice: 39.6, default: true },
+  { key: "18x24", label: '18" x 24"', oldBasePrice: 53.9, unitPrice: 59.4 },
+  { key: "24x36", label: '24" x 36"', oldBasePrice: 93.5, unitPrice: 118.8 },
+  { key: "18x12", label: '18" x 12"', oldBasePrice: 42.9, unitPrice: 39.6 },
+  { key: "24x18", label: '24" x 18"', oldBasePrice: 53.9, unitPrice: 59.4 },
+  { key: "36x24", label: '36" x 24"', oldBasePrice: 93.5, unitPrice: 118.8 },
+];
+const FIXED_CATALOG_SIZE_SETS = new Map([
+  [ALUMINUM_SIGN_HANDLE, ALUMINUM_SIGN_SIZES],
+  [REFLECTIVE_ALUMINUM_SIGN_HANDLE, REFLECTIVE_ALUMINUM_SIGN_SIZES],
+]);
 const DEFAULT_NAME_BADGE_BASE_PRICE_BREAKS = "1:12.00,10:11.50,25:11.00,50:10.00,100:9.50,250:8.75,500:8.50,1000:8.00";
 const DEFAULT_NAME_BADGE_NO_FRAME_PRICE_BREAKS = "1:8.00,10:7.50,25:7.00,50:6.00,100:5.50,250:5.25,500:5.00,1000:4.50";
 const DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS = "1:2.25,10:2.25,25:2.25,50:2.25,100:1.90,250:1.90,500:1.75,1000:1.50";
@@ -918,12 +931,15 @@ function yardSignHStakeSize(value) {
   return YARD_SIGN_H_STAKE_SIZES.find((size) => size.key === String(value || "")) || YARD_SIGN_H_STAKE_SIZES[0];
 }
 
-function aluminumSignSize(value) {
-  return ALUMINUM_SIGN_SIZES.find((size) => size.key === String(value || "")) || ALUMINUM_SIGN_SIZES[0];
+function fixedCatalogSize(handle, value) {
+  const sizes = FIXED_CATALOG_SIZE_SETS.get(handle);
+  if (!sizes) return null;
+  return sizes.find((size) => size.key === String(value || "")) || sizes[0];
 }
 
-function aluminumSignUnitPrice(input, quotedUnitPrice) {
-  const selectedSize = aluminumSignSize(input.values?.size);
+function fixedCatalogUnitPrice(handle, input, quotedUnitPrice) {
+  const selectedSize = fixedCatalogSize(handle, input.values?.size);
+  if (!selectedSize) return quotedUnitPrice;
   return Number(Math.max(0, quotedUnitPrice - selectedSize.oldBasePrice + selectedSize.unitPrice).toFixed(2));
 }
 
@@ -946,6 +962,7 @@ function catalogAttributeIsHidden(product, attr) {
   const handle = productHandle(product.url);
   if (handle === "coroplast" && attr.key === "hot_size") return true;
   if (handle === YARD_SIGN_H_STAKE_HANDLE) return true;
+  if (handle === REFLECTIVE_ALUMINUM_SIGN_HANDLE && attr.key === "material") return true;
   return handle === "table-top-banner-stand" && attr.key === "lamination";
 }
 
@@ -963,7 +980,7 @@ function normalizeCatalogValues(product, sourceValues) {
   if (handle === "step-repeat-backdrop" && String(values.size) === "custom") values.size = "120x96";
   if (handle === "coroplast") values.hot_size = "custom";
   if (handle === YARD_SIGN_H_STAKE_HANDLE) values.yard_sign_size = yardSignHStakeSize(values.yard_sign_size).key;
-  if (handle === ALUMINUM_SIGN_HANDLE) values.size = aluminumSignSize(values.size).key;
+  if (FIXED_CATALOG_SIZE_SETS.has(handle)) values.size = fixedCatalogSize(handle, values.size).key;
   return values;
 }
 
@@ -1159,7 +1176,7 @@ function adjustedCatalogUnitPrice(product, input, quotedUnitPrice) {
   if (handle === "coroplast" && String(input.values?.hardware || "") === "1") {
     unitPrice = Number((unitPrice + 1.9).toFixed(2));
   }
-  if (handle === ALUMINUM_SIGN_HANDLE) return aluminumSignUnitPrice(input, unitPrice);
+  if (FIXED_CATALOG_SIZE_SETS.has(handle)) return fixedCatalogUnitPrice(handle, input, unitPrice);
 
   const override = catalogPricingOverride(product);
   if (!override?.squareFootRate || !input.squareFeetEach) return unitPrice;
@@ -1241,7 +1258,7 @@ async function handleCatalogProduct(req, res, url) {
     hasCustomSize,
     usesSquareFootPricing: squareFootRate > 0,
     squareFootRate,
-    minimumPrice: handle === ALUMINUM_SIGN_HANDLE ? ALUMINUM_SIGN_SIZES[0].unitPrice : Number(product.minimum || 0),
+    minimumPrice: FIXED_CATALOG_SIZE_SETS.has(handle) ? fixedCatalogSize(handle).unitPrice : Number(product.minimum || 0),
     customSizeControl: catalogCustomSizeControl(product),
     attrs,
   }, corsHeaders(req));
