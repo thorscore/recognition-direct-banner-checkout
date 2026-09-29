@@ -76,12 +76,12 @@ const ALUMINUM_SIGN_SIZES = [
 ];
 const REFLECTIVE_ALUMINUM_SIGN_HANDLE = "reflective-aluminum-sign";
 const REFLECTIVE_ALUMINUM_SIGN_SIZES = [
-  { key: "12x18", label: '12" x 18"', oldBasePrice: 42.9, unitPrice: 39.6, default: true },
-  { key: "18x24", label: '18" x 24"', oldBasePrice: 53.9, unitPrice: 59.4 },
-  { key: "24x36", label: '24" x 36"', oldBasePrice: 93.5, unitPrice: 118.8 },
-  { key: "18x12", label: '18" x 12"', oldBasePrice: 42.9, unitPrice: 39.6 },
-  { key: "24x18", label: '24" x 18"', oldBasePrice: 53.9, unitPrice: 59.4 },
-  { key: "36x24", label: '36" x 24"', oldBasePrice: 93.5, unitPrice: 118.8 },
+  { key: "12x18", label: '12" x 18"', oldBasePrice: 42.9, unitPrice: 45, default: true },
+  { key: "18x24", label: '18" x 24"', oldBasePrice: 53.9, unitPrice: 65 },
+  { key: "24x36", label: '24" x 36"', oldBasePrice: 93.5, unitPrice: 135 },
+  { key: "18x12", label: '18" x 12"', oldBasePrice: 42.9, unitPrice: 45 },
+  { key: "24x18", label: '24" x 18"', oldBasePrice: 53.9, unitPrice: 65 },
+  { key: "36x24", label: '36" x 24"', oldBasePrice: 93.5, unitPrice: 135 },
 ];
 const FIXED_CATALOG_SIZE_SETS = new Map([
   [ALUMINUM_SIGN_HANDLE, ALUMINUM_SIGN_SIZES],
