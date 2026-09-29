@@ -65,6 +65,15 @@ const YARD_SIGN_H_STAKE_SIZES = [
   { key: "18x24", label: '18" x 24"', unitPrice: 16, default: true },
   { key: "12x18", label: '12" x 18"', unitPrice: 12 },
 ];
+const ALUMINUM_SIGN_HANDLE = "aluminum-sign";
+const ALUMINUM_SIGN_SIZES = [
+  { key: "12x18", label: '12" x 18"', oldBasePrice: 26.4, unitPrice: 29.7, default: true },
+  { key: "18x24", label: '18" x 24"', oldBasePrice: 39.6, unitPrice: 44.55 },
+  { key: "24x36", label: '24" x 36"', oldBasePrice: 79.2, unitPrice: 89.1 },
+  { key: "18x12", label: '18" x 12"', oldBasePrice: 26.4, unitPrice: 29.7 },
+  { key: "24x18", label: '24" x 18"', oldBasePrice: 39.6, unitPrice: 44.55 },
+  { key: "36x24", label: '36" x 24"', oldBasePrice: 79.2, unitPrice: 89.1 },
+];
 const DEFAULT_NAME_BADGE_BASE_PRICE_BREAKS = "1:12.00,10:11.50,25:11.00,50:10.00,100:9.50,250:8.75,500:8.50,1000:8.00";
 const DEFAULT_NAME_BADGE_NO_FRAME_PRICE_BREAKS = "1:8.00,10:7.50,25:7.00,50:6.00,100:5.50,250:5.25,500:5.00,1000:4.50";
 const DEFAULT_NAME_BADGE_MAGNET_PRICE_BREAKS = "1:2.25,10:2.25,25:2.25,50:2.25,100:1.90,250:1.90,500:1.75,1000:1.50";
@@ -909,6 +918,15 @@ function yardSignHStakeSize(value) {
   return YARD_SIGN_H_STAKE_SIZES.find((size) => size.key === String(value || "")) || YARD_SIGN_H_STAKE_SIZES[0];
 }
 
+function aluminumSignSize(value) {
+  return ALUMINUM_SIGN_SIZES.find((size) => size.key === String(value || "")) || ALUMINUM_SIGN_SIZES[0];
+}
+
+function aluminumSignUnitPrice(input, quotedUnitPrice) {
+  const selectedSize = aluminumSignSize(input.values?.size);
+  return Number(Math.max(0, quotedUnitPrice - selectedSize.oldBasePrice + selectedSize.unitPrice).toFixed(2));
+}
+
 function yardSignHStakeAttrs() {
   return [{
     key: "yard_sign_size",
@@ -945,6 +963,7 @@ function normalizeCatalogValues(product, sourceValues) {
   if (handle === "step-repeat-backdrop" && String(values.size) === "custom") values.size = "120x96";
   if (handle === "coroplast") values.hot_size = "custom";
   if (handle === YARD_SIGN_H_STAKE_HANDLE) values.yard_sign_size = yardSignHStakeSize(values.yard_sign_size).key;
+  if (handle === ALUMINUM_SIGN_HANDLE) values.size = aluminumSignSize(values.size).key;
   return values;
 }
 
@@ -1140,6 +1159,7 @@ function adjustedCatalogUnitPrice(product, input, quotedUnitPrice) {
   if (handle === "coroplast" && String(input.values?.hardware || "") === "1") {
     unitPrice = Number((unitPrice + 1.9).toFixed(2));
   }
+  if (handle === ALUMINUM_SIGN_HANDLE) return aluminumSignUnitPrice(input, unitPrice);
 
   const override = catalogPricingOverride(product);
   if (!override?.squareFootRate || !input.squareFeetEach) return unitPrice;
@@ -1221,7 +1241,7 @@ async function handleCatalogProduct(req, res, url) {
     hasCustomSize,
     usesSquareFootPricing: squareFootRate > 0,
     squareFootRate,
-    minimumPrice: Number(product.minimum || 0),
+    minimumPrice: handle === ALUMINUM_SIGN_HANDLE ? ALUMINUM_SIGN_SIZES[0].unitPrice : Number(product.minimum || 0),
     customSizeControl: catalogCustomSizeControl(product),
     attrs,
   }, corsHeaders(req));
