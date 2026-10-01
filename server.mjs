@@ -505,6 +505,21 @@ function escapeHtml(value) {
   })[character]);
 }
 
+function checkoutSeoTags({ title, description, path, image = "https://recognition-direct.com/assets/name-badges/1x3-white-no-frame.png" }) {
+  const url = `${APP_BASE_URL}${path}`;
+  return `
+  <link rel="canonical" href="${escapeHtml(url)}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(url)}">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(image)}">`;
+}
+
 const PRODUCT_TRUST_BLOCKS = {
   "name-badges": [
     { title: "Name lists made easy", text: "Type badge names or upload a text file before checkout." },
@@ -3369,6 +3384,8 @@ function nameBadgePageHtml() {
   const priceBreakText = NAME_BADGE_BASE_PRICE_BREAKS.length
     ? NAME_BADGE_BASE_PRICE_BREAKS.map((priceBreak) => `${priceBreak.minimumQuantity}+ framed badges: $${priceBreak.unitPrice.toFixed(2)} each`).join(" | ")
     : "Quantity pricing is not configured yet.";
+  const pageTitle = "Custom Name Badges San Diego | Recognition Direct";
+  const pageDescription = "Order custom name badges in San Diego with badge colors, frames, fasteners, quantity pricing, artwork upload, and proof before production.";
   const faqSchema = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -3413,8 +3430,9 @@ function nameBadgePageHtml() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Custom Name Badges San Diego | Recognition Direct</title>
-  <meta name="description" content="Order custom name badges online from Recognition Direct. Choose badge size, color, frame, fastener, epoxy dome finish, and upload names or artwork. Proof before production with local pickup or shipping.">
+  <title>${escapeHtml(pageTitle)}</title>
+  <meta name="description" content="${escapeHtml(pageDescription)}">
+  ${checkoutSeoTags({ title: pageTitle, description: pageDescription, path: "/name-badges" })}
   <script type="application/ld+json">${faqSchema}</script>
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
@@ -3771,13 +3789,16 @@ function nameBadgePageHtml() {
 }
 
 function customNameBadgePageHtml() {
+  const pageTitle = "Custom Name Badge Request | Recognition Direct";
+  const pageDescription = "Request custom name badge sizes, colors, frames, fasteners, or finishes from Recognition Direct with logo upload and follow-up pricing.";
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Custom Name Badge Request | Recognition Direct</title>
-  <meta name="description" content="Request custom name badges in special sizes, colors, or finishes from Recognition Direct.">
+  <title>${escapeHtml(pageTitle)}</title>
+  <meta name="description" content="${escapeHtml(pageDescription)}">
+  ${checkoutSeoTags({ title: pageTitle, description: pageDescription, path: "/custom-name-badges" })}
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
     *{box-sizing:border-box}
