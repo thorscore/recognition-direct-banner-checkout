@@ -147,7 +147,7 @@ const premierAwardCatalogs = new Map([
     id: "baseball-softball",
     route: "/baseball-softball-resin-trophies",
     title: "Baseball / Softball Resin Trophies",
-    metaDescription: "Order personalized Baseball and Softball resin trophies with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized baseball and softball resin trophies for teams, leagues, schools, and tournaments with proof before production.",
     intro: "Choose a trophy, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Baseball and Softball trophy products",
     selectError: "Select a Baseball / Softball trophy.",
@@ -160,7 +160,7 @@ const premierAwardCatalogs = new Map([
     id: "soccer",
     route: "/soccer-resin-trophies",
     title: "Soccer Resin Trophies",
-    metaDescription: "Order personalized soccer resin trophies with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized soccer resin trophies for teams, leagues, schools, and tournaments with plate text and proof before production.",
     intro: "Choose a soccer trophy, enter your plate wording, and checkout online. We will send a proof before production.",
     galleryLabel: "Soccer trophy products",
     selectError: "Select a soccer trophy.",
@@ -173,7 +173,7 @@ const premierAwardCatalogs = new Map([
     id: "acrylic",
     route: "/acrylic-awards",
     title: "Acrylic Awards",
-    metaDescription: "Order personalized acrylic awards with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized acrylic awards for employee recognition, events, and business milestones with proof before production.",
     intro: "Choose an acrylic award, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Acrylic award products",
     searchLabel: "Search acrylic awards",
@@ -192,8 +192,8 @@ const premierAwardCatalogs = new Map([
   ["plaques", {
     id: "plaques",
     route: "/award-plaques",
-    title: "Plaques",
-    metaDescription: "Order personalized award plaques with proof before production from Recognition Direct.",
+    title: "Custom Award Plaques",
+    metaDescription: "Order custom award plaques for recognition, memorials, schools, teams, and business awards with proof before production.",
     intro: "Choose a plaque, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Plaque products",
     searchLabel: "Search plaques",
@@ -213,7 +213,7 @@ const premierAwardCatalogs = new Map([
     id: "executive-awards",
     route: "/executive-awards",
     title: "Executive Awards",
-    metaDescription: "Order personalized executive awards with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized executive awards for leadership, service, sales, and corporate recognition with proof before production.",
     intro: "Choose an executive award, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Executive award products",
     searchLabel: "Search executive awards",
@@ -233,7 +233,7 @@ const premierAwardCatalogs = new Map([
     id: "glass-crystal-awards",
     route: "/glass-crystal-awards",
     title: "Glass & Crystal Awards",
-    metaDescription: "Order personalized glass and crystal awards with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized glass and crystal awards for premium recognition, corporate events, and milestone gifts with proof before production.",
     intro: "Choose a glass or crystal award, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Glass and crystal award products",
     searchLabel: "Search glass and crystal awards",
@@ -252,8 +252,8 @@ const premierAwardCatalogs = new Map([
   ["clocks", {
     id: "clocks",
     route: "/award-clocks",
-    title: "Clocks",
-    metaDescription: "Order personalized award clocks with proof before production from Recognition Direct.",
+    title: "Custom Award Clocks",
+    metaDescription: "Order custom award clocks for retirement gifts, service awards, donor recognition, and office presentations with proof before production.",
     intro: "Choose a clock, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Clock products",
     searchLabel: "Search clocks",
@@ -272,8 +272,8 @@ const premierAwardCatalogs = new Map([
   ["office-accessories", {
     id: "office-accessories",
     route: "/office-accessories",
-    title: "Office Accessories",
-    metaDescription: "Order personalized office accessories with proof before production from Recognition Direct.",
+    title: "Personalized Office Accessories",
+    metaDescription: "Order personalized office accessories, desk gifts, and recognition items for businesses and events with proof before production.",
     intro: "Choose an office accessory, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Office accessory products",
     searchLabel: "Search office accessories",
@@ -293,7 +293,7 @@ const premierAwardCatalogs = new Map([
     id: "cutting-boards",
     route: "/cutting-boards",
     title: "Cutting Boards",
-    metaDescription: "Order personalized cutting boards and serving boards with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized cutting boards and serving boards for gifts, awards, events, and appreciation programs with proof before production.",
     intro: "Choose a cutting board or serving board, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Cutting board products",
     searchLabel: "Search cutting boards",
@@ -313,7 +313,7 @@ const premierAwardCatalogs = new Map([
     id: "bison-river-knives",
     route: "/bison-river-knives",
     title: "Bison River Knives",
-    metaDescription: "Order personalized Bison River knives with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized Bison River knives and multitools for gifts, awards, team recognition, and incentives with proof before production.",
     intro: "Choose a Bison River knife or tool, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Bison River knife products",
     searchLabel: "Search Bison River knives",
@@ -333,7 +333,7 @@ const premierAwardCatalogs = new Map([
     id: "award-drinkware",
     route: "/award-drinkware",
     title: "Award Drinkware",
-    metaDescription: "Order personalized award drinkware with proof before production from Recognition Direct.",
+    metaDescription: "Order personalized award drinkware for recognition gifts, events, teams, and business appreciation with proof before production.",
     intro: "Choose award drinkware, enter your personalization, and checkout online. We will send a proof before production.",
     galleryLabel: "Award drinkware products",
     searchLabel: "Search award drinkware",
@@ -505,19 +505,26 @@ function escapeHtml(value) {
   })[character]);
 }
 
+function absoluteCheckoutUrl(value) {
+  const text = String(value || "").trim();
+  if (/^https?:\/\//i.test(text)) return text;
+  return `${APP_BASE_URL}${text.startsWith("/") ? "" : "/"}${text}`;
+}
+
 function checkoutSeoTags({ title, description, path, image = "https://recognition-direct.com/assets/name-badges/1x3-white-no-frame.png" }) {
-  const url = `${APP_BASE_URL}${path}`;
+  const url = absoluteCheckoutUrl(path);
+  const imageUrl = absoluteCheckoutUrl(image);
   return `
   <link rel="canonical" href="${escapeHtml(url)}">
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:url" content="${escapeHtml(url)}">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image" content="${escapeHtml(imageUrl)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
-  <meta name="twitter:image" content="${escapeHtml(image)}">`;
+  <meta name="twitter:image" content="${escapeHtml(imageUrl)}">`;
 }
 
 const PRODUCT_TRUST_BLOCKS = {
@@ -3951,13 +3958,17 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
   const submitLabel = catalog.submitLabel || "Add trophies to checkout";
   const searchLabel = catalog.searchLabel || "Search trophies";
   const searchPlaceholder = catalog.searchPlaceholder || "Search by name, size, or SKU";
+  const pageTitle = `${catalog.title} | Recognition Direct`;
+  const pageDescription = catalog.metaDescription;
+  const pageImage = first?.thumbnail || first?.image || "https://recognition-direct.com/assets/full-color-banner-eye.png";
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHtml(catalog.title)} | Recognition Direct</title>
-  <meta name="description" content="${escapeHtml(catalog.metaDescription)}">
+  <title>${escapeHtml(pageTitle)}</title>
+  <meta name="description" content="${escapeHtml(pageDescription)}">
+  ${checkoutSeoTags({ title: pageTitle, description: pageDescription, path: catalog.route, image: pageImage })}
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8}
     *{box-sizing:border-box}
@@ -4361,6 +4372,8 @@ function polarCamelPageHtml(categorySlug = "") {
     ? activeCategory.pageIntro
     : "Choose personalized Polar Camel tumblers, water bottles, mugs, bowls, barware, gifts, and accessories with proof before production.";
   const heading = activeCategory ? `Polar Camel ${activeCategory.title}` : "Polar Camel Tumblers, Bottles & Gifts";
+  const pagePath = activeCategory ? `/polar-camel/${activeCategory.id}` : "/polar-camel";
+  const pageImage = firstVariant?.thumbnail || firstVariant?.image || first?.thumbnail || first?.image || "https://recognition-direct.com/assets/full-color-banner-eye.png";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -4368,6 +4381,7 @@ function polarCamelPageHtml(categorySlug = "") {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(pageTitle)}</title>
   <meta name="description" content="${escapeHtml(pageDescription)}">
+  ${checkoutSeoTags({ title: pageTitle, description: pageDescription, path: pagePath, image: pageImage })}
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8;--soft:#f5f7fb}
     *{box-sizing:border-box}
@@ -5193,6 +5207,9 @@ function solarPlacardsPageHtml() {
   const otherPlacards = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "placard" && !product.featured);
   const plates = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "plate");
   const first = SOLAR_PLACARD_PRODUCTS[0];
+  const pageTitle = "Solar Placards San Diego | Same-Day PV Labels | Recognition Direct";
+  const pageDescription = "Order solar placards and PV warning plates in San Diego with plan-sheet upload, proof before production, pickup, or shipping.";
+  const pageImage = `/assets/solar-placards/${first.image}`;
   const faqSchema = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -5236,8 +5253,9 @@ function solarPlacardsPageHtml() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Solar Placards San Diego | Same-Day PV Labels | Recognition Direct</title>
-  <meta name="description" content="Order solar placards and PV warning plates in San Diego. Upload your PDF plan sheet, choose standard placard or custom plate sizes, and get proof-before-production with same-day pickup or shipping when available.">
+  <title>${escapeHtml(pageTitle)}</title>
+  <meta name="description" content="${escapeHtml(pageDescription)}">
+  ${checkoutSeoTags({ title: pageTitle, description: pageDescription, path: "/solar-placards", image: pageImage })}
   <script type="application/ld+json">${faqSchema}</script>
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8;--soft:#f5f7fb}
