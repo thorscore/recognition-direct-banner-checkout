@@ -535,7 +535,7 @@ const PRODUCT_TRUST_BLOCKS = {
   ],
   solar: [
     { title: "Built for solar jobs", text: "Upload the PDF plan sheet or enter custom plate text online." },
-    { title: "Fast local turnaround", text: "Pick up in Spring Valley or choose shipping when you check out." },
+    { title: "Pickup or shipping", text: "Local pickup for San Diego jobs or shipping for lightweight solar orders." },
     { title: "Proof before production", text: "We review solar placards and plates before production starts." },
   ],
   awards: [
@@ -5207,8 +5207,8 @@ function solarPlacardsPageHtml() {
   const otherPlacards = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "placard" && !product.featured);
   const plates = SOLAR_PLACARD_PRODUCTS.filter((product) => product.type === "plate");
   const first = SOLAR_PLACARD_PRODUCTS[0];
-  const pageTitle = "Solar Placards San Diego | Same-Day PV Labels | Recognition Direct";
-  const pageDescription = "Order solar placards and PV warning plates in San Diego with plan-sheet upload, proof before production, pickup, or shipping.";
+  const pageTitle = "Solar Placards & PV Labels | San Diego + Shipping";
+  const pageDescription = "Order solar placards, PV warning labels, and custom solar plates online. San Diego pickup or shipping across California and the U.S. Proof before production.";
   const pageImage = `/assets/solar-placards/${first.image}`;
   const faqSchema = JSON.stringify({
     "@context": "https://schema.org",
@@ -5240,6 +5240,22 @@ function solarPlacardsPageHtml() {
       },
       {
         "@type": "Question",
+        name: "Do you ship solar placards outside San Diego?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Solar placards and PV labels are lightweight and can be shipped for projects outside San Diego, including South Bay, Southern California, California, and other U.S. locations."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "Can you make NEC or AHJ-required PV warning labels?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Recognition Direct can produce PV warning labels and solar plates from the wording, plan sheet, or reference file supplied with the order. Solar code, utility, and inspector requirements vary by project, so customers should confirm the final wording before production."
+        }
+      },
+      {
+        "@type": "Question",
         name: "Will I receive a proof before production?",
         acceptedAnswer: {
           "@type": "Answer",
@@ -5247,6 +5263,46 @@ function solarPlacardsPageHtml() {
         }
       }
     ]
+  }).replace(/</g, "\\u003c");
+  const serviceSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: "Solar Placards and PV Labels",
+    serviceType: "Solar placard and PV label production",
+    description: "Custom solar placards, PV warning labels, and engraved-style solar plates with plan-sheet upload, proof before production, San Diego pickup, and shipping across California and the U.S.",
+    provider: {
+      "@type": "LocalBusiness",
+      name: "Recognition Direct",
+      telephone: "619-465-0055",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "8680 Troy Street",
+        addressLocality: "Spring Valley",
+        addressRegion: "CA",
+        postalCode: "91977",
+        addressCountry: "US"
+      }
+    },
+    areaServed: [
+      "San Diego",
+      "San Diego County",
+      "Spring Valley",
+      "La Mesa",
+      "El Cajon",
+      "Chula Vista",
+      "National City",
+      "Imperial Beach",
+      "Otay Mesa",
+      "San Ysidro",
+      "Southern California",
+      "California",
+      "United States"
+    ],
+    offers: {
+      "@type": "Offer",
+      availability: "https://schema.org/InStock",
+      category: "Solar placards and PV labels"
+    }
   }).replace(/</g, "\\u003c");
   return `<!doctype html>
 <html lang="en">
@@ -5257,6 +5313,7 @@ function solarPlacardsPageHtml() {
   <meta name="description" content="${escapeHtml(pageDescription)}">
   ${checkoutSeoTags({ title: pageTitle, description: pageDescription, path: "/solar-placards", image: pageImage })}
   <script type="application/ld+json">${faqSchema}</script>
+  <script type="application/ld+json">${serviceSchema}</script>
   <style>
     :root{--ink:#18212f;--muted:#5d6675;--line:#d9dee7;--accent:#c6262e;--blue:#3154b8;--soft:#f5f7fb}
     *{box-sizing:border-box}
@@ -5318,8 +5375,8 @@ function solarPlacardsPageHtml() {
 <body>
   <main class="wrap">
     <p class="eyebrow">Recognition Direct</p>
-    <h1>Solar Placards</h1>
-    <p class="intro">Order solar placards, PV warning labels, and custom red-and-white solar plates for San Diego solar installs. Upload your PDF plan sheet or enter plate text online, then receive a proof before production.</p>
+    <h1>Solar Placards &amp; PV Labels</h1>
+    <p class="intro">Order solar placards, PV warning labels, and custom red-and-white solar plates for San Diego County installs or shipped solar jobs throughout California and the U.S. Upload your PDF plan sheet or enter plate text online, then receive a proof before production.</p>
     ${productTrustBlocksHtml("solar")}
 
     <div class="layout">
@@ -5423,23 +5480,23 @@ function solarPlacardsPageHtml() {
 
     <section class="seo-band" aria-labelledby="solar-seo-heading">
       <p class="eyebrow">Solar installer support</p>
-      <h2 id="solar-seo-heading">Solar placards for San Diego, East County, Spring Valley, La Mesa, and beyond</h2>
-      <p>Recognition Direct helps solar contractors, project coordinators, and homeowners order clear solar placards without slowing down the job. Choose a standard placard size, upload the PDF plan sheet that contains the design, or order a custom plate with the exact text you need.</p>
+      <h2 id="solar-seo-heading">Solar placards for San Diego installers and shipped PV label orders</h2>
+      <p>Recognition Direct helps solar contractors, project coordinators, and homeowners order clear solar placards without slowing down the job. Choose a standard placard size, upload the PDF plan sheet that contains the design, or order a custom plate with the exact text needed for the project.</p>
       <div class="seo-grid">
         <div class="seo-card">
           <strong>Upload the plan sheet</strong>
-          <span>Send the PDF that shows the placard design or PV labeling details, and we will review it before production.</span>
+          <span>Send the PDF that shows the placard design, NEC/AHJ wording, or PV labeling details, and we will review it before production.</span>
         </div>
         <div class="seo-card">
-          <strong>Same-day focus</strong>
-          <span>Many solar placard orders can be picked up locally or shipped the same day when the file is ready and production capacity allows.</span>
+          <strong>Local pickup or shipping</strong>
+          <span>San Diego County orders can use local pickup, and lightweight solar placard orders can be shipped to South Bay, Southern California, California, and U.S. job sites.</span>
         </div>
         <div class="seo-card">
           <strong>Proof before production</strong>
           <span>We send a proof so your solar placard, warning label, or custom plate can be checked before it is made.</span>
         </div>
       </div>
-      <p class="service-area">Note: solar code, utility, and inspection requirements can vary by project. Installers and customers are responsible for confirming final requirements with the city, county, utility, or inspector for the job.</p>
+      <p class="service-area">Recognition Direct serves San Diego, Spring Valley, La Mesa, El Cajon, Chula Vista, National City, Imperial Beach, Otay Mesa, San Ysidro, and nearby San Diego County solar projects, with shipping available for customers outside the local pickup area. Note: solar code, utility, and inspection requirements can vary by project. Installers and customers are responsible for confirming final requirements with the city, county, utility, or inspector for the job.</p>
 
       <div class="faq" aria-label="Solar placard frequently asked questions">
         <h3>Solar Placard Ordering Questions</h3>
@@ -5453,7 +5510,15 @@ function solarPlacardsPageHtml() {
         </details>
         <details>
           <summary>Do you offer pickup for local solar companies?</summary>
-          <p>Yes. Solar placard orders can be shipped or picked up locally at La Mesa or Spring Valley when available.</p>
+          <p>Yes. Solar placard orders can be shipped or picked up locally when available. Local pickup is especially useful for San Diego, Spring Valley, La Mesa, East County, and South Bay solar companies.</p>
+        </details>
+        <details>
+          <summary>Do you ship solar placards outside San Diego?</summary>
+          <p>Yes. Solar placards and PV labels are lightweight and can be shipped for projects outside San Diego, including South Bay, Southern California, California, and other U.S. locations.</p>
+        </details>
+        <details>
+          <summary>Can you make NEC or AHJ-required PV warning labels?</summary>
+          <p>Yes. We can produce PV warning labels and solar plates from the wording, plan sheet, or reference file you provide. Requirements vary by project, so please confirm the final wording, size, color, and material requirements before production.</p>
         </details>
         <details>
           <summary>Will I receive a proof?</summary>
