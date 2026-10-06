@@ -22,3 +22,18 @@ Deploy to Render with `render.yaml`, then set:
 - `MOCK_SHOPIFY=false`
 
 The Shopify app needs `write_draft_orders`.
+
+## Banner guide attribution
+
+The guide's banner links use `rd_source=chatgpt-banner-guide`. The storefront
+copies this allowlisted value into the 13oz banner form. The server adds the
+`chatgpt-banner-guide` tag and an `Order Source: ChatGPT banner guide` line-item
+attribute to that configuration and its combined Shopify draft order.
+
+To measure sales, filter Shopify orders by that tag and Paid payment status.
+Cart additions and draft checkout handoffs are not purchases. This is direct
+guide-to-order attribution, not GA4 funnel tracking or persistent cross-session
+attribution. Internal UTM parameters and analytics cookies are not added.
+
+Run `node --test` to verify pricing, attribution, and cart offers without creating
+real Shopify orders or sending customer messages.

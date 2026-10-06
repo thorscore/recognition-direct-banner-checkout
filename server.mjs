@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { bannerOrderSource } from "./banner-order-source.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -2528,6 +2529,7 @@ async function handleCatalogCheckout(req, res) {
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
   const customerName = field(formData, "name", 120);
   const is13ozBanner = handle === "13oz-vinyl-banner";
+  const orderSource = bannerOrderSource(handle, formData.get("rd_source"));
   const isYouthBanner = is13ozBanner && isYouthSportsBanner(formData);
   if (is13ozBanner && !customerName) throw new Error("Enter the customer's name.");
   if (isYouthBanner && !field(formData, "league_name", 120)) throw new Error("Enter the league name for this youth banner.");
@@ -2542,6 +2544,7 @@ async function handleCatalogCheckout(req, res) {
     attribute("Customer Name", customerName),
     attribute("Customer Email", email),
     attribute("Configured Product", catalogDisplayTitle(product)),
+    attribute("Order Source", orderSource?.label),
     attribute("Original Catalog URL", `https://recognition-direct.bs.run${product.url}`),
     attribute("Product Size", squareFeetEach > 0 ? `${width} ${unitLabel} x ${height} ${unitLabel}` : ""),
     attribute("Square Footage Each", squareFeetEach > 0 ? `${squareFeetEach.toFixed(2)} sq ft` : ""),
@@ -2571,6 +2574,7 @@ async function handleCatalogCheckout(req, res) {
     artworkUrl,
     bannerArtworkUrls,
     aiDesignPrompt,
+    ...(orderSource ? { orderSource: orderSource.tag } : {}),
   };
   await writeFile(join(ORDER_DIR, `${orderRecord.id}.json`), JSON.stringify(orderRecord, null, 2));
 
@@ -2578,9 +2582,10 @@ async function handleCatalogCheckout(req, res) {
     email,
     note: [
       `Recognition Direct catalog configuration ${orderRecord.id}. Delivery method: ${deliveryMethod}.`,
+      orderSource ? `Order source: ${orderSource.label}.` : "",
       aiDesignPrompt ? `ChatGPT Banner Design Prompt:\n${aiDesignPrompt}` : "",
     ].filter(Boolean).join("\n\n"),
-    tags: ["catalog-configuration", "proof-required", handle, isPickup ? deliveryMethodValue : "ship", ...shippingTags(shipping)],
+    tags: ["catalog-configuration", "proof-required", handle, isPickup ? deliveryMethodValue : "ship", ...shippingTags(shipping), ...(orderSource ? [orderSource.tag] : [])],
     allowDiscountCodesInCheckout: true,
     taxExempt: false,
     ...draftOrderPickupAddress(isPickup, formData),
@@ -2597,6 +2602,7 @@ async function handleCatalogCheckout(req, res) {
     ],
     customAttributes: [
       { key: "Configuration ID", value: orderRecord.id },
+      ...(orderSource ? [{ key: "Order Source", value: orderSource.label }] : []),
       { key: "Customer Name", value: customerName },
       { key: "Customer Email", value: email },
       { key: "Banner Type", value: field(formData, "banner_type") },
