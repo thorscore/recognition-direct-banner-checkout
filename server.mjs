@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { BANNER_DRINKWARE_SOURCE, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
 const PORT = Number(process.env.PORT || 8787);
 const APP_BASE_URL = (process.env.APP_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
@@ -1923,6 +1924,14 @@ async function persistOrderRecord(orderRecord) {
 async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary = {}) {
   const url = new URL(req.url, APP_BASE_URL);
   const cart = await getOrCreateCustomOrderCart(req, url);
+  if (orderRecord.type === "polar-camel-order" && isBannerDrinkwareAddition(
+    cart, url.searchParams.get("rd_offer"), orderRecord.sku,
+    sku => polarCamelVariantBySku.get(sku)?.product.handle,
+  )) {
+    orderRecord.offerSource = BANNER_DRINKWARE_SOURCE;
+    draftInput.tags.push(BANNER_DRINKWARE_SOURCE);
+    draftInput.lineItems[0].customAttributes.push({ key: "Order Source", value: BANNER_DRINKWARE_SOURCE });
+  }
   const cartItemId = randomUUID();
   const itemSummary = {
     title: summary.title || draftInput.lineItems?.[0]?.title || "Custom item",
@@ -2014,6 +2023,7 @@ async function handleCustomOrderCartCheckout(req, res) {
 
   if (MOCK_SHOPIFY) {
     cart.status = "checked_out";
+    cart.checkoutHandoffAt = new Date().toISOString();
     cart.checkoutUrl = `${APP_BASE_URL}/mock-checkout?id=${encodeURIComponent(cart.id)}`;
     await writeCustomOrderCart(cart);
     res.writeHead(303, { Location: cart.checkoutUrl, "Set-Cookie": clearCustomCartCookie() });
@@ -2022,6 +2032,7 @@ async function handleCustomOrderCartCheckout(req, res) {
 
   const draftOrder = await createDraftOrder(combineCustomCartDraftInput(cart));
   cart.status = "checked_out";
+  cart.checkoutHandoffAt = new Date().toISOString();
   cart.shopifyDraftOrderId = draftOrder.id;
   cart.checkoutUrl = draftOrder.invoiceUrl;
   await writeCustomOrderCart(cart);
@@ -2122,12 +2133,12 @@ async function handleCustomOrderCartPage(req, res, url) {
           .wrap { width: min(1040px, calc(100% - 32px)); margin: 36px auto; }
           .brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
           .brand a { color: var(--blue); text-decoration: none; font-weight: 700; }
-          h1 { font-size: clamp(32px, 5vw, 58px); line-height: 1; margin: 0 0 12px; }
+          h1 { font-size: 32px; line-height: 1.15; margin: 0 0 12px; }
           p { line-height: 1.55; color: #3f4b63; }
           .notice { border-left: 5px solid #d71920; background: var(--soft); padding: 16px 18px; margin: 18px 0 24px; }
           table { width: 100%; border-collapse: collapse; margin: 24px 0; border: 1px solid var(--line); }
           th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-          th { background: var(--soft); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
+          th { background: var(--soft); font-size: 13px; text-transform: uppercase; letter-spacing: 0; }
           small { display: block; color: #5b6578; margin-top: 6px; }
           .remove-form { margin: 0; }
           .inline-remove { margin-top: 8px; }
@@ -2136,45 +2147,64 @@ async function handleCustomOrderCartPage(req, res, url) {
           .totals { display: grid; justify-content: end; gap: 8px; margin: 20px 0 28px; }
           .totals div { display: flex; justify-content: space-between; gap: 48px; min-width: 300px; }
           .totals strong { font-size: 22px; }
-          .cart-confidence { margin: 0 0 24px; border: 1px solid var(--line); border-left: 5px solid var(--blue); border-radius: 8px; background: #f8fafd; padding: 18px; }
-          .cart-confidence h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.2; }
-          .cart-confidence p { margin: 0 0 14px; }
-          .confidence-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; }
-          .confidence-item { min-height: 92px; border: 1px solid #dfe6f1; border-radius: 6px; background: #fff; padding: 12px; }
+          .cart-confidence { margin: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 14px 0; }
+          .cart-confidence summary { font-weight: 700; cursor: pointer; min-height: 30px; }
+          .cart-confidence p { margin: 12px 0; }
+          .confidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+          .confidence-item { min-height: 0; }
           .confidence-item strong { display: block; font-size: 14px; line-height: 1.25; }
           .confidence-item span { display: block; margin-top: 5px; color: #5b6578; font-size: 13px; line-height: 1.35; }
           .confidence-note { margin: 14px 0 0; color: #3f4b63; font-size: 14px; }
           .confidence-note a { color: var(--blue); font-weight: 700; }
           .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-          .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--blue); color: var(--blue); background: #fff; text-decoration: none; font-weight: 700; cursor: pointer; }
+          .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--blue); color: var(--blue); background: #fff; text-decoration: none; font: inherit; font-weight: 700; cursor: pointer; }
           .button.primary { background: var(--blue); color: #fff; }
+          .button:disabled { opacity: .5; cursor: not-allowed; }
+          a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+          .cart-drinkware { margin: 26px 0 0; padding: 22px 0 0; border-top: 1px solid var(--line); }
+          .cart-drinkware h2 { font-size: 20px; margin: 0 0 6px; }
+          .cart-drinkware > p { font-size: 14px; margin: 0 0 14px; }
+          .drinkware-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+          .drinkware-card { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+          .drinkware-card img { display: block; width: 100px; height: 130px; object-fit: contain; }
+          .drinkware-card h3 { font-size: 16px; line-height: 1.3; margin: 0 0 8px; }
+          .drinkware-card p { font-size: 14px; margin: 0 0 10px; }
+          .drinkware-card small { display: inline; font-size: 12px; }
+          .drinkware-card a { color: var(--blue); font-size: 14px; line-height: 1.4; font-weight: 700; display: inline-flex; align-items: center; min-height: 44px; text-underline-offset: 3px; }
+          .drinkware-card a, .drinkware-card h3 { overflow-wrap: anywhere; }
+          [hidden] { display: none !important; }
           .email-signup { margin: 18px 0 0; font-size: 14px; }
           .email-signup a { color: var(--blue); font-weight: 700; text-underline-offset: 3px; }
           .shop-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 26px; }
           @media (max-width: 700px) {
             .wrap { width: min(100% - 24px, 1040px); margin: 20px auto 32px; }
             .brand { align-items: flex-start; flex-direction: column; margin-bottom: 22px; }
-            h1 { font-size: clamp(38px, 13vw, 54px); }
+            h1 { font-size: 28px; }
             .notice { padding: 14px 16px; margin: 18px 0; }
             table { border: 0; margin: 20px 0 16px; }
             thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
             tbody, tr, td { display: block; width: 100%; }
-            tbody tr { border: 1px solid var(--line); margin-bottom: 12px; background: #fff; }
+            tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--line); margin-bottom: 12px; background: #fff; }
             td { border-bottom: 0; padding: 11px 14px; }
+            td:first-child, td:last-child { grid-column: 1 / -1; }
             td + td { border-top: 1px solid var(--line); }
-            td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: #536178; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+            td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: #536178; font-size: 12px; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
             .inline-remove { margin-top: 0; }
             .remove-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; width: 100%; border: 1px solid #f0b4b4; background: #fff5f5; text-decoration: none; }
             .totals { justify-content: stretch; gap: 10px; margin: 18px 0 24px; padding: 14px; border: 1px solid var(--line); background: var(--soft); }
             .totals div { min-width: 0; gap: 18px; }
             .totals strong { font-size: 20px; }
-            .cart-confidence { margin-bottom: 22px; padding: 16px; }
             .confidence-grid { grid-template-columns: 1fr; }
             .confidence-item { min-height: 0; }
-            .actions { gap: 10px; }
+            .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+            .actions form { grid-column: 1 / -1; }
+            .actions > a.button { padding: 0 8px; font-size: 14px; text-align: center; }
             .actions .button, .actions form, .shop-links .button { width: 100%; }
             .actions form .button { width: 100%; }
             .shop-links { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
+            .drinkware-grid { grid-template-columns: 1fr; }
+            .drinkware-card { grid-template-columns: 82px minmax(0, 1fr); gap: 12px; padding: 12px; }
+            .drinkware-card img { width: 82px; height: 112px; }
           }
         </style>
       </head>
@@ -2185,7 +2215,6 @@ async function handleCustomOrderCartPage(req, res, url) {
             <a href="https://recognition-direct.com">Return to website</a>
           </div>
           <h1>Custom Order Cart</h1>
-          <p>Add banners, solar placards, name badges, awards, and other configured products before checking out.</p>
           ${noticeHtml}
           <table>
             <thead><tr><th>Item</th><th>Quantity</th><th>Subtotal</th><th>Action</th></tr></thead>
@@ -2196,8 +2225,15 @@ async function handleCustomOrderCartPage(req, res, url) {
             <div><span>Shipping & handling</span><span>${shippingSubtotal ? formatMoney(shippingSubtotal) : "Calculated at checkout"}</span></div>
             <div><strong>Total before tax</strong><strong>${formatMoney(total)}</strong></div>
           </section>
-          <section class="cart-confidence" aria-labelledby="cart-confidence-heading">
-            <h2 id="cart-confidence-heading">Before checkout</h2>
+          <div class="actions">
+            <form method="post" action="${APP_BASE_URL}/api/custom-order-cart/checkout?cart=${encodeURIComponent(cart.id)}">
+              <button class="button primary" type="submit" ${items.length ? "" : "disabled"}>Checkout all items</button>
+            </form>
+            <a class="button" href="${storeCartLink("/products/13oz-vinyl-banner", cart.id)}">Add a banner</a>
+            <a class="button" href="${storeCartLink("/pages/solar-placards", cart.id)}">Add solar placards</a>
+          </div>
+          <details class="cart-confidence">
+            <summary>Proof, pickup &amp; order details</summary>
             <p>Custom orders are reviewed by Recognition Direct before production begins.</p>
             <div class="confidence-grid">
               <div class="confidence-item">
@@ -2218,14 +2254,8 @@ async function handleCustomOrderCartPage(req, res, url) {
               </div>
             </div>
             <p class="confidence-note">Questions before checking out? Email <a href="mailto:info@recognition-direct.com">info@recognition-direct.com</a>.</p>
-          </section>
-          <div class="actions">
-            <form method="post" action="${APP_BASE_URL}/api/custom-order-cart/checkout?cart=${encodeURIComponent(cart.id)}">
-              <button class="button primary" type="submit" ${items.length ? "" : "disabled"}>Checkout all items</button>
-            </form>
-            <a class="button" href="${storeCartLink("/products/13oz-vinyl-banner", cart.id)}">Add a banner</a>
-            <a class="button" href="${storeCartLink("/pages/solar-placards", cart.id)}">Add solar placards</a>
-          </div>
+          </details>
+          ${hasEligibleBanner(cart) ? '<section class="cart-drinkware" data-cart-drinkware aria-labelledby="drinkware-heading" hidden></section>' : ""}
           <p class="email-signup">Team gift ideas, new products, and occasional offers.
             <a href="https://recognition-direct.com/#ContactFooter" target="_blank" rel="noopener noreferrer">Join our email list</a> (optional). Unsubscribe anytime.
           </p>
@@ -2235,8 +2265,45 @@ async function handleCustomOrderCartPage(req, res, url) {
             <a class="button" href="https://recognition-direct.com/">Return to Home Page</a>
           </nav>
         </main>
+        ${hasEligibleBanner(cart) ? `<script>
+          (async function(){
+            const section = document.querySelector('[data-cart-drinkware]');
+            try {
+              const response = await fetch('/api/custom-order-cart/drinkware?cart=${encodeURIComponent(cart.id)}');
+              if (!response.ok) return;
+              const result = await response.json();
+              if (!result.html) return;
+              section.innerHTML = result.html;
+              section.hidden = false;
+            } catch {}
+          })();
+        </script>` : ""}
       </body>
-    </html>`, { "Set-Cookie": customCartCookie(cart.id) });
+    </html>`, { "Set-Cookie": customCartCookie(cart.id), "Cache-Control": "private, no-store" });
+}
+
+async function handleCartDrinkware(req, res, url) {
+  const cart = await readCustomOrderCart(url.searchParams.get("cart"));
+  const offers = await loadCartDrinkware(cart, {
+    priceForSku: sku => {
+      const selected = polarCamelVariantBySku.get(sku);
+      return selected ? polarCamelTier(selected.variant, 1).unitPrice : null;
+    },
+    productHandleForSku: sku => polarCamelVariantBySku.get(sku)?.product.handle,
+  });
+  const offerHtml = offers.length ? `
+    <h2 id="drinkware-heading">Personalized gifts for the team</h2>
+    <p>Optional water bottles and tumblers with your names or logo.</p>
+    <div class="drinkware-grid">${offers.map(offer => `
+      <article class="drinkware-card">
+        <img src="${escapeHtml(offer.image)}" alt="${escapeHtml(offer.title)} - Black" width="100" height="130" loading="lazy" referrerpolicy="no-referrer">
+        <div>
+          <h3>${escapeHtml(offer.title)}</h3>
+          <p><strong>${formatMoney(offer.price)}</strong> each <small>&middot; Black</small></p>
+          <a href="${escapeHtml(offer.href)}" referrerpolicy="no-referrer">Choose color &amp; personalize</a>
+        </div>
+      </article>`).join("")}</div>` : "";
+  return json(res, 200, { html: offerHtml }, { "Cache-Control": "private, no-store" });
 }
 
 async function handleCheckout(req, res) {
@@ -5785,6 +5852,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname.startsWith("/uploads/")) return await handleUpload(req, res, url.pathname);
     if (req.method === "GET" && url.pathname === "/mock-checkout") return await handleMockCheckout(res, url);
     if (req.method === "GET" && url.pathname === "/custom-order-cart") return await handleCustomOrderCartPage(req, res, url);
+    if (req.method === "GET" && url.pathname === "/api/custom-order-cart/drinkware") return await handleCartDrinkware(req, res, url);
     if (req.method === "POST" && url.pathname === "/api/banner-checkout") return await handleCheckout(req, res);
     if (req.method === "POST" && url.pathname === "/api/jamul-ayso-banner-order") return await handleJamulAysoBannerOrder(req, res);
     if (req.method === "POST" && url.pathname === "/api/catalog-checkout") return await handleCatalogCheckout(req, res);
