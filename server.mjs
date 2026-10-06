@@ -2131,6 +2131,8 @@ async function handleCustomOrderCartPage(req, res, url) {
           .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
           .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--blue); color: var(--blue); background: #fff; text-decoration: none; font-weight: 700; cursor: pointer; }
           .button.primary { background: var(--blue); color: #fff; }
+          .email-signup { margin: 18px 0 0; font-size: 14px; }
+          .email-signup a { color: var(--blue); font-weight: 700; text-underline-offset: 3px; }
           .shop-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 26px; }
           @media (max-width: 700px) {
             .wrap { width: min(100% - 24px, 1040px); margin: 20px auto 32px; }
@@ -2207,6 +2209,9 @@ async function handleCustomOrderCartPage(req, res, url) {
             <a class="button" href="${storeCartLink("/products/13oz-vinyl-banner", cart.id)}">Add a banner</a>
             <a class="button" href="${storeCartLink("/pages/solar-placards", cart.id)}">Add solar placards</a>
           </div>
+          <p class="email-signup">Team gift ideas, new products, and occasional offers.
+            <a href="https://recognition-direct.com/#ContactFooter" target="_blank" rel="noopener noreferrer">Join our email list</a> (optional). Unsubscribe anytime.
+          </p>
           <nav class="shop-links" aria-label="Continue shopping">
             <a class="button" href="${storeCartLink("/pages/name-badges", cart.id)}">Name badges</a>
             <a class="button" href="${storeCartLink("/pages/trophies", cart.id)}">Trophies</a>
