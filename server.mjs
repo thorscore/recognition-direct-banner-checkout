@@ -58,6 +58,7 @@ const PICKUP_TAX_ADDRESS = {
   phone: "619-465-0055",
 };
 const CATALOG_PRICE_OVERRIDES = new Map([
+  ["13oz-vinyl-banner", { squareFootRate: 2.5 }],
   ["fabric-block-out", { squareFootRate: 3.98 }],
 ]);
 const YARD_SIGN_H_STAKE_HANDLE = "yard-sign-and-h-stake";
@@ -1192,7 +1193,7 @@ async function quoteCatalogProduct(product, quantity, values) {
   return { unitPrice: Number(quote.unit_price), quoteResult: payload.props.quoteResult };
 }
 
-function adjustedCatalogUnitPrice(product, input, quotedUnitPrice) {
+function adjustedCatalogUnitPrice(product, input, quotedUnitPrice, quotedBasePrice = null) {
   let unitPrice = quotedUnitPrice;
   const handle = productHandle(product.url);
   if (handle === "coroplast" && String(input.values?.hardware || "") === "1") {
@@ -1207,9 +1208,26 @@ function adjustedCatalogUnitPrice(product, input, quotedUnitPrice) {
   if (!oldRate) return unitPrice;
 
   const minimum = Number(product.minimum || 0);
-  const oldBasePrice = Math.max(minimum, input.squareFeetEach * oldRate);
+  const oldBasePrice = quotedBasePrice ?? Math.max(minimum, input.squareFeetEach * oldRate);
   const newBasePrice = Math.max(minimum, input.squareFeetEach * override.squareFootRate);
   return Number(Math.max(0, unitPrice - oldBasePrice + newBasePrice).toFixed(2));
+}
+
+async function catalogUnitPrice(product, quantity, input) {
+  const quote = await quoteCatalogProduct(product, quantity, input.values);
+  if (productHandle(product.url) !== "13oz-vinyl-banner") {
+    return adjustedCatalogUnitPrice(product, input, quote.unitPrice);
+  }
+
+  // Replace the exact legacy base, not its rounded sqft rate, and retain finishing extras.
+  const baseValues = normalizeCatalogValues(product, applyCatalogActions(product, {
+    ...defaultCatalogValues(product),
+    _size: input.values._size,
+  }));
+  const hasStandardOptions = Object.entries(baseValues)
+    .every(([key, value]) => String(input.values[key]) === String(value));
+  const baseQuote = hasStandardOptions ? quote : await quoteCatalogProduct(product, quantity, baseValues);
+  return adjustedCatalogUnitPrice(product, input, quote.unitPrice, baseQuote.unitPrice);
 }
 
 function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
@@ -1302,8 +1320,7 @@ async function handleCatalogPrice(req, res) {
       squareFeetEach: 0,
     }, corsHeaders(req));
   }
-  const quote = await quoteCatalogProduct(product, quantity, input.values);
-  const unitPrice = adjustedCatalogUnitPrice(product, input, quote.unitPrice);
+  const unitPrice = await catalogUnitPrice(product, quantity, input);
   return json(res, 200, { unitPrice, totalPrice: Number((unitPrice * quantity).toFixed(2)), squareFeetEach: input.squareFeetEach }, corsHeaders(req));
 }
 
@@ -2420,8 +2437,7 @@ async function handleCatalogCheckout(req, res) {
   if (handle === YARD_SIGN_H_STAKE_HANDLE) {
     unitPrice = yardSignHStakeSize(values.yard_sign_size).unitPrice;
   } else {
-    const quote = await quoteCatalogProduct(product, quantity, values);
-    unitPrice = adjustedCatalogUnitPrice(product, input, quote.unitPrice);
+    unitPrice = await catalogUnitPrice(product, quantity, input);
   }
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
   const deliveryMethodValue = defaultedDeliveryMethodValue(
