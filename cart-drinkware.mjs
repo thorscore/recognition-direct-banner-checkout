@@ -10,6 +10,12 @@ export function hasEligibleBanner(cart) {
     && tags.some(tag => ["13oz-vinyl-banner", "custom-banner"].includes(tag));
 }
 
+export function cartDeliveryChoice(cart) {
+  const choices = new Set((cart?.items || []).flatMap(item => item.draftInput?.tags || [])
+    .filter(tag => ["ship", "pickup-la-mesa", "pickup-pine-valley", "pickup-spring-valley"].includes(tag)));
+  return choices.size === 1 ? [...choices][0] : null;
+}
+
 function safeImage(value) {
   try {
     const url = new URL(value);
@@ -34,7 +40,8 @@ export function liveDrinkwareOffer(product, spec, cartId, priceForSku) {
 }
 
 export async function loadCartDrinkware(cart, { fetchImpl = fetch, priceForSku, productHandleForSku }) {
-  if (!hasEligibleBanner(cart)) return [];
+  const delivery = cartDeliveryChoice(cart);
+  if (!hasEligibleBanner(cart) || !delivery || delivery === "pickup-spring-valley") return [];
   const existingHandles = new Set((cart.items || []).flatMap(item => (item.draftInput?.lineItems || []).map(line => {
     const sku = line.customAttributes?.find(value => value.key === "SKU")?.value;
     return productHandleForSku(sku);
@@ -46,7 +53,13 @@ export async function loadCartDrinkware(cart, { fetchImpl = fetch, priceForSku, 
         signal: AbortSignal.timeout(3000), headers: { Accept: "application/json" },
       });
       if (!response.ok) return null;
-      return liveDrinkwareOffer(await response.json(), spec, cart.id, priceForSku);
+      const offer = liveDrinkwareOffer(await response.json(), spec, cart.id, priceForSku);
+      if (offer) {
+        const link = new URL(offer.href);
+        link.searchParams.set("rd_delivery", delivery);
+        offer.href = link.href;
+      }
+      return offer;
     } catch { return null; }
   }));
   return offers.filter(Boolean);

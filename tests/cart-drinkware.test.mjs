@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BANNER_DRINKWARE_SOURCE, CART_DRINKWARE_PRODUCTS, hasEligibleBanner, isBannerDrinkwareAddition, liveDrinkwareOffer, loadCartDrinkware } from "../cart-drinkware.mjs";
+import { BANNER_DRINKWARE_SOURCE, CART_DRINKWARE_PRODUCTS, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, liveDrinkwareOffer, loadCartDrinkware } from "../cart-drinkware.mjs";
 
 const cartId = "cd29b3e0-cfbf-4b3e-9215-aa43b3971925";
-const bannerCart = () => ({ id: cartId, items: [{ draftInput: { tags: ["13oz-vinyl-banner"], lineItems: [] } }] });
+const bannerCart = () => ({ id: cartId, items: [{ draftInput: { tags: ["13oz-vinyl-banner", "pickup-la-mesa"], lineItems: [] } }] });
 const handles = sku => /^LWB20[123]$/.test(sku || "") ? "water-bottle" : /^LTM725[123]$/.test(sku || "") ? "tumbler" : null;
 const priceForSku = sku => sku === "LWB202" ? 29.75 : 23;
 const product = spec => ({
@@ -72,8 +72,19 @@ test("loader fetches only the two approved storefront products without changing 
     return { ok: true, json: async () => product(spec) };
   }));
   assert.equal(offers.length, 2);
+  assert.equal(new URL(offers[0].href).searchParams.get("rd_delivery"), "pickup-la-mesa");
   assert.deepEqual(urls.sort(), CART_DRINKWARE_PRODUCTS.map(spec => `https://recognition-direct.com/products/${spec.handle}.js`).sort());
   assert.equal(JSON.stringify(cart), original);
+});
+
+test("ambiguous delivery and Spring Valley banner pickup suppress the offer", async () => {
+  const cart = bannerCart();
+  assert.equal(cartDeliveryChoice(cart), "pickup-la-mesa");
+  cart.items[0].draftInput.tags.push("ship");
+  assert.equal(cartDeliveryChoice(cart), null);
+  assert.deepEqual(await loadCartDrinkware(cart, loaderOptions(async () => { throw new Error("Must not fetch"); })), []);
+  cart.items[0].draftInput.tags = ["13oz-vinyl-banner", "pickup-spring-valley"];
+  assert.deepEqual(await loadCartDrinkware(cart, loaderOptions(async () => { throw new Error("Must not fetch"); })), []);
 });
 
 test("unrelated carts require no storefront requests", async () => {

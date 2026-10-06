@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { BANNER_DRINKWARE_SOURCE, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
+import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
 const PORT = Number(process.env.PORT || 8787);
 const APP_BASE_URL = (process.env.APP_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
@@ -859,7 +859,7 @@ function attribute(key, value) {
 }
 
 function deliveryMethodLabel(value) {
-  if (value === "pickup-la-mesa") return "Local pickup in Spring Valley (near La Mesa)";
+  if (value === "pickup-la-mesa") return "Pickup at La Mesa";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
   if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
   if (value === "league-billed") return "Billed to Jamul AYSO";
@@ -1928,6 +1928,10 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
     cart, url.searchParams.get("rd_offer"), orderRecord.sku,
     sku => polarCamelVariantBySku.get(sku)?.product.handle,
   )) {
+    const delivery = cartDeliveryChoice(cart);
+    if (!delivery || delivery === "pickup-spring-valley" || !draftInput.tags.includes(delivery)) {
+      throw new Error("Please use the same delivery choice as your banner to add drinkware to this cart.");
+    }
     orderRecord.offerSource = BANNER_DRINKWARE_SOURCE;
     draftInput.tags.push(BANNER_DRINKWARE_SOURCE);
     draftInput.lineItems[0].customAttributes.push({ key: "Order Source", value: BANNER_DRINKWARE_SOURCE });
