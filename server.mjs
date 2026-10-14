@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { bannerOrderSource } from "./banner-order-source.mjs";
+import { customCartAnalyticsItem } from "./custom-cart-analytics.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -1970,6 +1971,7 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
       checkoutUrl: cartUrl,
       addedCartUrl,
       itemCount: cart.items.length,
+      analyticsItem: customCartAnalyticsItem(orderRecord),
     }, headers);
   }
 
@@ -5794,7 +5796,7 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
-    if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true });
+    if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1 });
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/name-badge-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/solar-placard-")) return json(res, 204, {}, corsHeaders(req));
