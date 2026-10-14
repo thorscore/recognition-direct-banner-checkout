@@ -474,6 +474,7 @@ function corsHeaders(req) {
   if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
   return {
     "Access-Control-Allow-Origin": origin,
+    ...(/^\/api\/catalog-checkout(?:\?|$)/.test(req.url || "") ? { "Access-Control-Allow-Credentials": "true" } : {}),
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": req.headers["access-control-request-headers"] || "Content-Type, Accept, X-Requested-With",
     "Vary": "Origin, Access-Control-Request-Headers",

@@ -62,3 +62,20 @@ test("metadata is returned only after the custom cart has been persisted", async
   await assert.rejects(context.add({ url: "/api/catalog-checkout" }, {}, { ...banner }, {}, {}), /disk unavailable/);
   assert.ok(!events.includes("response"));
 });
+
+test("credentialed cart requests are limited to existing approved origins and the catalog submission route", async () => {
+  const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
+  const start = source.indexOf("function corsHeaders(req)");
+  const end = source.indexOf("\nfunction html(", start);
+  const context = vm.createContext({ ALLOWED_ORIGINS: new Set(["https://recognition-direct.com"]) });
+  vm.runInContext(source.slice(start, end) + ";this.headers = corsHeaders;", context);
+  for (const url of ["/api/catalog-checkout", "/api/catalog-checkout?cart=test"]) {
+    const response = context.headers({ url, headers: { origin: "https://recognition-direct.com" } });
+    assert.equal(response["Access-Control-Allow-Credentials"], "true");
+    assert.equal(response["Access-Control-Allow-Origin"], "https://recognition-direct.com");
+  }
+  for (const url of ["/api/catalog-price", "/api/catalog-product", "/api/name-badge-checkout"]) {
+    assert.equal(context.headers({ url, headers: { origin: "https://recognition-direct.com" } })["Access-Control-Allow-Credentials"], undefined);
+  }
+  assert.deepEqual(JSON.parse(JSON.stringify(context.headers({ url: "/api/catalog-checkout", headers: { origin: "https://evil.example" } }))), {});
+});
