@@ -4,6 +4,7 @@ import { extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { bannerOrderSource } from "./banner-order-source.mjs";
 import { customCartAnalyticsItem } from "./custom-cart-analytics.mjs";
+import { customCartReviewLines } from "./custom-cart-review.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -2094,6 +2095,18 @@ async function handleCustomOrderCartRemove(req, res) {
   res.end();
 }
 
+function renderCustomCartReview(item) {
+  const lines = customCartReviewLines(item);
+  return lines.map((line) => `
+    <div class="item-review">
+      ${lines.length > 1 ? `<small><b>${escapeHtml(line.quantity)} x ${escapeHtml(line.title)}</b></small>` : ""}
+      ${line.size ? `<small>Size: ${escapeHtml(line.size)}</small>` : ""}
+      ${line.delivery ? `<small>Delivery: ${escapeHtml(line.delivery)}</small>` : ""}
+      ${line.details.length ? `<details class="item-details"><summary>Review customization</summary><dl>${line.details.map(({ label, value }) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl></details>` : ""}
+    </div>
+  `).join("");
+}
+
 async function handleCustomOrderCartPage(req, res, url) {
   const cart = await getOrCreateCustomOrderCart(req, url);
   await writeCustomOrderCart(cart);
@@ -2115,6 +2128,7 @@ async function handleCustomOrderCartPage(req, res, url) {
           <td data-label="Item">
             <strong>${escapeHtml(item.summary?.title || "Custom item")}</strong>
             ${item.summary?.description ? `<small>${escapeHtml(item.summary.description)}</small>` : ""}
+            ${renderCustomCartReview(item)}
           </td>
           <td data-label="Quantity">${escapeHtml(item.summary?.quantity || "")}</td>
           <td data-label="Subtotal">${formatMoney(item.summary?.subtotal)}</td>
@@ -2148,6 +2162,14 @@ async function handleCustomOrderCartPage(req, res, url) {
           th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
           th { background: var(--soft); font-size: 13px; text-transform: uppercase; letter-spacing: 0; }
           small { display: block; color: #5b6578; margin-top: 6px; }
+          .item-review { overflow-wrap: anywhere; }
+          .item-review + .item-review { margin-top: 14px; }
+          .item-details { margin-top: 8px; font-size: 13px; }
+          .item-details summary { cursor: pointer; display: list-item; min-height: 32px; padding: 7px 0; color: var(--blue); font-weight: 700; }
+          .item-details dl { margin: 4px 0 0; }
+          .item-details dl > div { padding: 7px 0; border-top: 1px solid var(--line); }
+          .item-details dt { font-weight: 700; }
+          .item-details dd { margin: 3px 0 0; color: #3f4b63; white-space: pre-wrap; }
           .remove-form { margin: 0; }
           .inline-remove { margin-top: 8px; }
           .remove-button { border: 0; background: transparent; color: #b91c1c; cursor: pointer; font: inherit; font-weight: 700; padding: 0; text-decoration: underline; }
