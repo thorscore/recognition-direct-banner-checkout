@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { bannerOrderSource } from "./banner-order-source.mjs";
 import { customCartAnalyticsItem } from "./custom-cart-analytics.mjs";
 import { customCartReviewLines } from "./custom-cart-review.mjs";
+import { ATTRIBUTION_CONSENT_COOKIE, clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes, readOrderAttribution } from "./order-attribution.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -804,7 +805,9 @@ async function requestFormData(req) {
     headers: { "content-type": req.headers["content-type"] || "" },
     body,
   });
-  return request.formData();
+  const formData = await request.formData();
+  req.orderAttribution = readOrderAttribution(formData.get("rd_attribution"));
+  return formData;
 }
 
 async function saveUpload(file) {
@@ -1928,6 +1931,16 @@ async function persistOrderRecord(orderRecord) {
 async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary = {}) {
   const url = new URL(req.url, APP_BASE_URL);
   const cart = await getOrCreateCustomOrderCart(req, url);
+  if (req.orderAttribution?.consent === "denied") clearOrderAttribution(cart);
+  const attribution = mergeOrderAttribution(null, req.orderAttribution);
+  if (attribution) {
+    orderRecord.attribution = attribution;
+    cart.attribution = mergeOrderAttribution(cart.attribution, attribution);
+    const acquisitionAttributes = orderAttributionAttributes(attribution).map(attribute => ({ ...attribute, key: `_${attribute.key}` }));
+    for (const line of draftInput.lineItems || []) {
+      line.customAttributes = [...(line.customAttributes || []), ...acquisitionAttributes];
+    }
+  }
   if (orderRecord.type === "polar-camel-order" && isBannerDrinkwareAddition(
     cart, url.searchParams.get("rd_offer"), orderRecord.sku,
     sku => polarCamelVariantBySku.get(sku)?.product.handle,
@@ -1950,6 +1963,7 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
 
   cart.items.push({
     id: cartItemId,
+    ...(attribution ? { attribution } : {}),
     orderId: orderRecord.id,
     addedAt: new Date().toISOString(),
     summary: itemSummary,
@@ -2004,6 +2018,7 @@ function combineCustomCartDraftInput(cart) {
   const customAttributes = [
     { key: "Custom Cart ID", value: cart.id },
     { key: "Custom Cart Item Count", value: String(items.length) },
+    ...orderAttributionAttributes(cart.attribution),
     ...items.map((item, index) => ({ key: `Cart Item ${index + 1}`, value: `${item.summary?.title || "Custom item"} (${item.orderId})` })),
   ];
 
@@ -2025,6 +2040,7 @@ function combineCustomCartDraftInput(cart) {
 async function handleCustomOrderCartCheckout(req, res) {
   const url = new URL(req.url, APP_BASE_URL);
   const cart = await getOrCreateCustomOrderCart(req, url);
+  if (parseCookies(req)[ATTRIBUTION_CONSENT_COOKIE] !== "allowed" || !readOrderAttribution(cart.attribution)) clearOrderAttribution(cart);
   if (!cart.items?.length) {
     res.writeHead(303, { Location: `${APP_BASE_URL}/custom-order-cart?cart=${encodeURIComponent(cart.id)}` });
     return res.end();
@@ -5819,7 +5835,8 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
-    if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1 });
+    if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1, orderAttributionVersion: 1 });
+    if (req.method === "GET" && url.pathname === "/order-attribution.js") return await servePublicFile(res, "order-attribution.js", "application/javascript; charset=utf-8");
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/name-badge-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/solar-placard-")) return json(res, 204, {}, corsHeaders(req));

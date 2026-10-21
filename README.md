@@ -37,3 +37,24 @@ attribution. Internal UTM parameters and analytics cookies are not added.
 
 Run `node --test` to verify pricing, attribution, and cart offers without creating
 real Shopify orders or sending customer messages.
+
+## Consent-Based Acquisition Capture
+
+The storefront loads `/order-attribution.js`. Only when Shopify's Customer
+Privacy API permits analytics, it retains the first visit and most recent
+external/campaign visit for up to 30 days. Ordinary internal navigation does not
+overwrite the source. An internal ChatGPT banner guide visit is not an external
+ChatGPT referral.
+
+The script attaches `rd_attribution` to the existing custom-checkout forms.
+Only public storefront paths, external referring hostnames, constrained campaign
+tokens, and timestamps are accepted by the server. Query strings, fragments,
+checkout/account links, and arbitrary fields are discarded. No analytics vendor
+receives these fields. Consent denial clears this capture; the shared consent
+cookie must still be allowed at final checkout or capture fields are removed.
+
+Acquisition fields survive mixed carts as Shopify order-level custom attributes
+and private per-item attributes (underscore-prefixed to avoid checkout clutter).
+They are browser-reported evidence, not a replacement
+for Shopify's native customer journey or GA4 attribution. Missing referral data
+remains direct/unknown. Historical orders cannot be reconstructed by this change.

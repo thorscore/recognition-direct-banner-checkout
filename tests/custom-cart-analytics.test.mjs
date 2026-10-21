@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 import { customCartAnalyticsItem } from "../custom-cart-analytics.mjs";
+import { clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes } from "../order-attribution.mjs";
 
 const banner = { productHandle: "13oz-vinyl-banner", quantity: 2, unitPrice: 37.5, totalPrice: 75 };
 
@@ -39,6 +40,7 @@ test("metadata is returned only after the custom cart has been persisted", async
   const cart = { id: "test-cart", items: [] };
   const context = vm.createContext({
     customCartAnalyticsItem,
+    clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes,
     getOrCreateCustomOrderCart: async () => cart,
     URL, APP_BASE_URL: "https://checkout.example.invalid",
     randomUUID: () => "test-item",

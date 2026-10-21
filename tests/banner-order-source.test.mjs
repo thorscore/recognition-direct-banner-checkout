@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 import { bannerOrderSource, CHATGPT_BANNER_GUIDE_SOURCE } from "../banner-order-source.mjs";
+import { orderAttributionAttributes } from "../order-attribution.mjs";
 
 const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
 
@@ -22,6 +23,7 @@ async function configuredOrder(handle, guideSource) {
   const captured = {};
   const context = vm.createContext({
     bannerOrderSource,
+    orderAttributionAttributes,
     ALLOWED_ORIGINS: new Set(["https://recognition-direct.com"]),
     requestFormData: async () => form,
     productHandle: value => value,
