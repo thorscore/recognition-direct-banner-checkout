@@ -1174,6 +1174,16 @@ function oldCatalogVersion(markup) {
 }
 
 async function quoteCatalogProduct(product, quantity, values) {
+  const isAcrylicPrints = product.url === "/acrylic-prints";
+  if (isAcrylicPrints) {
+    const sizes = new Set(["16x24", "20x30", "24x36"]);
+    if (!sizes.has(String(values.size))) throw new Error("Choose an available acrylic print size.");
+    if (values.acrylic !== "1_4_plexiglass" || values.hardware !== "acrylic+standoff") {
+      throw new Error("Choose the acrylic print with included four-corner standoffs.");
+    }
+    product = { ...product, id: 243, url: "/clear-acrylic-white-backing" };
+    values = { _size: values.size, hardware: "acrylic+standoff", cornerstyle: "none" };
+  }
   const pageResponse = await fetch(`${OLD_CATALOG_BASE_URL}${product.url}`);
   if (!pageResponse.ok) throw new Error(`Old catalog session failed (${pageResponse.status}).`);
   const markup = await pageResponse.text();
@@ -1197,7 +1207,7 @@ async function quoteCatalogProduct(product, quantity, values) {
   if (!response.ok) throw new Error(`Old catalog quote failed (${response.status}).`);
   const payload = await response.json();
   const quote = payload.props?.quoteResult?.quote?.[0];
-  if (!quote || !Number.isFinite(Number(quote.unit_price))) throw new Error("Select valid product options to calculate the price.");
+  if (!quote || !Number.isFinite(Number(quote.unit_price)) || isAcrylicPrints && Number(quote.unit_price) <= 0) throw new Error("Select valid product options to calculate the price.");
   return { unitPrice: Number(quote.unit_price), quoteResult: payload.props.quoteResult };
 }
 
