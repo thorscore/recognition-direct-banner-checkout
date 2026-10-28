@@ -1002,7 +1002,7 @@ function yardSignHStakeAttrs() {
     component: "select",
     visible: null,
     options: [
-      { key: "", label: "Choose with or without H-stake", default: true, visible: null },
+      { key: "", label: "Select an option", default: true, visible: null },
       ...YARD_SIGN_STAKE_CHOICES.map((choice) => ({ key: choice.key, label: choice.label, visible: null })),
     ],
   }];
