@@ -9,9 +9,9 @@ const catalog = JSON.parse((await readFile(new URL("../catalog/catalog-inventory
 const product = catalog.products.find((item) => item.url === "/yard-sign-and-h-stake");
 const req = { headers: { origin: "https://recognition-direct.com" } };
 
-function scenario(size, stake, quantity = 1) {
+function scenario(size, stake, quantity = 1, sides) {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ product_handle: "yard-sign-and-h-stake", order_quantity: String(quantity), email: "test@example.invalid", delivery_method: "pickup-la-mesa", catalog_options: JSON.stringify({ yard_sign_size: size, yard_sign_stake: stake }) })) form.set(key, value);
+  for (const [key, value] of Object.entries({ product_handle: "yard-sign-and-h-stake", order_quantity: String(quantity), email: "test@example.invalid", delivery_method: "pickup-la-mesa", catalog_options: JSON.stringify({ yard_sign_size: size, yard_sign_stake: stake, yard_sign_sides: sides }) })) form.set(key, value);
   const captured = { uploads: 0, writes: 0 };
   const context = vm.createContext({
     cleanText: (value, maxLength = 500) => String(value ?? "").trim().slice(0, maxLength),
@@ -61,6 +61,9 @@ test("yard-sign API exposes a blank default and explicit with/without-stake choi
   assert.equal(stake.component, "select");
   assert.equal(stake.options.find((option) => option.default).key, "");
   assert.deepEqual(Array.from(stake.options, (option) => option.key), ["", "with-stake", "without-stake"]);
+  const sides = result.body.attrs.find((item) => item.key === "yard_sign_sides");
+  assert.equal(sides.options.find((option) => option.default).key, "1");
+  assert.deepEqual(Array.from(sides.options, (option) => option.label), ["One-sided", "Two-sided"]);
 });
 
 test("stake choice never changes existing yard-sign size and quantity prices", async () => {
@@ -104,5 +107,38 @@ test("each choice survives saved order, cart review and combined Shopify checkou
       const review = customCartReviewLines({ draftInput: captured.input });
       assert.ok(JSON.stringify(review).includes(packageLabel));
     }
+  }
+});
+
+test("approved side prices agree in quotes, saved orders, cart review and Shopify checkout", async () => {
+  for (const [size, oneSided, twoSided] of [["12x18", 12, 16], ["18x24", 16, 22]]) {
+    for (const [sides, price, label] of [["1", oneSided, "One-sided"], ["2", twoSided, "Two-sided"]]) {
+      for (const stake of ["with-stake", "without-stake"]) {
+        for (const quantity of [1, 3, 50]) {
+          const { context, captured } = scenario(size, stake, quantity, sides);
+          const quote = await context.handleCatalogPrice(req, {});
+          await context.handleCatalogCheckout(req, {});
+          const combined = context.combineCustomCartDraftInput({ id: "test-cart", items: [{ orderId: "test-yard-sign", draftInput: captured.input }] });
+          assert.equal(quote.body.unitPrice, price);
+          assert.equal(quote.body.totalPrice, price * quantity);
+          assert.equal(captured.record.totalPrice, price * quantity);
+          assert.equal(combined.lineItems[0].originalUnitPriceWithCurrency.amount, price.toFixed(2));
+          assert.ok(combined.lineItems[0].customAttributes.some(item => item.key === "# of Sides" && item.value === label));
+          assert.ok(captured.record.attributes.some(item => item.key === "# of Sides" && item.value === label));
+          assert.ok(JSON.stringify(customCartReviewLines({ draftInput: captured.input })).includes(label));
+        }
+      }
+    }
+  }
+});
+
+test("invalid explicit print-side values cannot create orders or fall back to a lower price", async () => {
+  for (const sides of ["", null, "3", 2, "2 ", ["2"], "<script>"]) {
+    const { context, captured } = scenario("18x24", "with-stake", 1, sides);
+    await assert.rejects(context.handleCatalogPrice(req, {}), /Choose one-sided or two-sided/);
+    await assert.rejects(context.handleCatalogCheckout(req, {}), /Choose one-sided or two-sided/);
+    assert.equal(captured.uploads, 0);
+    assert.equal(captured.writes, 0);
+    assert.equal(captured.input, undefined);
   }
 });
