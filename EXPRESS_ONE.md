@@ -61,9 +61,14 @@ queries. No products were published to Headless, and no Storefront API tokens we
 copied or used. The storefront container generates Storefront API credentials too;
 this does not constitute a second public storefront or a portal deployment.
 
-Application deployment, applying the saved environment during that deploy and a
-real Shopify callback/isolation test remain outstanding. No customer invitations,
-operator identity grants, payments or deploys were performed as part of this setup.
+After further merchant approval on October 28, commit
+`9e8e7e25f551b683aba8e94b33d4b9067ac8a423` was deployed to the existing Render
+service. Its build uses `npm ci --omit=dev`; the verified runtime is Node 22.23.4.
+`EXPRESS_ONE_ENABLED=true` is now applied for the private identity test. The live
+sign-in page and redirect to the dedicated Shopify client were checked; completing
+the merchant's email-code sign-in and verifying its callback remain outstanding.
+No real workbook/customer profiles or stock were uploaded, no account bindings or
+operator identity grants were added, and no customer invitations or payments were sent.
 
 The `openid-client` integration uses a confidential OpenID Connect client with
 PKCE S256, random state and nonce, signature verification, issuer/audience/expiry
@@ -103,14 +108,14 @@ operator identity. Do not put secrets into chat or source control.
    `EXPRESS_ONE_ENABLED=true` on the intended live host. Invite one customer only after the full HTTPS
    sign-in, isolation and release cycle have passed live checks.
 
-The production handler fails closed without sign-in configuration. The new main
-server guard blocks all legacy URL-code login and release routes, even if the old
-prototype functions are still present in `server.mjs`. That guard is not live
-until this branch is deployed. Do not share old prototype/demo links.
+The production handler fails closed without sign-in configuration. The deployed
+main-server guard blocks all legacy URL-code login and release routes, even if the
+old prototype functions remain in `server.mjs`. Do not share old prototype links.
 
 ## Deployment and Operations
 
-- This work stays on `express-one-private-pilot`, not the live `main` branch.
+- The implementation was developed on `express-one-private-pilot` and then deployed
+  to `main` for the approved private sign-in test. Customer provisioning remains off.
 - The Render service already declares a persistent disk mounted at
   `/opt/render/project/src/data`; verify the actual service mount before enabling
   the portal. SQLite must live on that disk. Use one service instance, not multiple
@@ -125,6 +130,12 @@ until this branch is deployed. Do not share old prototype/demo links.
 - Mutations require the exact origin and a session CSRF token. Private pages/API
   responses are no-store and noindex, with CSP and a strict-origin referrer policy.
   Browser form posts need an Origin header, which `no-referrer` can suppress.
+- The five-minute authorization window is separate from the 30-minute session.
+  Expired, missing-cookie and unstarted callbacks show specific restart guidance.
+  Failure logs contain only a short support reference, known reason/error categories
+  and processing stage. Raw errors, callback URLs, codes, tokens and secrets are
+  never logged. Signature, state, nonce, issuer, audience and expiry checks remain
+  mandatory; a successful identity still receives no stock without staff setup.
 - Badge names are bounded private database records, not publicly served uploads.
   The UI renders customer text with DOM text nodes rather than HTML strings.
 - There are no automatic emails, notifications, customer enrollment, carrier

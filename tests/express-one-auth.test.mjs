@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import * as oidc from 'openid-client';
-import { PortalSessions, ShopifyPortalIdentity, portalConfig, portalActor, checkMutation, checkPortalHost } from '../express-one-auth.mjs';
+import { PortalSessions, ShopifyPortalIdentity, portalConfig, portalActor, checkMutation, checkPortalHost, PortalSignInError, signInFailure } from '../express-one-auth.mjs';
 
 test('preview cannot be configured on a public origin or in production; live requires HTTPS',() => {
   for (const env of [{APP_BASE_URL:'https://public.example',EXPRESS_ONE_PREVIEW:'true'},{APP_BASE_URL:'http://127.0.0.1:8791',EXPRESS_ONE_PREVIEW:'true',NODE_ENV:'production'},{APP_BASE_URL:'http://public.example'},{APP_BASE_URL:'https://public.example/path'}]) assert.throws(() => portalConfig(env));
@@ -63,4 +63,20 @@ test('Shopify OIDC verifies signatures, issuer, audience, nonce, state, PKCE, an
     const invalid = await oidcFixture(mode); await assert.rejects(invalid.provider.complete(invalid.session,invalid.callback),undefined,mode);
   }
   const state = await oidcFixture(); state.callback.searchParams.set('state','WRONG'); await assert.rejects(state.provider.complete(state.session,state.callback));
+});
+
+test('missing and expired sign-in attempts fail before token exchange and retain no replay state',async () => {
+  const provider = new ShopifyPortalIdentity({});
+  await assert.rejects(provider.complete(undefined,new URL('https://portal.test/express-one/callback')),error => error instanceof PortalSignInError && error.reason === 'session_missing');
+  await assert.rejects(provider.complete({},new URL('https://portal.test/express-one/callback')),error => error.reason === 'authorization_missing');
+  const session={authorization:{expires:Date.now()-1,verifier:'PRIVATE-VERIFIER',state:'PRIVATE-STATE',nonce:'PRIVATE-NONCE'}};
+  await assert.rejects(provider.complete(session,new URL('https://portal.test/express-one/callback')),error => error.reason === 'authorization_expired');
+  assert.equal(session.authorization,undefined);
+});
+
+test('sign-in diagnostics allow only known categories, never raw errors or OAuth secrets',() => {
+  const error = Object.assign(new Error('secret=PRIVATE-SECRET&code=PRIVATE-CODE'),{code:'OAUTH_RESPONSE_BODY_ERROR',error:'invalid_client',cause:{id_token:'PRIVATE-TOKEN'},state:'PRIVATE-STATE'});
+  assert.deepEqual(signInFailure(error),{reason:'callback_failed',code:'OAUTH_RESPONSE_BODY_ERROR',oauthError:'invalid_client'});
+  assert.deepEqual(signInFailure({reason:'session_missing',code:'PRIVATE-SECRET',error:'PRIVATE-CODE'}),{reason:'callback_failed'});
+  assert.doesNotMatch(JSON.stringify(signInFailure(error)),/PRIVATE/);
 });

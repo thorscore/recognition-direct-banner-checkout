@@ -1,7 +1,8 @@
 import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { ExpressOneStore, PortalError, seedPreview } from './express-one-store.mjs';
-import { PortalSessions, ShopifyPortalIdentity, checkPortalHost, checkMutation, portalActor, portalConfig } from './express-one-auth.mjs';
+import { PortalSessions, ShopifyPortalIdentity, checkPortalHost, checkMutation, portalActor, portalConfig, signInFailure } from './express-one-auth.mjs';
 
 const root = import.meta.dirname;
 const escape = value => String(value).replace(/[&<>"']/g,char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -9,6 +10,15 @@ const page = (title,body,script = false) => `<!doctype html><html lang="en"><hea
 
 function loginPage(session,preview,profilePreview) {
   return page('Express One sign in',`<header class="brand"><strong>Recognition Direct</strong><span>Express One</span></header><main class="login"><h1>Express One</h1><p>Badge inventory and release requests</p>${preview ? '<p class="preview-label">Private preview / sample data</p>':''}<form method="post" action="/express-one/${preview ? 'preview-session':'sign-in'}"><input type="hidden" name="csrf" value="${escape(session.csrf)}">${preview ? `${profilePreview ? '<button name="actor" value="profile">Open Fairfield form preview</button>':''}<button name="actor" value="customer">Open customer preview</button><button class="secondary" name="actor" value="staff">Open staff preview</button><button class="secondary" name="actor" value="other">Open second customer preview</button>`:'<button>Continue with Shopify</button>'}</form><a href="mailto:info@recognition-direct.com">info@recognition-direct.com</a><p><a href="tel:+16194650055">(619) 465-0055</a></p></main>`);
+}
+
+function signInErrorPage(failure,reference) {
+  const [heading,message] = failure.reason === 'authorization_expired'
+    ? ['Your sign-in expired','Start again and complete the email-code step in the same browser within five minutes.']
+    : ['session_missing','authorization_missing'].includes(failure.reason)
+      ? ['Your sign-in session is no longer available','Start again in this browser, keep the sign-in in one tab, and allow cookies.']
+      : ['Sign-in could not be verified','Please start again. If this continues, contact Recognition Direct with the reference below.'];
+  return page('Sign-in help',`<header class="brand"><strong>Recognition Direct</strong><span>Express One</span></header><main class="login"><h1>${heading}</h1><p>${message}</p><p><a href="/express-one">Start a fresh sign-in</a></p><p><a href="mailto:info@recognition-direct.com">info@recognition-direct.com</a></p><small>Reference: ${escape(reference)}</small></main>`);
 }
 
 function dashboard(preview) {
@@ -51,7 +61,7 @@ export function shippingCents(value) {
   return Number(whole)*100+Number(fraction.padEnd(2,'0'));
 }
 
-export async function createExpressOneHandler({ env = process.env, databasePath, identityProvider, previewProfile } = {}) {
+export async function createExpressOneHandler({ env = process.env, databasePath, identityProvider, previewProfile, onSignInFailure = entry => console.warn(JSON.stringify(entry)) } = {}) {
   const config = portalConfig(env);
   if (!config.preview && (!config.issuer || !config.clientId || !config.clientSecret)) throw new Error('Configure Shopify customer sign-in before enabling Express One.');
   const path = databasePath || join(root,'data','express-one-v2.sqlite');
@@ -84,11 +94,16 @@ export async function createExpressOneHandler({ env = process.env, databasePath,
         const [file,type] = assets.get(url.pathname); res.writeHead(200,{'Content-Type':type}); res.end(await readFile(join(root,'public',file))); return true;
       }
       const isPage = req.method === 'GET' && ['/express-one','/express-one/','/express-one/callback'].includes(url.pathname);
-      const session = sessions.get(req,res,isPage);
+      const session = sessions.get(req,res,isPage && url.pathname !== '/express-one/callback');
       if (isPage && url.pathname !== '/express-one/callback') { html(res,200,session.identity ? dashboard(config.preview):loginPage(session,config.preview,Boolean(previewProfile))); return true; }
       if (req.method === 'GET' && url.pathname === '/express-one/callback') {
-        try { const identity = await provider.complete(session,url); store.rememberIdentity(identity); sessions.rotate(session,identity,res); redirect(res,'/express-one'); }
-        catch { sessions.logout(session,res); html(res,401,page('Sign-in failed','<main class="login"><h1>Sign-in could not be verified</h1><a href="/express-one">Start again</a></main>')); }
+        let stage = 'identity-verification';
+        try { const identity = await provider.complete(session,url); stage = 'identity-save'; store.rememberIdentity(identity); stage = 'session-rotation'; sessions.rotate(session,identity,res); redirect(res,'/express-one'); }
+        catch (error) {
+          const failure = signInFailure(error), reference = randomUUID().slice(0,8);
+          try { onSignInFailure({event:'express-one-sign-in-failed',reference,stage,...failure}); } catch {}
+          sessions.logout(session,res); html(res,401,signInErrorPage(failure,reference));
+        }
         return true;
       }
       if (req.method === 'POST') {

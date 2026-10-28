@@ -7,6 +7,19 @@ export const identityKey = identity => `${identity.issuer}|${identity.subject}`;
 export const identityReference = identity => createHash('sha256').update(identityKey(identity)).digest('hex').slice(0,20);
 const loopback = host => ['127.0.0.1','localhost','[::1]'].includes(host);
 
+export class PortalSignInError extends PortalError {
+  constructor(reason) { super('Sign-in expired or could not be verified. Please start again.',401); this.reason = reason; }
+}
+
+export function signInFailure(error) {
+  const reasons = ['session_missing','authorization_missing','authorization_expired','identity_invalid'];
+  const codes = ['OAUTH_RESPONSE_BODY_ERROR','OAUTH_INVALID_RESPONSE','OAUTH_JWT_CLAIM_COMPARISON_FAILED','OAUTH_JWT_TIMESTAMP_CHECK_FAILED','OAUTH_INVALID_SERVER_METADATA','OAUTH_KEY_SELECTION_FAILED','OAUTH_RESPONSE_IS_NOT_JSON','OAUTH_PARSE_ERROR'];
+  const oauthErrors = ['invalid_client','invalid_grant','access_denied','unauthorized_client','unsupported_grant_type','invalid_request','invalid_scope','server_error','temporarily_unavailable'];
+  return {reason:error instanceof PortalSignInError && reasons.includes(error.reason) ? error.reason:'callback_failed',
+    ...(codes.includes(error?.code) ? {code:error.code}:{}),
+    ...(oauthErrors.includes(error?.error) ? {oauthError:error.error}:{})};
+}
+
 export function portalConfig(env = process.env) {
   const preview = env.EXPRESS_ONE_PREVIEW === 'true';
   const base = new URL(env.APP_BASE_URL || 'http://127.0.0.1:8791');
@@ -84,11 +97,13 @@ export class ShopifyPortalIdentity {
   async complete(session, url) {
     const authorization = session?.authorization;
     if (session) delete session.authorization;
-    if (!authorization || authorization.expires <= Date.now()) throw new PortalError('Sign-in expired. Please start again.',401);
+    if (!session) throw new PortalSignInError('session_missing');
+    if (!authorization) throw new PortalSignInError('authorization_missing');
+    if (authorization.expires <= Date.now()) throw new PortalSignInError('authorization_expired');
     const config = await this.configuration();
     const tokens = await oidc.authorizationCodeGrant(config,url,{pkceCodeVerifier:authorization.verifier,expectedState:authorization.state,expectedNonce:authorization.nonce,idTokenExpected:true});
     const claims = tokens.claims();
-    if (!claims?.sub || claims.iss !== config.serverMetadata().issuer) throw new PortalError('Customer sign-in could not be verified.',401);
+    if (!claims?.sub || claims.iss !== config.serverMetadata().issuer) throw new PortalSignInError('identity_invalid');
     return {issuer:claims.iss,subject:claims.sub};
   }
 }

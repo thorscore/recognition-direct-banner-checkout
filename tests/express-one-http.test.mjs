@@ -4,12 +4,12 @@ import { once } from 'node:events';
 import test from 'node:test';
 import { createExpressOneHandler, shippingCents } from '../express-one-portal.mjs';
 
-async function fixture(t) {
+async function fixture(t,options = {}) {
   let handler;
   const server = createServer(async (req,res) => { if (!await handler(req,res)) {res.writeHead(404);res.end();} });
   server.listen(0,'127.0.0.1'); await once(server,'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
-  handler = await createExpressOneHandler({env:{APP_BASE_URL:base,EXPRESS_ONE_PREVIEW:'true'},databasePath:':memory:'});
+  handler = await createExpressOneHandler({env:{APP_BASE_URL:base,EXPRESS_ONE_PREVIEW:'true'},databasePath:':memory:',...options});
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); handler.close(); });
   async function client(role) {
     const login = await fetch(`${base}/express-one`);
@@ -78,4 +78,43 @@ test('badge example images require sign-in and the owning account',async t => {
   assert.equal((await other.request(path)).status,404);
   const response=await customer.request(path);assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'image/png');assert.equal(response.headers.get('cache-control'),'no-store');assert.deepEqual(Buffer.from(await response.arrayBuffer()),png);
   assert.equal((await staff.request(path)).status,200);
+});
+
+test('expired callbacks show actionable help and record no secrets or verified identity',async t => {
+  const logs=[],{base,handler}=await fixture(t,{onSignInFailure:entry=>logs.push(entry)});
+  const login=await fetch(`${base}/express-one`),cookie=login.headers.get('set-cookie').split(';')[0];
+  const session=handler.sessions.sessions.get(cookie.split('=')[1]);
+  session.authorization={expires:Date.now()-1,verifier:'PRIVATE-VERIFIER',state:'PRIVATE-STATE',nonce:'PRIVATE-NONCE'};
+  const response=await fetch(`${base}/express-one/callback?code=PRIVATE-CODE&state=PRIVATE-STATE`,{headers:{Cookie:cookie}});
+  const html=await response.text();
+  assert.equal(response.status,401);assert.match(html,/Your sign-in expired/);assert.match(html,/within five minutes/);assert.match(html,/Start a fresh sign-in/);
+  assert.equal(logs[0].reason,'authorization_expired');assert.equal(logs[0].stage,'identity-verification');
+  assert.doesNotMatch(html+JSON.stringify(logs),/PRIVATE/);
+  assert.equal(handler.store.db.prepare('SELECT COUNT(*) AS count FROM identities').get().count,0);
+  assert.match(response.headers.get('set-cookie'),/Max-Age=0/);
+});
+
+test('a missing callback cookie never creates an authenticated session',async t => {
+  const logs=[],{base,handler}=await fixture(t,{onSignInFailure:entry=>logs.push(entry)});
+  const response=await fetch(`${base}/express-one/callback?code=PRIVATE-CODE`);
+  assert.equal(response.status,401);assert.match(await response.text(),/session is no longer available/);
+  assert.equal(logs[0].reason,'session_missing');assert.equal(handler.sessions.sessions.size,0);
+});
+
+test('provider errors produce safe support references without exposing token response data',async t => {
+  const logs=[],{base}=await fixture(t,{onSignInFailure:entry=>logs.push(entry),identityProvider:{complete:async()=>{throw Object.assign(new Error('PRIVATE-SECRET'),{code:'OAUTH_RESPONSE_BODY_ERROR',error:'invalid_client',cause:{id_token:'PRIVATE-TOKEN'}});}}});
+  const response=await fetch(`${base}/express-one/callback?code=PRIVATE-CODE`),html=await response.text();
+  assert.equal(response.status,401);assert.match(html,/Sign-in could not be verified/);assert.match(html,new RegExp(`Reference: ${logs[0].reference}`));
+  assert.equal(logs[0].oauthError,'invalid_client');assert.doesNotMatch(html+JSON.stringify(logs),/PRIVATE/);
+});
+
+test('a successful verified callback rotates the session but does not auto-grant a customer account',async t => {
+  const {base,handler}=await fixture(t,{identityProvider:{complete:async session=>{assert.ok(session);return {issuer:'https://shopify.test/oidc',subject:'verified-pilot'};}}});
+  const login=await fetch(`${base}/express-one`),oldCookie=login.headers.get('set-cookie').split(';')[0];
+  const response=await fetch(`${base}/express-one/callback?code=TEST`,{redirect:'manual',headers:{Cookie:oldCookie}}),cookie=response.headers.get('set-cookie').split(';')[0];
+  assert.equal(response.status,303);assert.notEqual(cookie,oldCookie);
+  assert.equal((await fetch(`${base}/express-one/api/state`,{headers:{Cookie:oldCookie}})).status,401);
+  const state=await fetch(`${base}/express-one/api/state`,{headers:{Cookie:cookie}});assert.equal(state.status,403);assert.match(await state.text(),/needs staff setup/);
+  assert.equal(handler.store.db.prepare('SELECT COUNT(*) AS count FROM identities').get().count,1);
+  assert.equal(handler.store.accountForIdentity({issuer:'https://shopify.test/oidc',subject:'verified-pilot'}),undefined);
 });
