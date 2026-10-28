@@ -3610,7 +3610,7 @@ function nameBadgePageHtml() {
         name: "What is Express One for name badges?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Express One allows customers to order a larger badge quantity to receive quantity pricing, while Recognition Direct holds extra badge stock for later releases."
+          text: "Prepay for your full badge quantity at the applicable quantity price. Recognition Direct holds extra badge inventory for future requests. Additional requests from held stock receive priority production and typically ship the same day or next business day, not including the initial stock order. Later release shipping is additional and accumulated shipping charges are invoiced when your held inventory is used up."
         }
       },
       {
@@ -3752,7 +3752,7 @@ function nameBadgePageHtml() {
                 <input type="checkbox" name="express_one" value="yes">
                 <span>Use Express One for this order</span>
               </label>
-              <p class="note">Order a larger quantity now to receive the quantity discount. We produce and hold your extra badge stock, then ship badges as your team needs them. Express One orders receive priority production. Shipping for later releases is invoiced after those badges are sent.</p>
+              <p class="note">Prepay for your full badge quantity at the applicable quantity price. We hold your extra badge inventory; send names and request badges as needed. Additional requests from held stock receive priority production and typically ship the same day or next business day. This timing does not apply to the initial stock order. Later release shipping is additional and accumulated shipping charges are invoiced when your held inventory is used up. In Notes, tell us how many badges you need now and how many to hold.</p>
             </div>
             <div>
               <label for="badge_size">Size</label>
@@ -3888,7 +3888,7 @@ function nameBadgePageHtml() {
         </details>
         <details>
           <summary>What is Express One?</summary>
-          <p>Express One is for customers with ongoing badge needs. You can order a larger quantity to receive quantity pricing, and Recognition Direct can hold extra badge stock for later release orders.</p>
+          <p>Prepay for your full badge quantity at the applicable quantity price. We hold your extra badge inventory for future requests, which receive priority production and typically ship the same day or next business day. This timing applies to additional requests from held stock, not the initial order. Later release shipping is additional; we invoice the accumulated shipping charges when your held inventory is used up. <a href="https://recognition-direct.com/pages/contact">Ask about Express One or request badges from stock</a>.</p>
         </details>
         <details>
           <summary>Do I get a proof before production?</summary>
