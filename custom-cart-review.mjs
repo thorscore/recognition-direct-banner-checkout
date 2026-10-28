@@ -3,6 +3,7 @@ const REVIEW_FIELDS = new Set([
   "Banner Type", "Sport", "League Name", "Age Group", "Team Name", "Team Colors",
   "Player Names", "Coaches Names", "Team Parents / Volunteers", "Youth Design Ideas",
   "Banner Description", "Plate Text", "Need-by Date", "Notes",
+  "Package", "H-stake",
 ]);
 const UPLOAD_FIELDS = new Set([
   "Artwork", "Youth Print-ready Artwork", "Youth Design Idea Image", "Standard Print-ready Art File",
@@ -12,7 +13,7 @@ const UPLOAD_FIELDS = new Set([
 export function customCartReviewLines(item) {
   const draft = item.draftInput || {};
   const tags = draft.tags || [];
-  if (!tags.includes("13oz-vinyl-banner") && !tags.includes("solar-placards")) return [];
+  if (!tags.some((tag) => ["13oz-vinyl-banner", "solar-placards", "yard-sign-and-h-stake"].includes(tag))) return [];
   const orderDelivery = draft.customAttributes?.find(({ key }) => key === "Delivery Method")?.value || "";
   return (draft.lineItems || []).map((line) => {
     const attributes = line.customAttributes || [];

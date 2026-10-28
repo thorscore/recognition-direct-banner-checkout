@@ -71,6 +71,10 @@ const YARD_SIGN_H_STAKE_SIZES = [
   { key: "18x24", label: '18" x 24"', unitPrice: 16, default: true },
   { key: "12x18", label: '12" x 18"', unitPrice: 12 },
 ];
+const YARD_SIGN_STAKE_CHOICES = [
+  { key: "with-stake", label: "With H-stake", package: "Yard Sign with H-Stake" },
+  { key: "without-stake", label: "Without H-stake", package: "Yard Sign Only" },
+];
 const ALUMINUM_SIGN_HANDLE = "aluminum-sign";
 const ALUMINUM_SIGN_SIZES = [
   { key: "12x18", label: '12" x 18"', oldBasePrice: 26.4, unitPrice: 29.7, default: true },
@@ -962,6 +966,12 @@ function yardSignHStakeSize(value) {
   return YARD_SIGN_H_STAKE_SIZES.find((size) => size.key === String(value || "")) || YARD_SIGN_H_STAKE_SIZES[0];
 }
 
+function yardSignStakeChoice(value) {
+  const choice = YARD_SIGN_STAKE_CHOICES.find((option) => option.key === value);
+  if (!choice) throw new Error("Choose with H-stake or without H-stake before adding your yard sign to the cart.");
+  return choice;
+}
+
 function fixedCatalogSize(handle, value) {
   const sizes = FIXED_CATALOG_SIZE_SETS.get(handle);
   if (!sizes) return null;
@@ -986,6 +996,15 @@ function yardSignHStakeAttrs() {
       default: size.default === true,
       visible: null,
     })),
+  }, {
+    key: "yard_sign_stake",
+    label: "H-stake (required)",
+    component: "select",
+    visible: null,
+    options: [
+      { key: "", label: "Choose with or without H-stake", default: true, visible: null },
+      ...YARD_SIGN_STAKE_CHOICES.map((choice) => ({ key: choice.key, label: choice.label, visible: null })),
+    ],
   }];
 }
 
@@ -1138,7 +1157,8 @@ function selectedCatalogAttributes(product, values) {
   if (handle === YARD_SIGN_H_STAKE_HANDLE) {
     return [
       attribute("Size", yardSignHStakeSize(values.yard_sign_size).label),
-      attribute("Package", "Yard Sign and H-Stake"),
+      attribute("Package", yardSignStakeChoice(values.yard_sign_stake).package),
+      attribute("H-stake", yardSignStakeChoice(values.yard_sign_stake).label),
     ].filter(Boolean);
   }
 
@@ -2558,6 +2578,7 @@ async function handleCatalogCheckout(req, res) {
   const { values, width, height, units, squareFeetEach } = input;
   let unitPrice;
   if (handle === YARD_SIGN_H_STAKE_HANDLE) {
+    yardSignStakeChoice(values.yard_sign_stake);
     unitPrice = yardSignHStakeSize(values.yard_sign_size).unitPrice;
   } else {
     unitPrice = await catalogUnitPrice(product, quantity, input);
