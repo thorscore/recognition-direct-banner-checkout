@@ -84,7 +84,12 @@ export class ShopifyPortalIdentity {
   async configuration() {
     if (!this.config.issuer || !this.config.clientId || !this.config.clientSecret) throw new PortalError('Customer sign-in has not been configured.',503);
     if (!this.pending) {
-      this.pending = oidc.discovery(new URL(this.config.issuer),this.config.clientId,{ id_token_signed_response_alg:'RS256' },oidc.ClientSecretBasic(this.config.clientSecret),{...this.discoveryOptions,execute:[oidc.enableNonRepudiationChecks]}).catch(error => { this.pending = null; throw error; });
+      const authenticate = (_server,client,body,headers) => {
+        // Match Shopify's raw Basic credentials and required public body client ID.
+        headers.set('authorization',`Basic ${Buffer.from(`${client.client_id}:${this.config.clientSecret}`).toString('base64')}`);
+        body.set('client_id',client.client_id);
+      };
+      this.pending = oidc.discovery(new URL(this.config.issuer),this.config.clientId,{ id_token_signed_response_alg:'RS256' },authenticate,{...this.discoveryOptions,execute:[oidc.enableNonRepudiationChecks]}).catch(error => { this.pending = null; throw error; });
     }
     return this.pending;
   }

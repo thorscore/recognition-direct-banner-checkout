@@ -43,7 +43,11 @@ async function oidcFixture(mode = 'valid') {
     if (String(url).endsWith('/jwks')) return Response.json({keys:[jwk]});
     if (String(url).endsWith('/token')) {
       const body = new URLSearchParams(options.body); assert.equal(body.get('code_verifier'),expected.verifier);
-      assert.ok(new Headers(options.headers).get('authorization').startsWith('Basic '));
+      assert.equal(body.get('client_id'),config.clientId,'Shopify requires client_id in the token request body as well as Basic authentication');
+      assert.equal(body.get('client_secret'),null,'The client secret belongs only in the Basic header');
+      assert.equal(new Headers(options.headers).get('authorization'),`Basic ${Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64')}`);
+      assert.equal(body.get('grant_type'),'authorization_code');
+      assert.equal(body.get('redirect_uri'),new URL('/express-one/callback',config.base).href);
       const token = await new SignJWT({nonce:mode === 'nonce' ? 'WRONG':expected.nonce}).setProtectedHeader({alg:'RS256',kid:'test-key'}).setIssuer(mode === 'issuer' ? 'https://evil.test':issuer).setAudience(mode === 'audience' ? 'WRONG':config.clientId).setSubject('customer-one').setIssuedAt().setExpirationTime(mode === 'expired' ? Math.floor(Date.now()/1000)-600:'5m').sign(mode === 'signature' ? otherKeys.privateKey:keys.privateKey);
       return Response.json({access_token:'test-access',token_type:'Bearer',expires_in:300,id_token:token});
     }

@@ -75,6 +75,15 @@ PKCE S256, random state and nonce, signature verification, issuer/audience/expir
 checks and a one-use callback. Only the verified issuer/subject is retained;
 access/refresh/ID tokens are not exposed to the browser or stored in the portal.
 
+Shopify's confidential token exchange requires `client_id` in the form body and
+raw Base64 `client_id:client_secret` in its Basic header. The default library Basic
+adapter omits the body ID and percent-encodes punctuation in the header credentials.
+The Shopify-specific authentication callback follows the official request format;
+the rest of the library's token, PKCE and ID-token validation remains unchanged.
+Regression tests assert the exact header, body client ID, redirect, grant type and
+absence of a body client secret. Credentials were privately compared with Shopify
+and matched; no rotation, permission expansion or secret rewrite was needed.
+
 Setup must be reviewed and approved by the merchant before creating or expanding
 Customer Account API access, changing customer account settings, or adding any
 operator identity. Do not put secrets into chat or source control.
@@ -198,6 +207,7 @@ duplicate requests/fulfillment, actual shipping, pickup semantics and invoicing.
 
 Sources:
 - https://shopify.dev/docs/storefronts/headless/building-with-the-customer-account-api/getting-started
+- https://shopify.dev/docs/api/customer/2026-10#obtain-access-token
 - https://github.com/panva/openid-client
 - https://nodejs.org/docs/latest-v22.x/api/sqlite.html
 - https://render.com/docs/disks
