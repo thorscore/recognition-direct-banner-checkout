@@ -33,6 +33,8 @@ test("real multipart requests carry consented capture through an isolated mock c
       child.on("exit", code => reject(new Error(`Mock server exited: ${code}`)));
     });
     assert.equal((await (await fetch(`${base}/health`)).json()).orderAttributionVersion, 1);
+    for (const path of ['/express-one','/express-one/open?customer=demo-express-one&code=demo','/express-one/customer/demo-express-one?code=demo']) assert.equal((await fetch(`${base}${path}`)).status,503);
+    assert.equal((await fetch(`${base}/api/express-one-release`,{method:'POST'})).status,503);
     assert.match(await (await fetch(`${base}/order-attribution.js`)).text(), /visitorConsentCollected/);
     const visit = { at: new Date().toISOString(), landingPage: "https://recognition-direct.com/pages/name-badges-san-diego?email=PRIVATE", referrerHost: "chatgpt.com" };
     const attribution = { version: 1, consent: "allowed", first: visit, last: visit, orderPage: "https://recognition-direct.com/pages/name-badges-san-diego" };

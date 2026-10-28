@@ -6,9 +6,17 @@
   "scripts": {
     "start": "node server.mjs",
     "check": "node --check server.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "express-one:preview": "node express-one-preview.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "csv-parse": "7.0.3",
+    "openid-client": "6.8.8"
+  },
+  "devDependencies": {
+    "jose": "6.2.13"
   }
 }

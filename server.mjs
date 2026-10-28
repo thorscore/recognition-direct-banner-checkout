@@ -16,6 +16,9 @@ const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET || "";
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
+const expressOnePortal = process.env.EXPRESS_ONE_ENABLED === "true"
+  ? await (await import("./express-one-portal.mjs")).createExpressOneHandler()
+  : null;
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
@@ -5889,6 +5892,10 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1, orderAttributionVersion: 1 });
+    if (url.pathname.startsWith("/express-one") || url.pathname.startsWith("/api/express-one")) {
+      if (!expressOnePortal) return json(res, 503, { error: "Express One customer access is not enabled. Please contact Recognition Direct." });
+      return await expressOnePortal(req, res);
+    }
     if (req.method === "GET" && url.pathname === "/order-attribution.js") return await servePublicFile(res, "order-attribution.js", "application/javascript; charset=utf-8");
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/name-badge-")) return json(res, 204, {}, corsHeaders(req));
