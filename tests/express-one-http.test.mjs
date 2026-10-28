@@ -9,8 +9,8 @@ async function fixture(t,options = {}) {
   const server = createServer(async (req,res) => { if (!await handler(req,res)) {res.writeHead(404);res.end();} });
   server.listen(0,'127.0.0.1'); await once(server,'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
-  handler = await createExpressOneHandler({env:{APP_BASE_URL:base,EXPRESS_ONE_PREVIEW:'true'},databasePath:':memory:',...options});
-  t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); handler.close(); });
+  handler = await createExpressOneHandler({databasePath:':memory:',...options,env:{APP_BASE_URL:base,EXPRESS_ONE_PREVIEW:'true',...options.env}});
+  t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await handler.close(); });
   async function client(role) {
     const login = await fetch(`${base}/express-one`);
     let cookie = login.headers.get('set-cookie').split(';')[0];
@@ -41,7 +41,25 @@ test('HTTP authorization ignores forged body roles and customer IDs',async t => 
   assert.equal((await other.request('/express-one/api/request-action',{id:request.id,action:'cancel'})).status,404);
   assert.equal((await customer.request('/express-one/api/request-action',{id:request.id,action:'approve',role:'staff'})).status,403);
   assert.equal((await customer.request('/express-one/api/stock',{role:'staff'})).status,403);
+  assert.equal((await customer.request('/express-one/api/view',{view:'staff'})).status,403);
+  assert.equal((await customer.request('/express-one/api/test-email',{to:'attacker@example.test'})).status,403);
+  assert.equal((await customer.request('/express-one/api/retry-alert',{id:request.id})).status,403);
+  assert.equal(customer.state.alerts,undefined);
   assert.doesNotMatch(await (await other.request('/express-one/api/state')).text(),/PRIVATE-NAME|Sample Medical/);
+});
+
+test('approved operators can switch only to their own customer account and back',async t => {
+  const {client}=await fixture(t,{env:{EXPRESS_ONE_OPERATOR_IDENTITIES:JSON.stringify([{issuer:'preview',subject:'preview-customer'}])}});
+  const operator=await client('customer');
+  assert.equal(operator.state.role,'staff');assert.equal(operator.state.canSwitchView,true);
+  assert.equal(operator.state.alerts.enabled,false);
+  assert.equal((await operator.request('/express-one/api/view',{view:'customer',accountId:operator.state.accounts.find(row=>row.company==='Sample Hospitality').id})).status,200);
+  const own=await (await operator.request('/express-one/api/state')).json();
+  assert.equal(own.role,'customer');assert.equal(own.accounts.length,1);assert.equal(own.accounts[0].company,'Sample Medical Group');assert.equal(own.alerts,undefined);
+  assert.equal((await operator.request('/express-one/api/stock',{role:'staff'})).status,403);
+  assert.equal((await operator.request('/express-one/api/view',{view:'staff'})).status,200);
+  assert.equal((await (await operator.request('/express-one/api/state')).json()).role,'staff');
+  assert.equal((await operator.request('/express-one/api/test-email',{})).status,409);
 });
 test('CSRF, cross-origin, no-session and legacy URL-code attempts cannot mutate inventory',async t => {
   const {base,client} = await fixture(t), customer = await client('customer');

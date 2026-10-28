@@ -113,10 +113,14 @@ export class ShopifyPortalIdentity {
   }
 }
 
+export function portalOperator(session, config) {
+  return Boolean(session?.identity && (config.preview && session.identity.issuer === 'preview' && session.identity.subject === 'preview-staff' || config.operators.has(identityKey(session.identity))));
+}
+
 export function portalActor(session, config, store) {
   if (!session?.identity) throw new PortalError('Sign in to continue.',401);
   const identity = session.identity;
-  if (config.preview && identity.issuer === 'preview' && identity.subject === 'preview-staff' || config.operators.has(identityKey(identity))) return {...identity,role:'staff'};
+  if (portalOperator(session,config) && session.view !== 'customer') return {...identity,role:'staff'};
   const account = store.accountForIdentity(identity);
   if (!account) throw new PortalError(`Your Express One account needs staff setup. Reference: ${identityReference(identity)}.`,403);
   return {...identity,role:'customer',accountId:account.id};

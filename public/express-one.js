@@ -47,7 +47,18 @@
   }
   function render() {
     const staff = state.role === 'staff';
+    $('#switch-view').hidden = !state.canSwitchView;
+    $('#switch-view').textContent = staff ? 'View as customer':'Back to staff';
     $('#account-name').textContent = staff ? 'Recognition Direct / Staff':state.accounts[0]?.company || 'Express One';
+    $('#staff-alerts').hidden = !staff;
+    if (staff) {
+      const pending = state.alerts.counts.filter(row => ['pending','sending'].includes(row.status)).reduce((sum,row) => sum+row.count,0);
+      const problems = state.alerts.counts.filter(row => ['failed','uncertain'].includes(row.status)).reduce((sum,row) => sum+row.count,0);
+      const connection = state.alerts.enabled ? `Connected to ${state.alerts.recipient}.`:'Email sender not connected. Requests are saved in this queue.';
+      $('#alert-status').textContent = `${connection}${pending ? ` ${pending} pending.`:''}${problems ? ` ${problems} need checking.`:''}`;
+      $('#test-email').disabled = !state.alerts.enabled;
+      $('#test-email').title = state.alerts.enabled ? 'Send one test to the staff inbox':'Connect the sender securely in Render first';
+    }
     renderProfile();
     $('#add-stock').hidden = !staff; $('#record-invoice').hidden = !staff;
     $('#metric-stock').textContent = state.stock.reduce((sum,row) => sum+row.remaining,0);
@@ -62,7 +73,7 @@
       const index = [...$('#inventory-table').querySelectorAll('button')].indexOf(button);
       if (state.stock[index]?.available === 0) button.disabled = true;
     }
-    table('#request-table',['Requested','Badge style','Names','Quantity','Status','Actions'],state.requests.map(row => {
+    table('#request-table',['Requested','Badge style','Names','Quantity','Status',...(staff ? ['Email alert']:[]),'Actions'],state.requests.map(row => {
       const names = el('details',{},el('summary',{},`${row.names.length} badge${row.names.length === 1 ? '':'s'}`),el('ul',{},row.names.map(item => el('li',{},item.name,item.finish ? ` / ${item.finish}`:'',item.title ? ` / ${item.title}`:''))),el('p',{},row.delivery === 'ship' ? 'Ship':row.delivery === 'pickup-la-mesa' ? 'La Mesa pickup':'Pine Valley pickup'),row.notes ? el('p',{},row.notes):null);
       if (row.details?.propertyName) {
         const profile = state.accounts.find(account => account.id === row.account_id)?.orderProfile;
@@ -73,7 +84,10 @@
       if (staff && ['requested','approved'].includes(row.status)) actions.append(button('Reject',() => openReview(row,'reject')));
       if (staff && row.status === 'approved') actions.append(button(row.delivery === 'ship' ? 'Mark shipped':'Mark ready',() => openReview(row,'fulfill'),false));
       if (!staff && row.status === 'requested') actions.append(button('Cancel request',async () => { await api('api/request-action',{id:row.id,action:'cancel'}); await refresh(); notice('Request cancelled.'); }));
-      return [date(row.created_at),el('div',{},el('strong',{},row.title),staff ? el('small',{},row.company):null),names,row.quantity,el('div',{},pill(row.status),row.reason ? el('small',{},row.reason):null),actions];
+      const alert = staff ? state.alerts.requests.find(item => item.requestId === row.id):null;
+      const alertCell = el('div',{},({pending:'Pending',sending:'Sending',sent:'Accepted by mail server',failed:'Failed',uncertain:'Check inbox before retrying',skipped:'No longer awaiting approval'})[alert?.status] || 'No alert queued');
+      if (staff && alert?.status === 'failed' && state.alerts.enabled) alertCell.append(button('Retry alert',async () => {await api('api/retry-alert',{id:row.id});await refresh();notice('Email alert queued for retry.');}));
+      return [date(row.created_at),el('div',{},el('strong',{},row.title),staff ? el('small',{},row.company):null),names,row.quantity,el('div',{},pill(row.status),row.reason ? el('small',{},row.reason):null),...(staff ? [alertCell]:[]),actions];
     }));
     table('#shipping-table',['Date','Customer','Shipping charge','Tracking','Invoice'],state.shipping.map(row => [date(row.created_at),state.accounts.find(a => a.id === row.account_id)?.company || '',money(row.cents),row.tracking || '-',row.cents === 0 ? 'No shipping charge':row.invoice_id ? state.invoices.find(i => i.id === row.invoice_id)?.reference || 'Recorded':row.remaining === 0 ? 'Ready to invoice':'Accruing']));
     table('#invoice-table',['Date','Reference','Recorded amount'],state.invoices.map(row => [date(row.created_at),row.reference,money(row.amount_cents)]));
@@ -175,5 +189,16 @@
   });
   $('#invoice-form').addEventListener('submit',event => { event.preventDefault(); const form = event.currentTarget; submitForm(form,() => api('api/invoices',Object.fromEntries(new FormData(form))),'Existing shipping invoice recorded.'); });
   $('#sign-out').addEventListener('click',async () => { try { await api('sign-out',{}); location.assign('/express-one'); } catch (error) { showError(error.message); } });
-  refresh().catch(error => showError(error.message));
+  $('#switch-view').addEventListener('click',async () => {
+    try { await api('api/view',{view:state.role === 'staff' ? 'customer':'staff'}); await refresh(); notice(state.role === 'staff' ? 'Staff view.':'Your own customer test account.'); }
+    catch (error) { showError(error.message); }
+  });
+  $('#test-email').addEventListener('click',async () => {
+    const button = $('#test-email'); button.disabled = true;
+    try { const result = await api('api/test-email',{}); notice(`Test accepted by the email server for ${result.recipient}. Please confirm it arrives in the inbox.`); }
+    catch (error) { showError(error.message); }
+    finally { button.disabled = false; }
+  });
+  refresh().then(() => { if (location.hash === '#requests') switchView('requests'); }).catch(error => showError(error.message));
+  setInterval(() => { if (state?.role === 'staff' && document.visibilityState === 'visible' && !document.querySelector('dialog[open],details[open]')) refresh().catch(error => showError(error.message)); },30000);
 })();

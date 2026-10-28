@@ -90,6 +90,7 @@ export class ExpressOneStore {
       CREATE TABLE IF NOT EXISTS identities(reference TEXT PRIMARY KEY, issuer TEXT NOT NULL, subject TEXT NOT NULL, seen_at TEXT NOT NULL, UNIQUE(issuer,subject));
       CREATE TABLE IF NOT EXISTS order_profiles(account_id TEXT PRIMARY KEY REFERENCES accounts(id), payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS profile_images(account_id TEXT NOT NULL REFERENCES accounts(id), image_key TEXT NOT NULL, body BLOB NOT NULL, PRIMARY KEY(account_id,image_key));
+      CREATE TABLE IF NOT EXISTS request_alerts(request_id TEXT PRIMARY KEY REFERENCES requests(id), status TEXT NOT NULL CHECK(status IN ('pending','sending','sent','failed','uncertain','skipped')), attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0, error_category TEXT NOT NULL DEFAULT '', sent_at TEXT);
       CREATE INDEX IF NOT EXISTS request_owner ON requests(account_id,created_at);
       CREATE INDEX IF NOT EXISTS stock_requests ON requests(stock_id,status);
       CREATE UNIQUE INDEX IF NOT EXISTS paid_stock_source ON stock(account_id,paid_order,title);
@@ -191,9 +192,18 @@ export class ExpressOneStore {
       const id = randomUUID(), at = new Date().toISOString();
       this.db.prepare('INSERT INTO requests(id,account_id,stock_id,quantity,names,delivery,notes,status,created_at,updated_at,request_key,payload_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id, actor.accountId, stockId, names.length, JSON.stringify(names), delivery, notes, 'requested', at, at, key, payloadHash);
       this.db.prepare('UPDATE requests SET details=? WHERE id=?').run(JSON.stringify(details),id);
+      this.db.prepare("INSERT INTO request_alerts(request_id,status) VALUES(?,'pending')").run(id);
       this.event(actor, 'release-requested', id, { quantity: names.length });
       return { id, duplicate: false };
     });
+  }
+  alertSummary(actor) {
+    staff(actor);
+    return this.db.prepare('SELECT status,COUNT(*) AS count FROM request_alerts GROUP BY status').all();
+  }
+  alertRows(actor) {
+    staff(actor);
+    return this.db.prepare('SELECT request_id AS requestId,status,attempts,error_category AS errorCategory,sent_at AS sentAt FROM request_alerts ORDER BY rowid DESC LIMIT 500').all();
   }
   changeRequest(actor, input) {
     if (!['staff','customer'].includes(actor?.role)) fail('Sign in to continue.',401);

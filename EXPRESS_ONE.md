@@ -65,10 +65,14 @@ After further merchant approval on October 28, commit
 `9e8e7e25f551b683aba8e94b33d4b9067ac8a423` was deployed to the existing Render
 service. Its build uses `npm ci --omit=dev`; the verified runtime is Node 22.23.4.
 `EXPRESS_ONE_ENABLED=true` is now applied for the private identity test. The live
-sign-in page and redirect to the dedicated Shopify client were checked; completing
-the merchant's email-code sign-in and verifying its callback remain outstanding.
-No real workbook/customer profiles or stock were uploaded, no account bindings or
-operator identity grants were added, and no customer invitations or payments were sent.
+sign-in page and redirect to the dedicated Shopify client were checked. The later
+confidential-client fix in `6259d06b` passed the merchant's real email-code login.
+Only the merchant's verified identity was linked to a private Fairfield-form pilot.
+After online backups, the approved form details and gold/silver examples were added,
+then the merchant confirmed 100 prepaid badges in one shared color balance. This
+opening balance is owner-confirmed, not an invented Shopify order number. No actual
+Fairfield customer identities, historical workbook transactions, invitations, or
+payments were imported. Staff access requires a separately approved exact allowlist.
 
 The `openid-client` integration uses a confidential OpenID Connect client with
 PKCE S256, random state and nonce, signature verification, issuer/audience/expiry
@@ -147,12 +151,66 @@ old prototype functions remain in `server.mjs`. Do not share old prototype links
   mandatory; a successful identity still receives no stock without staff setup.
 - Badge names are bounded private database records, not publicly served uploads.
   The UI renders customer text with DOM text nodes rather than HTML strings.
-- There are no automatic emails, notifications, customer enrollment, carrier
-  purchases, tracking lookups, paid-order webhooks or external invoice calls yet.
-  Staff currently check the request queue. Confirm the desired notification channel
-  separately before introducing messages or unattended fulfillment.
+- Optional staff request emails use the private SQLite outbox described below.
+  There is no customer enrollment, carrier purchase, tracking lookup, paid-order
+  webhook, customer email, or external invoice call. Email never approves a request
+  or triggers production, payment, stock deduction, or shipment.
 - Request and shipping history currently show the latest 500 records per view;
   inventory and uninvoiced shipping totals are computed across all records.
+
+## Staff View and Request Alerts
+
+Staff still authenticate through the same verified Shopify identity flow. The exact
+issuer/subject must be approved in `EXPRESS_ONE_OPERATOR_IDENTITIES`; an email address
+or customer-submitted role never grants staff access. An operator with a linked
+customer pilot can use **View as customer** and **Back to staff**. Customer mode is
+scoped only to that identity's own account, not an arbitrary company or customer ID.
+Staff APIs remain unavailable in customer mode. Ordinary customers cannot switch
+to staff. The staff queue refreshes every 30 seconds while visible, except while a
+dialog or expanded request detail is open.
+
+New request and email-outbox rows are committed in one transaction. Duplicate request
+keys do not create duplicate emails. Existing historical requests are not backfilled.
+Alerts are off by default and always off in loopback preview, even if SMTP variables
+are present. Without a sender, the staff screen explicitly says email is not connected;
+saved requests and their pending alerts remain available.
+
+Configure only in the existing server's secret environment, never chat or Git:
+
+- `EXPRESS_ONE_EMAIL_ENABLED=true` only when ready for a sender test.
+- `EXPRESS_ONE_STAFF_EMAIL=info@recognition-direct.com` is the one fixed recipient.
+- `EXPRESS_ONE_SMTP_HOST=smtp.gmail.com` and `EXPRESS_ONE_SMTP_PORT=465` for Google.
+  Port 587 with mandatory STARTTLS is also supported. Port 25 is not supported.
+- `EXPRESS_ONE_SMTP_USER` is the actual sending mailbox sign-in, not an unverified alias.
+- `EXPRESS_ONE_SMTP_PASS` is the dedicated sender credential, entered by the merchant
+  directly in Render. Do not request a normal Google password or any code in chat.
+- `EXPRESS_ONE_EMAIL_FROM` defaults to the sending mailbox; use an alias only after
+  confirming that mailbox is authorized to send it.
+
+Google app passwords require 2-Step Verification and may be unavailable under the
+organization's policy. The merchant must create, enter, or rotate credentials.
+Prefer an existing restricted sending identity over exposing a personal mailbox.
+If Google does not permit this connection, use an approved OAuth/transactional-mail
+setup separately; do not weaken account security or add paid services automatically.
+Official setup: https://support.google.com/accounts/answer/185833
+SMTP/TLS reference: https://nodemailer.com/smtp
+
+Use **Send test email** from staff view and verify actual receipt. SMTP acceptance is
+not proof of inbox delivery. Tests are staff-only, rate limited to one per minute,
+and cannot choose recipients or change inventory. New-request email contains only
+company, quantity, delivery choice, reference, and a sign-in link to the request queue.
+Badge names, property addresses, contact details, uploads, and tokens stay in the portal.
+SMTP debug logging and filesystem/URL attachment access are disabled; TLS certificate
+verification is mandatory. Invalid/partial configuration leaves the sender disabled
+without breaking checkout or discarding requests.
+
+Safe connection failures retry with backoff, up to five attempts. Authentication or
+recipient failures remain visible as failed; staff may retry them after fixing the
+sender. Timeouts during delivery and interrupted in-flight sends are marked uncertain
+and never automatically resent. Check the inbox before a trusted operator investigates
+those rows; SMTP cannot provide exactly-once delivery across crashes. Stable message
+IDs help investigation but do not guarantee recipient deduplication. Raw mail errors,
+credentials, and recipient details are not stored in diagnostic categories.
 
 ## Legacy Workbook Account Drafts
 

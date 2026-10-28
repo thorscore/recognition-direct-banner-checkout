@@ -2,7 +2,8 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ExpressOneStore, PortalError, seedPreview } from './express-one-store.mjs';
-import { PortalSessions, ShopifyPortalIdentity, checkPortalHost, checkMutation, portalActor, portalConfig, signInFailure } from './express-one-auth.mjs';
+import { PortalSessions, ShopifyPortalIdentity, checkPortalHost, checkMutation, portalActor, portalOperator, portalConfig, signInFailure } from './express-one-auth.mjs';
+import { ExpressOneAlerts } from './express-one-alerts.mjs';
 
 const root = import.meta.dirname;
 const escape = value => String(value).replace(/[&<>"']/g,char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -22,9 +23,10 @@ function signInErrorPage(failure,reference) {
 }
 
 function dashboard(preview) {
-  return page('Express One',`<header class="brand"><strong>Recognition Direct</strong><span>Express One</span><div class="header-end">${preview ? '<span class="preview-label">Private preview / sample data</span>':''}<button id="sign-out" class="secondary">Sign out</button></div></header>
+  return page('Express One',`<header class="brand"><strong>Recognition Direct</strong><span>Express One</span><div class="header-end">${preview ? '<span class="preview-label">Private preview / sample data</span>':''}<button id="switch-view" class="secondary" hidden>View as customer</button><button id="sign-out" class="secondary">Sign out</button></div></header>
   <main class="workspace"><div class="page-head"><div><p id="account-name" class="eyebrow"></p><h1 id="page-title">Badge inventory</h1></div><button id="add-stock" hidden>Add prepaid stock</button></div>
   <p id="notice" role="status" class="notice" hidden></p><p id="error" role="alert" class="error" hidden></p>
+  <section id="staff-alerts" class="staff-alerts" hidden><div><strong>Staff email alerts</strong><p id="alert-status"></p></div><button id="test-email" class="secondary">Send test email</button></section>
   <section id="order-profile" class="order-profile" hidden></section>
   <section class="metrics" aria-label="Account summary"><div><span>Badges on hand</span><strong id="metric-stock">-</strong></div><div><span>Reserved for requests</span><strong id="metric-reserved">-</strong></div><div><span>Uninvoiced shipping</span><strong id="metric-shipping">-</strong></div></section>
   <nav class="tabs" role="tablist" aria-label="Express One views"><button role="tab" id="tab-inventory" aria-selected="true" aria-controls="inventory">Inventory</button><button role="tab" id="tab-requests" aria-selected="false" aria-controls="requests">Requests</button><button role="tab" id="tab-shipping" aria-selected="false" aria-controls="shipping">Shipping & invoices</button></nav>
@@ -80,6 +82,8 @@ export async function createExpressOneHandler({ env = process.env, databasePath,
     store.setOrderProfile(actor,account.id,previewProfile.profile);
     for (const [key,path] of Object.entries(previewProfile.images || {})) store.setProfileImage(actor,account.id,key,await readFile(path));
   }
+  const alerts = new ExpressOneAlerts(store,{env,preview:config.preview,base:config.base});
+  alerts.start();
   const attempts = new Map();
   const assets = new Map([['/express-one/assets/portal.js',['express-one.js','application/javascript']],['/express-one/assets/portal.css',['express-one.css','text/css']],['/assets/name-badges/1x3-white-no-frame.png',['name-badges/1x3-white-no-frame.png','image/png']]]);
   const handler = async (req,res) => {
@@ -122,18 +126,26 @@ export async function createExpressOneHandler({ env = process.env, databasePath,
           return true;
         }
         if (url.pathname === '/express-one/sign-out') { sessions.logout(session,res); json(res,200,{ok:true}); return true; }
+        if (url.pathname === '/express-one/api/view') {
+          if (!portalOperator(session,config)) throw new PortalError('Staff access required.',403);
+          if (!['staff','customer'].includes(body.view)) throw new PortalError('Choose a valid view.');
+          if (body.view === 'customer' && !store.accountForIdentity(session.identity)) throw new PortalError('No customer test account is linked to your login.',404);
+          session.view = body.view; json(res,200,{ok:true}); return true;
+        }
         const actor = portalActor(session,config,store);
         let result;
-        if (url.pathname === '/express-one/api/requests') result = store.createRequest(actor,body);
+        if (url.pathname === '/express-one/api/requests') { result = store.createRequest(actor,body); void alerts.wake(); }
         else if (url.pathname === '/express-one/api/request-action') result = store.changeRequest(actor,{id:body.id,action:body.action,reason:body.reason,tracking:body.tracking,shippingCents:body.action === 'fulfill' ? shippingCents(body.shippingCost):undefined});
         else if (url.pathname === '/express-one/api/stock') result = store.addStock(actor,body);
         else if (url.pathname === '/express-one/api/invoices') result = store.recordInvoice(actor,body);
+        else if (url.pathname === '/express-one/api/test-email') result = await alerts.test(actor);
+        else if (url.pathname === '/express-one/api/retry-alert') result = await alerts.retry(actor,body.id);
         else throw new PortalError('Not found.',404);
         json(res,200,result); return true;
       }
       if (req.method === 'GET' && url.pathname === '/express-one/api/state') {
         const actor = portalActor(session,config,store);
-        json(res,200,{role:actor.role,csrf:session.csrf,preview:config.preview,...store.snapshot(actor)}); return true;
+        json(res,200,{role:actor.role,csrf:session.csrf,preview:config.preview,canSwitchView:portalOperator(session,config) && Boolean(store.accountForIdentity(session.identity)),...(actor.role === 'staff' ? {alerts:alerts.status(actor)}:{}),...store.snapshot(actor)}); return true;
       }
       const imageRoute = url.pathname.match(/^\/express-one\/api\/badge-image\/([a-f0-9-]{36})\/(gold|silver|logo)$/);
       if (req.method === 'GET' && imageRoute) {
@@ -147,6 +159,6 @@ export async function createExpressOneHandler({ env = process.env, databasePath,
       return true;
     }
   };
-  handler.store = store; handler.sessions = sessions; handler.close = () => store.close(); handler.config = config;
+  handler.store = store; handler.sessions = sessions; handler.alerts = alerts; handler.close = async () => { await alerts.close(); store.close(); }; handler.config = config;
   return handler;
 }
