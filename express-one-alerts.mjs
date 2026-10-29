@@ -8,7 +8,10 @@ export function alertConfig(env,preview) {
   const recipient = env.EXPRESS_ONE_STAFF_EMAIL || 'info@recognition-direct.com';
   if (preview || env.EXPRESS_ONE_EMAIL_ENABLED !== 'true') return {enabled:false,state:preview ? 'preview':'not-connected'};
   const host = env.EXPRESS_ONE_SMTP_HOST || 'smtp.gmail.com', port = Number(env.EXPRESS_ONE_SMTP_PORT || 465);
-  const user = env.EXPRESS_ONE_SMTP_USER, pass = env.EXPRESS_ONE_SMTP_PASS, from = env.EXPRESS_ONE_EMAIL_FROM || user;
+  const user = env.EXPRESS_ONE_SMTP_USER, rawPass = env.EXPRESS_ONE_SMTP_PASS, from = env.EXPRESS_ONE_EMAIL_FROM || user;
+  const compactPass = typeof rawPass === 'string' ? rawPass.replace(/\s/g,''):rawPass;
+  // Google displays app passwords in groups; preserve other providers' credentials exactly.
+  const pass = host.toLowerCase() === 'smtp.gmail.com' && /^[a-z]{16}$/i.test(compactPass || '') ? compactPass:rawPass;
   if (!/^[a-z0-9][a-z0-9.-]+[a-z0-9]$/i.test(host) || ![465,587].includes(port) || !email(user) || !pass || !email(from) || !email(recipient)) return {enabled:false,state:'configuration-error'};
   return {enabled:true,state:'connected',recipient,from,smtp:{host,port,secure:port === 465,requireTLS:true,
     auth:{user,pass},tls:{rejectUnauthorized:true,minVersion:'TLSv1.2'},

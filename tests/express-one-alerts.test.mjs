@@ -35,6 +35,21 @@ test('email configuration is off by default, never sends in preview, and require
   }
 });
 
+test('Google grouped app-password spacing is normalized without changing other SMTP passwords',()=>{
+  for(const pass of ['abcd efgh ijkl mnop','\tabcd\nefgh ijkl mnop\n','abcdefghijklmnop']) {
+    const config=alertConfig({...env,EXPRESS_ONE_SMTP_PASS:pass},false);
+    assert.equal(config.smtp.auth.pass,'abcdefghijklmnop');
+  }
+  for(const settings of [
+    {EXPRESS_ONE_SMTP_HOST:'smtp.example.test',EXPRESS_ONE_SMTP_PASS:'abcd efgh ijkl mnop'},
+    {EXPRESS_ONE_SMTP_PASS:'other password with spaces'},
+    {EXPRESS_ONE_SMTP_PASS:'short pass'}
+  ]) {
+    const config=alertConfig({...env,...settings},false);
+    assert.equal(config.smtp.auth.pass,settings.EXPRESS_ONE_SMTP_PASS);
+  }
+});
+
 test('request and alert commit together; duplicate submissions queue only one alert',t=>{
   const {store,customer,alerts,input}=fixture(t);
   const first=store.createRequest(customer,input),second=store.createRequest(customer,input);
