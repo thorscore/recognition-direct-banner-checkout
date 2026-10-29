@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { PortalError } from './express-one-store.mjs';
+import { deliveryLabel } from './express-one-delivery.mjs';
 
 const email = value => typeof value === 'string' && /^[^\s<>@,;\r\n]+@[^\s<>@,;\r\n]+\.[^\s<>@,;\r\n]+$/.test(value);
 const staff = actor => { if (actor?.role !== 'staff') throw new PortalError('Staff access required.',403); };
@@ -42,7 +43,7 @@ export class ExpressOneAlerts {
   message(request) {
     return {from:this.config.from,to:this.config.recipient,subject:'Express One: new badge request',
       messageId:`<express-one-${request.id}@${this.base.hostname}>`,
-      text:`A new Express One badge request is awaiting staff approval.\n\nAccount: ${request.company}\nQuantity: ${request.quantity}\nDelivery: ${request.delivery === 'ship' ? 'Ship':request.delivery === 'pickup-la-mesa' ? 'La Mesa pickup':'Pine Valley pickup'}\nReference: ${request.id}\n\nReview privately: ${new URL('/express-one#requests',this.base).href}\n\nSign in to see names and delivery details. No payment, production, or shipment was triggered by this email.`};
+      text:`A new Express One badge request is awaiting staff approval.\n\nAccount: ${request.company}\nQuantity: ${request.quantity}\nDelivery: ${deliveryLabel(request.delivery)}\nReference: ${request.id}\n\nReview privately: ${new URL('/express-one#requests',this.base).href}\n\nSign in to see names and delivery details. No payment, production, or shipment was triggered by this email.`};
   }
   async send(message) {
     const result = await this.transport.sendMail(message);

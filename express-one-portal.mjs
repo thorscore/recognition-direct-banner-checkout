@@ -4,6 +4,9 @@ import { randomUUID } from 'node:crypto';
 import { ExpressOneStore, PortalError, seedPreview } from './express-one-store.mjs';
 import { PortalSessions, ShopifyPortalIdentity, checkPortalHost, checkMutation, portalActor, portalOperator, portalConfig, signInFailure } from './express-one-auth.mjs';
 import { ExpressOneAlerts } from './express-one-alerts.mjs';
+import { deliveryLabels, deliveryOptions } from './express-one-delivery.mjs';
+import { requestPdf } from './express-one-pdf.mjs';
+import { ExpressOneShopify } from './express-one-shopify.mjs';
 
 const root = import.meta.dirname;
 const escape = value => String(value).replace(/[&<>"']/g,char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -34,8 +37,11 @@ function dashboard(preview) {
   <section id="requests" role="tabpanel" aria-labelledby="tab-requests" hidden><h2>Release requests</h2><div id="request-table"></div></section>
   <section id="shipping" role="tabpanel" aria-labelledby="tab-shipping" hidden><div class="page-head"><h2>Shipping ledger</h2><button id="record-invoice" hidden>Record invoice</button></div><div id="shipping-table"></div><h2>Recorded invoices</h2><div id="invoice-table"></div></section>
   </main>
-  <dialog id="release-dialog"><form id="release-form"><h2>Request badges</h2><p id="release-style"></p><input type="hidden" name="stockId"><div id="standard-names"><label for="badge-names">Badge names</label><textarea id="badge-names" name="names" placeholder="Alex Morgan&#10;Taylor Smith"></textarea></div><section id="property-names" hidden><h3>Badge names & quantities</h3><div id="badge-rows"></div><button class="secondary" id="add-name-row" type="button">Add name</button><p id="badge-total" role="status">0 badges</p></section><label id="names-file-label" for="names-file">Names file (TXT or CSV)</label><input type="file" id="names-file" name="namesFile" accept=".txt,.csv"><section id="property-fields" hidden><h3>Property & contact information</h3><div id="property-inputs" class="property-inputs"></div></section><label for="delivery">Delivery</label><select id="delivery" name="delivery"><option value="ship">Ship</option><option value="pickup-la-mesa">La Mesa pickup</option><option value="pickup-pine-valley">Pine Valley pickup</option></select><label for="delivery-notes" id="delivery-notes-label">Shipping address / pickup notes</label><textarea id="delivery-notes" name="notes" maxlength="1500"></textarea><p class="form-error" role="alert"></p><div class="form-actions"><button class="secondary" type="button" data-close>Cancel</button><button type="submit">Submit request</button></div></form></dialog>
-  <dialog id="review-dialog"><form id="review-form"><h2 id="review-title">Review release</h2><input type="hidden" name="id"><input type="hidden" name="action"><div id="shipping-fields"><label for="shipping-cost">Actual shipping charge ($)</label><input id="shipping-cost" name="shippingCost" type="number" min="0" max="10000" step="0.01"><label for="tracking">Tracking number (optional)</label><input id="tracking" name="tracking" maxlength="200"></div><div id="reason-fields"><label for="reason">Reason</label><textarea id="reason" name="reason" maxlength="300"></textarea></div><p class="form-error" role="alert"></p><div class="form-actions"><button class="secondary" type="button" data-close>Cancel</button><button id="review-submit" type="submit">Save</button></div></form></dialog>
+  <dialog id="release-dialog"><form id="release-form"><h2>Request badges</h2><p id="release-style"></p><input type="hidden" name="stockId"><div id="standard-names"><label for="badge-names">Badge names</label><textarea id="badge-names" name="names" placeholder="Alex Morgan&#10;Taylor Smith"></textarea></div><section id="property-names" hidden><h3>Badge names & quantities</h3><div id="badge-rows"></div><button class="secondary" id="add-name-row" type="button">Add name</button><p id="badge-total" role="status">0 badges</p></section><label id="names-file-label" for="names-file">Names file (TXT or CSV)</label><input type="file" id="names-file" name="namesFile" accept=".txt,.csv"><section id="property-fields" hidden><h3>Property & contact information</h3><div id="property-inputs" class="property-inputs"></div></section><fieldset class="delivery-options"><legend>Delivery</legend>${deliveryOptions.map((value,index) => `<label><input type="radio" name="delivery" value="${value}"${index === 0 ? ' checked':''}>${escape(deliveryLabels[value])}</label>`).join('')}</fieldset><label for="delivery-notes" id="delivery-notes-label">Shipping address / pickup notes</label><textarea id="delivery-notes" name="notes" maxlength="1500"></textarea><p class="form-error" role="alert"></p><div class="form-actions"><button class="secondary" type="button" data-close>Cancel</button><button type="submit">Submit request</button></div></form></dialog>
+  <dialog id="review-dialog"><form id="review-form"><h2 id="review-title">Review release</h2><input type="hidden" name="id"><input type="hidden" name="action"><div id="shipping-fields"><label for="shipping-cost">Actual shipping charge ($)</label><input id="shipping-cost" name="shippingCost" type="number" min="0" max="10000" step="0.01"><label for="tracking">Tracking number (optional)</label><input id="tracking" name="tracking" maxlength="200"><label id="dispatch-confirmation" class="check" hidden><input type="checkbox" name="dispatchConfirmed">Package has been handed to the carrier</label></div><div id="reason-fields"><label for="reason">Reason</label><textarea id="reason" name="reason" maxlength="300"></textarea></div><p class="form-error" role="alert"></p><div class="form-actions"><button class="secondary" type="button" data-close>Cancel</button><button id="review-submit" type="submit">Save</button></div></form></dialog>
+  <dialog id="shopify-dialog"><form id="shopify-form"><h2>Create Shopify shipping order</h2><p id="shopify-summary"></p><input type="hidden" name="id"><div class="property-inputs">
+    ${[['recipient','Recipient name'],['company','Company / property'],['address1','Street address'],['address2','Suite / leasing office (optional)'],['city','City'],['provinceCode','State / province code'],['zip','ZIP / postal code'],['countryCode','Country code'],['email','Contact email'],['phone','Phone in +country format (optional)']].map(([key,label]) => `<div><label for="shopify-${key}">${label}</label><input id="shopify-${key}" name="${key}" maxlength="${key === 'email' ? 254:240}" ${['address2','phone'].includes(key) ? '':'required'} ${key === 'email' ? 'type="email"':''}></div>`).join('')}
+    </div><label class="check"><input type="checkbox" name="confirmAddress" required>I verified this shipping address and the $0 prepaid release</label><p class="form-error" role="alert"></p><div class="form-actions"><button class="secondary" type="button" data-close>Cancel</button><button type="submit">Create $0 shipping order</button></div></form></dialog>
   <dialog id="stock-dialog"><form id="stock-form"><h2>Add prepaid stock</h2><label for="stock-account">Customer</label><select id="stock-account" name="accountId" required></select><label for="stock-title">Badge style</label><input id="stock-title" name="title" maxlength="180" required><label for="stock-quantity">Quantity</label><input id="stock-quantity" name="quantity" type="number" min="1" max="100000" step="1" required><label for="paid-order">Paid order reference</label><input id="paid-order" name="paidOrder" maxlength="120" required><label class="check"><input type="checkbox" name="paymentVerified" required>Payment and badge stock verified</label><p class="form-error" role="alert"></p><div class="form-actions"><button class="secondary" type="button" data-close>Cancel</button><button type="submit">Add stock</button></div></form></dialog>
   <dialog id="invoice-dialog"><form id="invoice-form"><h2>Record shipping invoice</h2><label for="invoice-account">Customer / depleted-stock shipping</label><select id="invoice-account" name="accountId" required></select><label for="invoice-reference">Existing invoice reference</label><input id="invoice-reference" name="reference" maxlength="120" required><p class="form-error" role="alert"></p><div class="form-actions"><button class="secondary" type="button" data-close>Cancel</button><button type="submit">Record invoice</button></div></form></dialog>`,true);
 }
@@ -63,7 +69,7 @@ export function shippingCents(value) {
   return Number(whole)*100+Number(fraction.padEnd(2,'0'));
 }
 
-export async function createExpressOneHandler({ env = process.env, databasePath, identityProvider, previewProfile, onSignInFailure = entry => console.warn(JSON.stringify(entry)) } = {}) {
+export async function createExpressOneHandler({ env = process.env, databasePath, identityProvider, previewProfile, shopify, onSignInFailure = entry => console.warn(JSON.stringify(entry)) } = {}) {
   const config = portalConfig(env);
   if (!config.preview && (!config.issuer || !config.clientId || !config.clientSecret)) throw new Error('Configure Shopify customer sign-in before enabling Express One.');
   const path = databasePath || join(root,'data','express-one-v2.sqlite');
@@ -83,6 +89,7 @@ export async function createExpressOneHandler({ env = process.env, databasePath,
     for (const [key,path] of Object.entries(previewProfile.images || {})) store.setProfileImage(actor,account.id,key,await readFile(path));
   }
   const alerts = new ExpressOneAlerts(store,{env,preview:config.preview,base:config.base});
+  const shopifyShipping = new ExpressOneShopify(store,{...shopify,enabled:env.EXPRESS_ONE_SHOPIFY_ENABLED === 'true',preview:config.preview});
   alerts.start();
   const attempts = new Map();
   const assets = new Map([['/express-one/assets/portal.js',['express-one.js','application/javascript']],['/express-one/assets/portal.css',['express-one.css','text/css']],['/assets/name-badges/1x3-white-no-frame.png',['name-badges/1x3-white-no-frame.png','image/png']]]);
@@ -135,17 +142,30 @@ export async function createExpressOneHandler({ env = process.env, databasePath,
         const actor = portalActor(session,config,store);
         let result;
         if (url.pathname === '/express-one/api/requests') { result = store.createRequest(actor,body); void alerts.wake(); }
-        else if (url.pathname === '/express-one/api/request-action') result = store.changeRequest(actor,{id:body.id,action:body.action,reason:body.reason,tracking:body.tracking,shippingCents:body.action === 'fulfill' ? shippingCents(body.shippingCost):undefined});
+        else if (url.pathname === '/express-one/api/request-action') {
+          const input = {id:body.id,action:body.action,reason:body.reason,tracking:body.tracking,shippingCents:body.action === 'fulfill' ? shippingCents(body.shippingCost):undefined};
+          const linked = actor.role === 'staff' && store.shopifyRelease(actor,body.id);
+          result = body.action === 'fulfill' && linked?.state === 'linked' ? await shopifyShipping.fulfill(actor,{...input,dispatchConfirmed:body.dispatchConfirmed === 'on'}):store.changeRequest(actor,input);
+        }
         else if (url.pathname === '/express-one/api/stock') result = store.addStock(actor,body);
         else if (url.pathname === '/express-one/api/invoices') result = store.recordInvoice(actor,body);
         else if (url.pathname === '/express-one/api/test-email') result = await alerts.test(actor);
         else if (url.pathname === '/express-one/api/retry-alert') result = await alerts.retry(actor,body.id);
+        else if (url.pathname === '/express-one/api/shopify-order') result = await shopifyShipping.create(actor,body);
+        else if (url.pathname === '/express-one/api/shopify-status') result = await shopifyShipping.refresh(actor,body.id);
         else throw new PortalError('Not found.',404);
         json(res,200,result); return true;
       }
       if (req.method === 'GET' && url.pathname === '/express-one/api/state') {
         const actor = portalActor(session,config,store);
-        json(res,200,{role:actor.role,csrf:session.csrf,preview:config.preview,canSwitchView:portalOperator(session,config) && Boolean(store.accountForIdentity(session.identity)),...(actor.role === 'staff' ? {alerts:alerts.status(actor)}:{}),...store.snapshot(actor)}); return true;
+        const snapshot = store.snapshot(actor);
+        if (actor.role === 'staff') for (const row of snapshot.requests) if (row.shopify) row.shopify.url = shopifyShipping.url(row.shopify.order_id);
+        json(res,200,{role:actor.role,csrf:session.csrf,preview:config.preview,deliveryLabels,canSwitchView:portalOperator(session,config) && Boolean(store.accountForIdentity(session.identity)),...(actor.role === 'staff' ? {alerts:alerts.status(actor),shopifyShipping:shopifyShipping.status(actor)}:{}),...snapshot}); return true;
+      }
+      const pdfRoute = url.pathname.match(/^\/express-one\/api\/request\/([a-f0-9-]{36})\/pdf$/);
+      if (req.method === 'GET' && pdfRoute) {
+        const body = await requestPdf(store,portalActor(session,config,store),pdfRoute[1]);
+        res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="express-one-${pdfRoute[1]}.pdf"`,'Cross-Origin-Resource-Policy':'same-origin'});res.end(body);return true;
       }
       const imageRoute = url.pathname.match(/^\/express-one\/api\/badge-image\/([a-f0-9-]{36})\/(gold|silver|logo)$/);
       if (req.method === 'GET' && imageRoute) {
@@ -159,6 +179,6 @@ export async function createExpressOneHandler({ env = process.env, databasePath,
       return true;
     }
   };
-  handler.store = store; handler.sessions = sessions; handler.alerts = alerts; handler.close = async () => { await alerts.close(); store.close(); }; handler.config = config;
+  handler.store = store; handler.sessions = sessions; handler.alerts = alerts; handler.shopifyShipping = shopifyShipping; handler.close = async () => { await alerts.close(); store.close(); }; handler.config = config;
   return handler;
 }

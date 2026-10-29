@@ -98,6 +98,42 @@ test('badge example images require sign-in and the owning account',async t => {
   assert.equal((await staff.request(path)).status,200);
 });
 
+test('request PDF downloads require the owning customer or staff, never mutate requests, and stay private',async t => {
+  const {base,handler,client}=await fixture(t),customer=await client('customer'),other=await client('other'),staff=await client('staff');
+  const result=await (await customer.request('/express-one/api/requests',{stockId:customer.state.stock[0].id,names:[{name:'Sample PDF'}],delivery:'pickup-spring-valley',notes:'TEST - do not produce',requestKey:'pdf'})).json();
+  const path=`/express-one/api/request/${result.id}/pdf`;
+  assert.equal((await fetch(`${base}${path}`)).status,401);
+  assert.equal((await other.request(path)).status,404);
+  for(const reader of [customer,staff]) {
+    const response=await reader.request(path);
+    assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'application/pdf');assert.equal(response.headers.get('cache-control'),'no-store');
+    assert.match(response.headers.get('content-disposition'),/attachment; filename="express-one-/);
+    assert.equal(Buffer.from(await response.arrayBuffer()).subarray(0,5).toString(),'%PDF-');
+  }
+  assert.equal(handler.store.snapshot({role:'staff'}).stock.find(row=>row.id===customer.state.stock[0].id).remaining,40);
+  assert.equal(handler.store.requestRecord({role:'staff'},result.id).status,'requested');
+});
+
+test('only the two new Express One delivery choices are offered and accepted; Shopify routes stay staff-only and preview-safe',async t => {
+  let calls=0;
+  const {client}=await fixture(t,{env:{EXPRESS_ONE_SHOPIFY_ENABLED:'true'},shopify:{shop:'sample',graphql:async()=>{calls++;}}}),customer=await client('customer'),staff=await client('staff');
+  const html=await (await customer.request('/express-one')).text();
+  const selector=html.match(/<fieldset class="delivery-options"[\s\S]*?<\/fieldset>/)[0];
+  assert.match(selector,/Ship/);assert.match(selector,/Pickup at 8680 Troy St\. Spring Valley, CA 91977/);assert.equal((selector.match(/type="radio"/g)||[]).length,2);assert.doesNotMatch(selector,/Pine Valley|La Mesa/);
+  for(const delivery of ['pickup-la-mesa','pickup-pine-valley']) assert.equal((await customer.request('/express-one/api/requests',{stockId:customer.state.stock[0].id,names:[{name:'Sample'}],delivery,requestKey:delivery})).status,400);
+  for(const route of ['shopify-order','shopify-status']) assert.equal((await customer.request(`/express-one/api/${route}`,{id:'fake',role:'staff'})).status,403);
+  assert.equal(staff.state.shopifyShipping.enabled,false);assert.equal(customer.state.shopifyShipping,undefined);assert.equal(calls,0);
+});
+
+test('HTTP clients cannot forge Shopify verification to mark a linked release shipped',async t => {
+  const {handler,client}=await fixture(t),customer=await client('customer'),operator=await client('staff'),actor={role:'staff',subject:'test'};
+  const request=await (await customer.request('/express-one/api/requests',{stockId:customer.state.stock[0].id,names:[{name:'Sample'}],delivery:'ship',requestKey:'forged-shipping'})).json();
+  handler.store.changeRequest(actor,{id:request.id,action:'approve'});handler.store.claimShopifyRelease(actor,request.id);
+  handler.store.saveShopifyRelease(actor,request.id,{id:'gid://shopify/Order/123',name:'#SAMPLE',status:'fulfilled',tracking:[{number:'SAMPLE'}]});
+  const response=await operator.request('/express-one/api/request-action',{id:request.id,action:'fulfill',shippingCost:'10',shopifyVerified:true,dispatchConfirmed:'on',tracking:'FORGED'});
+  assert.equal(response.status,409);assert.equal(handler.store.requestRecord(actor,request.id).status,'approved');assert.equal(handler.store.requestRecord(actor,request.id).remaining,40);
+});
+
 test('expired callbacks show actionable help and record no secrets or verified identity',async t => {
   const logs=[],{base,handler}=await fixture(t,{onSignInFailure:entry=>logs.push(entry)});
   const login=await fetch(`${base}/express-one`),cookie=login.headers.get('set-cookie').split(';')[0];

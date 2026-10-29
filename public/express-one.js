@@ -74,15 +74,27 @@
       if (state.stock[index]?.available === 0) button.disabled = true;
     }
     table('#request-table',['Requested','Badge style','Names','Quantity','Status',...(staff ? ['Email alert']:[]),'Actions'],state.requests.map(row => {
-      const names = el('details',{},el('summary',{},`${row.names.length} badge${row.names.length === 1 ? '':'s'}`),el('ul',{},row.names.map(item => el('li',{},item.name,item.finish ? ` / ${item.finish}`:'',item.title ? ` / ${item.title}`:''))),el('p',{},row.delivery === 'ship' ? 'Ship':row.delivery === 'pickup-la-mesa' ? 'La Mesa pickup':'Pine Valley pickup'),row.notes ? el('p',{},row.notes):null);
+      const names = el('details',{},el('summary',{},`${row.names.length} badge${row.names.length === 1 ? '':'s'}`),el('ul',{},row.names.map(item => el('li',{},item.name,item.finish ? ` / ${item.finish}`:'',item.title ? ` / ${item.title}`:''))),el('p',{},state.deliveryLabels[row.delivery] || 'Delivery needs staff review'),row.notes ? el('p',{},row.notes):null);
       if (row.details?.propertyName) {
         const profile = state.accounts.find(account => account.id === row.account_id)?.orderProfile;
         names.append(el('dl',{class:'request-property'},(profile?.fields || []).flatMap(field => [el('dt',{},field.label),el('dd',{},row.details[field.name])])));
       }
       const actions = el('div',{class:'row-actions'});
+      actions.append(el('a',{href:`/express-one/api/request/${row.id}/pdf`,class:'pdf-download',download:''},'Download PDF'));
       if (staff && row.status === 'requested') actions.append(button('Approve',async () => { await api('api/request-action',{id:row.id,action:'approve'}); await refresh(); notice('Request approved.'); },false));
-      if (staff && ['requested','approved'].includes(row.status)) actions.append(button('Reject',() => openReview(row,'reject')));
-      if (staff && row.status === 'approved') actions.append(button(row.delivery === 'ship' ? 'Mark shipped':'Mark ready',() => openReview(row,'fulfill'),false));
+      if (staff && ['requested','approved'].includes(row.status) && (!row.shopify || row.shopify.state === 'failed' || row.shopify.order_status === 'cancelled')) actions.append(button('Reject',() => openReview(row,'reject')));
+      if (staff && row.shopify) {
+        const linked = row.shopify;
+        actions.append(el('small',{},linked.order_name ? `${linked.order_name} / ${linked.order_status}`:linked.state === 'failed' ? 'Shopify details rejected':'Shopify attempt needs checking'));
+        if (linked.url) actions.append(el('a',{href:linked.url,target:'_blank',rel:'noopener'},'Open Shopify order'));
+        if (state.shopifyShipping.enabled) actions.append(button('Check Shopify order',async () => {await api('api/shopify-status',{id:row.id});await refresh();notice('Shopify status updated. Inventory has not been changed.');}));
+      }
+      if (staff && row.status === 'approved' && row.delivery === 'ship' && (!row.shopify || row.shopify.state === 'failed') && state.shopifyShipping.enabled) actions.append(button('Create Shopify shipping order',() => openShopify(row)));
+      if (staff && row.status === 'approved' && !['creating','uncertain'].includes(row.shopify?.state)) {
+        const fulfill = button(row.shopify?.state === 'linked' ? 'Record shipment':row.delivery === 'ship' ? 'Mark shipped':'Mark ready',() => openReview(row,'fulfill'),false);
+        if (row.shopify?.state === 'linked' && row.shopify.order_status !== 'fulfilled') {fulfill.disabled=true;fulfill.title='Check the completed Shopify shipment first';}
+        actions.append(fulfill);
+      }
       if (!staff && row.status === 'requested') actions.append(button('Cancel request',async () => { await api('api/request-action',{id:row.id,action:'cancel'}); await refresh(); notice('Request cancelled.'); }));
       const alert = staff ? state.alerts.requests.find(item => item.requestId === row.id):null;
       const alertCell = el('div',{},({pending:'Pending',sending:'Sending',sent:'Accepted by mail server',failed:'Failed',uncertain:'Check inbox before retrying',skipped:'No longer awaiting approval'})[alert?.status] || 'No alert queued');
@@ -139,7 +151,19 @@
     $('#shipping-fields').hidden = action !== 'fulfill' || row.delivery !== 'ship';
     form.elements.shippingCost.required = action === 'fulfill' && row.delivery === 'ship';
     form.elements.shippingCost.value = row.delivery === 'ship' ? '':'0';
+    const linked = action === 'fulfill' && row.shopify?.state === 'linked';
+    form.elements.tracking.disabled = linked;
+    if (linked) form.elements.tracking.value = row.shopify.tracking.map(item => item.number).join(', ');
+    $('#dispatch-confirmation').hidden = !linked;form.elements.dispatchConfirmed.required = linked;
     $('#review-dialog').showModal();
+  }
+  function openShopify(row) {
+    const form = $('#shopify-form'), details = row.details || {};
+    form.reset();form.querySelector('.form-error').textContent='';form.elements.id.value=row.id;
+    const values = {recipient:details.attention || '',company:details.propertyName || row.company,address1:details.address || '',address2:details.leasingOffice || '',city:details.city || '',provinceCode:details.state || '',zip:details.zip || '',countryCode:'US',email:details.email || '',phone:''};
+    for (const [key,value] of Object.entries(values)) form.elements[key].value=value;
+    $('#shopify-summary').textContent=`${row.quantity} prepaid badge${row.quantity === 1 ? '':'s'}. New badge charge: $0.00. Shipping will be recorded separately in Express One. No label is purchased and no customer receipt is requested by this action.`;
+    $('#shopify-dialog').showModal();
   }
   async function submitForm(form,operation,success) {
     const submit = form.querySelector('[type=submit]'); submit.disabled = true; form.querySelector('.form-error').textContent = '';
@@ -178,6 +202,7 @@
   });
   $('#add-name-row').addEventListener('click',addNameRow);
   $('#review-form').addEventListener('submit',event => { event.preventDefault(); const form = event.currentTarget; submitForm(form,() => api('api/request-action',Object.fromEntries(new FormData(form))),'Request updated.'); });
+  $('#shopify-form').addEventListener('submit',event => {event.preventDefault();const form=event.currentTarget;submitForm(form,() => {const data=new FormData(form);return api('api/shopify-order',{...Object.fromEntries(data),confirmAddress:data.get('confirmAddress') === 'on'});},'Prepaid shipping order created. Open it in Shopify to review package details and buy the label.');});
   $('#add-stock').addEventListener('click',() => {
     const form = $('#stock-form'); form.reset(); form.querySelector('.form-error').textContent = '';
     $('#stock-account').replaceChildren(state.accounts.map(row => el('option',{value:row.id},row.company))); $('#stock-dialog').showModal();

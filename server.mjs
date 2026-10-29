@@ -17,7 +17,7 @@ const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
 const expressOnePortal = process.env.EXPRESS_ONE_ENABLED === "true"
-  ? await (await import("./express-one-portal.mjs")).createExpressOneHandler()
+  ? await (await import("./express-one-portal.mjs")).createExpressOneHandler({shopify:MOCK_SHOPIFY ? undefined:{graphql:shopifyGraphql,shop:SHOPIFY_SHOP}})
   : null;
 const DATA_DIR = join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");

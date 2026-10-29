@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomUUID } from 'node:crypto';
 import { parse } from 'csv-parse/sync';
+import { deliveryOptions } from './express-one-delivery.mjs';
 
 export class PortalError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -91,6 +92,7 @@ export class ExpressOneStore {
       CREATE TABLE IF NOT EXISTS order_profiles(account_id TEXT PRIMARY KEY REFERENCES accounts(id), payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS profile_images(account_id TEXT NOT NULL REFERENCES accounts(id), image_key TEXT NOT NULL, body BLOB NOT NULL, PRIMARY KEY(account_id,image_key));
       CREATE TABLE IF NOT EXISTS request_alerts(request_id TEXT PRIMARY KEY REFERENCES requests(id), status TEXT NOT NULL CHECK(status IN ('pending','sending','sent','failed','uncertain','skipped')), attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0, error_category TEXT NOT NULL DEFAULT '', sent_at TEXT);
+      CREATE TABLE IF NOT EXISTS shopify_releases(request_id TEXT PRIMARY KEY REFERENCES requests(id), state TEXT NOT NULL CHECK(state IN ('creating','linked','uncertain','failed')), order_id TEXT UNIQUE, order_name TEXT NOT NULL DEFAULT '', order_status TEXT NOT NULL DEFAULT '', tracking TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, checked_at TEXT, error_category TEXT NOT NULL DEFAULT '');
       CREATE INDEX IF NOT EXISTS request_owner ON requests(account_id,created_at);
       CREATE INDEX IF NOT EXISTS stock_requests ON requests(stock_id,status);
       CREATE UNIQUE INDEX IF NOT EXISTS paid_stock_source ON stock(account_id,paid_order,title);
@@ -178,7 +180,7 @@ export class ExpressOneStore {
     const names = badgeNames(input,profile), notes = text(input.notes || '', 1500);
     const details = propertyDetails(input.details,profile);
     const delivery = input.delivery;
-    if (!['ship','pickup-la-mesa','pickup-pine-valley'].includes(delivery)) fail('Choose shipping or a pickup location.');
+    if (!deliveryOptions.includes(delivery)) fail('Choose Ship or pickup at the Spring Valley address.');
     const payloadHash = hash({ stockId, names, notes, delivery,...(profile ? {details}:{}) });
     return this.transaction(() => {
       const prior = this.db.prepare('SELECT id,payload_hash FROM requests WHERE account_id=? AND request_key=?').get(actor.accountId, key);
@@ -205,6 +207,43 @@ export class ExpressOneStore {
     staff(actor);
     return this.db.prepare('SELECT request_id AS requestId,status,attempts,error_category AS errorCategory,sent_at AS sentAt FROM request_alerts ORDER BY rowid DESC LIMIT 500').all();
   }
+  requestRecord(actor,id) {
+    if (!['staff','customer'].includes(actor?.role)) fail('Sign in to continue.',401);
+    const row = this.db.prepare('SELECT r.*,s.title,s.original,s.remaining,s.paid_order,a.company FROM requests r JOIN stock s ON s.id=r.stock_id JOIN accounts a ON a.id=r.account_id WHERE r.id=?').get(required(id,80));
+    if (!row || actor.role !== 'staff' && row.account_id !== actor.accountId) fail('Request not found.',404);
+    const {request_key,payload_hash,...request} = row;
+    return {...request,names:JSON.parse(row.names),details:JSON.parse(row.details),profile:this.profileForAccount(row.account_id),shipping:this.db.prepare('SELECT c.cents,c.tracking,i.reference AS invoice_reference FROM shipping c LEFT JOIN invoices i ON i.id=c.invoice_id WHERE c.request_id=?').get(row.id) || null};
+  }
+  shopifyRelease(actor,id) {
+    staff(actor); this.requestRecord(actor,id);
+    const row = this.db.prepare('SELECT * FROM shopify_releases WHERE request_id=?').get(id);
+    return row ? {...row,tracking:JSON.parse(row.tracking)}:null;
+  }
+  claimShopifyRelease(actor,id) {
+    staff(actor);
+    return this.transaction(() => {
+      const request = this.requestRecord(actor,id), prior = this.shopifyRelease(actor,id);
+      if (prior?.state === 'linked') return {request,prior,duplicate:true};
+      if (prior && prior.state !== 'failed') fail('Check the existing Shopify attempt before creating another order.',409);
+      if (request.status !== 'approved' || request.delivery !== 'ship') fail('Approve a shipped request before creating its Shopify order.',409);
+      this.db.prepare("INSERT INTO shopify_releases(request_id,state,created_at) VALUES(?,'creating',?) ON CONFLICT(request_id) DO UPDATE SET state='creating',error_category=''").run(id,new Date().toISOString());
+      this.event(actor,'shopify-release-started',id);
+      return {request,duplicate:false};
+    });
+  }
+  saveShopifyRelease(actor,id,result) {
+    staff(actor);
+    return this.transaction(() => {
+      this.requestRecord(actor,id);
+      this.db.prepare("UPDATE shopify_releases SET state='linked',order_id=?,order_name=?,order_status=?,tracking=?,checked_at=?,error_category='' WHERE request_id=?").run(result.id,result.name,result.status,JSON.stringify(result.tracking || []),new Date().toISOString(),id);
+      this.event(actor,'shopify-release-checked',id,{orderId:result.id,status:result.status});
+      return this.shopifyRelease(actor,id);
+    });
+  }
+  failShopifyRelease(actor,id,uncertain) {
+    staff(actor);
+    this.db.prepare('UPDATE shopify_releases SET state=?,error_category=? WHERE request_id=? AND state=\'creating\'').run(uncertain ? 'uncertain':'failed',uncertain ? 'check-shopify':'input-rejected',id);
+  }
   changeRequest(actor, input) {
     if (!['staff','customer'].includes(actor?.role)) fail('Sign in to continue.',401);
     const id = required(input.id, 80), action = input.action;
@@ -214,6 +253,10 @@ export class ExpressOneStore {
       const allowed = actor.role === 'staff' ? ['approve','reject','fulfill'] : ['cancel'];
       if (!allowed.includes(action)) fail('This action is not allowed.', 403);
       if (action === 'cancel' && row.status !== 'requested' || action === 'approve' && row.status !== 'requested' || action === 'reject' && !['requested','approved'].includes(row.status) || action === 'fulfill' && row.status !== 'approved') fail('The request has already changed. Refresh before continuing.', 409);
+      const linked = this.db.prepare('SELECT * FROM shopify_releases WHERE request_id=?').get(id);
+      if (linked && ['creating','uncertain'].includes(linked.state)) fail('Check the Shopify order attempt before changing this request.',409);
+      if (linked?.state === 'linked' && action === 'reject' && linked.order_status !== 'cancelled') fail('Cancel the linked order in Shopify and refresh its status before rejecting this request.',409);
+      if (linked?.state === 'linked' && action === 'fulfill' && input.shopifyVerified !== true) fail('Verify the completed Shopify shipment before recording this release.',409);
       const at = new Date().toISOString();
       let status = { approve:'approved',reject:'rejected',cancel:'cancelled',fulfill:row.delivery === 'ship' ? 'shipped':'ready' }[action];
       const reason = action === 'reject' ? required(input.reason, 300) : '';
@@ -248,7 +291,7 @@ export class ExpressOneStore {
     const scope = actor.role === 'staff' ? '' : ' WHERE account_id=?';
     const params = actor.role === 'staff' ? [] : [required(actor.accountId, 80)];
     const stock = this.db.prepare(`SELECT s.*,a.company,COALESCE((SELECT SUM(quantity) FROM requests r WHERE r.stock_id=s.id AND r.status IN ('requested','approved')),0) AS reserved FROM stock s JOIN accounts a ON a.id=s.account_id${scope.replace('account_id','s.account_id')} ORDER BY s.created_at DESC`).all(...params);
-    const requests = this.db.prepare(`SELECT r.*,s.title,a.company FROM requests r JOIN stock s ON s.id=r.stock_id JOIN accounts a ON a.id=r.account_id${scope.replace('account_id','r.account_id')} ORDER BY r.created_at DESC LIMIT 500`).all(...params).map(({request_key,payload_hash,...row}) => ({...row,names:JSON.parse(row.names),details:JSON.parse(row.details)}));
+    const requests = this.db.prepare(`SELECT r.*,s.title,a.company FROM requests r JOIN stock s ON s.id=r.stock_id JOIN accounts a ON a.id=r.account_id${scope.replace('account_id','r.account_id')} ORDER BY r.created_at DESC LIMIT 500`).all(...params).map(({request_key,payload_hash,...row}) => ({...row,names:JSON.parse(row.names),details:JSON.parse(row.details),...(actor.role === 'staff' ? {shopify:this.shopifyRelease(actor,row.id)}:{})}));
     const shipping = this.db.prepare(`SELECT c.*,s.remaining,a.company FROM shipping c JOIN stock s ON s.id=c.stock_id JOIN accounts a ON a.id=c.account_id${scope.replace('account_id','c.account_id')} ORDER BY c.created_at DESC LIMIT 500`).all(...params);
     const invoices = this.db.prepare(`SELECT * FROM invoices${scope} ORDER BY created_at DESC`).all(...params);
     const accounts = actor.role === 'staff' ? this.db.prepare('SELECT id,company FROM accounts ORDER BY company').all() : [this.db.prepare('SELECT id,company FROM accounts WHERE id=?').get(actor.accountId)].filter(Boolean);

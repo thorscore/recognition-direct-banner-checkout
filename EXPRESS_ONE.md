@@ -2,7 +2,9 @@
 
 This implementation is not a public launch. The local preview uses sample data,
 binds only to `127.0.0.1`, and has separate storage from live customers and orders.
-No payment, shipment, customer invitation, invoice email, or Shopify order is created.
+No payment, shipment, customer invitation, invoice email, or Shopify order is created
+by the preview. The separately enabled live integration below creates a prepaid
+shipping order only after an explicit staff action.
 
 ## Preview
 
@@ -152,8 +154,8 @@ old prototype functions remain in `server.mjs`. Do not share old prototype links
 - Badge names are bounded private database records, not publicly served uploads.
   The UI renders customer text with DOM text nodes rather than HTML strings.
 - Optional staff request emails use the private SQLite outbox described below.
-  There is no customer enrollment, carrier purchase, tracking lookup, paid-order
-  webhook, customer email, or external invoice call. Email never approves a request
+  There is no customer enrollment, carrier purchase, paid-order webhook, customer
+  email, or external invoice call. Email never approves a request
   or triggers production, payment, stock deduction, or shipment.
 - Request and shipping history currently show the latest 500 records per view;
   inventory and uninvoiced shipping totals are computed across all records.
@@ -253,6 +255,53 @@ For local review only, `EXPRESS_ONE_PREVIEW_PROFILE_FILE` can load a private pro
 JSON containing `company`, `profile`, and optional PNG paths in `images`. This adds
 a separate sample account and 40 explicitly labeled sample badges, never live stock.
 Real source documents, examples and customer profile files stay outside Git.
+
+## Request PDFs and Shopify Shipping Releases
+
+New Express One requests offer exactly **Ship** or **Pickup at 8680 Troy St.
+Spring Valley, CA 91977**. Historical pickup requests retain their original
+location rather than silently changing a customer's choice. Other storefront
+checkout pickup settings are not modified.
+
+**Download PDF** creates a private US Letter production worksheet with badge
+examples, names and finish totals, all property/contact fields, delivery choice,
+notes, status, inventory reference, and recorded tracking/invoice information.
+Only the owning authenticated customer or staff can download it. Responses are
+no-store, and printing does not approve a request or change inventory.
+
+The existing Admin API app requires merchant-approved `read_orders,write_orders`
+in addition to its preserved `write_draft_orders,write_products` scopes. The
+separate Customer Account sign-in permissions are unchanged. Enable
+`EXPRESS_ONE_SHOPIFY_ENABLED=true` only after checking the installed app access.
+The integration verifies order access and USD currency before creation. Preview
+mode always disables real Shopify integration.
+
+1. A customer requests badges; staff review the private names and approve it.
+2. For an approved shipped request, staff choose **Create Shopify shipping order**
+   and explicitly verify the structured destination and contact email.
+3. The app creates one physical custom line at $0, using the actual badge quantity,
+   tagged with the request ID. It bypasses Shopify inventory and requests no order
+   receipt or fulfillment receipt. It creates no transaction, label or fulfillment.
+   Badge names and private delivery notes remain in the portal/PDF, not Shopify.
+4. Staff open the order in Shopify, enter accurate parcel weight/dimensions, and
+   review/buy the label themselves. Review existing store automations during the
+   first live order: third-party workflows can react to any newly created order.
+5. **Check Shopify order** reads status/tracking without changing portal stock.
+   After a complete uncancelled fulfillment with tracking, staff record the actual
+   shipping cost and confirm physical carrier handoff. This deducts prepaid stock
+   once and accrues deferred shipping; label purchase alone does not deduct stock.
+
+Creation claims are stored before the remote call. Duplicate clicks reuse a linked
+order. Interrupted or uncertain results require explicit reconciliation by request
+tag; they never automatically retry creation. Altered prices, quantities, physical
+item flags, or request identifiers block shipment recording. Cancel a linked order
+in Shopify and refresh before rejecting its portal request. The integration does
+not cancel Shopify orders, buy labels, charge customers, send invoices, or perform
+automatic fulfillment. Fulfillment sync is staff-triggered, not a webhook.
+
+Before deployment, take an online SQLite backup on the persistent disk. Preserve
+existing requests and reservations. A complete first live shipping-order/label
+cycle still requires merchant review; mocked tests are not a real carrier test.
 `express-one-import-preview.mjs --profiles PATH` can attach profiles by draft account
 ID to its read-only review; this does not modify or activate the staging accounts.
 

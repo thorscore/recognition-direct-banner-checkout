@@ -73,7 +73,7 @@ test('staff records actual shipping once; invoices become recordable only after 
 });
 test('pickup is ready, not collected, and cannot accrue shipping',t => {
   const {store,customer,request,staff} = fixture(t);
-  const {id} = store.createRequest(customer,request(2,{delivery:'pickup-la-mesa'})); store.changeRequest(staff,{id,action:'approve'});
+  const {id} = store.createRequest(customer,request(2,{delivery:'pickup-spring-valley'})); store.changeRequest(staff,{id,action:'approve'});
   assert.throws(() => store.changeRequest(staff,{id,action:'fulfill',shippingCents:100}),/cannot have shipping/);
   assert.equal(store.snapshot(customer).stock[0].remaining,40);
   assert.equal(store.changeRequest(staff,{id,action:'fulfill',shippingCents:0}).status,'ready');
