@@ -22,7 +22,8 @@ const required = (value,max = 240) => {
   if (typeof value !== 'string' || !value.trim() || value.length>max || /[\u0000-\u001f]/.test(value)) throw new PortalError('Complete and verify the shipping address.');
   return value.trim();
 };
-const tagFor = id => `express-one-request-${id}`;
+// Order tags are limited to 55 characters; retain the full UUID for recovery.
+const tagFor = id => `eo-${id}`;
 const sku = 'EXPRESS-ONE-PREPAID-RELEASE';
 
 export function shippingOrderInput(request,input) {

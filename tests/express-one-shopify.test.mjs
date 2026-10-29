@@ -13,7 +13,7 @@ function fixture(t,options={}) {
   const {id}=store.createRequest(customer,{stockId:stock.id,names:[{name:'PRIVATE BADGE NAME'},{name:'Second'}],delivery:options.delivery||'ship',notes:'PRIVATE DELIVERY NOTE',requestKey:'sample'});
   if(options.approve!==false)store.changeRequest(staff,{id,action:'approve'});
   let mutations=0,status='UNFULFILLED',cancelledAt=null,throwCreate=false,userError=false,findCount=1;
-  const order=()=>({id:'gid://shopify/Order/123',name:'#SAMPLE',tags:[`express-one-request-${id}`],customAttributes:[{key:'Express One request',value:id}],totalPriceSet:{shopMoney:{amount:'0.00',currencyCode:'USD'}},cancelledAt,displayFulfillmentStatus:status,lineItems:{nodes:[{sku:'EXPRESS-ONE-PREPAID-RELEASE',quantity:2,requiresShipping:true,originalUnitPriceSet:{shopMoney:{amount:'0.00',currencyCode:'USD'}}}],pageInfo:{hasNextPage:false}},fulfillments:status==='FULFILLED'?[{status:'SUCCESS',trackingInfo:[{company:'UPS',number:'SAMPLE-TRACKING'}]}]:[]});
+  const order=()=>({id:'gid://shopify/Order/123',name:'#SAMPLE',tags:[`eo-${id}`],customAttributes:[{key:'Express One request',value:id}],totalPriceSet:{shopMoney:{amount:'0.00',currencyCode:'USD'}},cancelledAt,displayFulfillmentStatus:status,lineItems:{nodes:[{sku:'EXPRESS-ONE-PREPAID-RELEASE',quantity:2,requiresShipping:true,originalUnitPriceSet:{shopMoney:{amount:'0.00',currencyCode:'USD'}}}],pageInfo:{hasNextPage:false}},fulfillments:status==='FULFILLED'?[{status:'SUCCESS',trackingInfo:[{company:'UPS',number:'SAMPLE-TRACKING'}]}]:[]});
   const graphql=async(query,variables)=>{
     if(query===shopifyReadinessQuery)return{shop:{currencyCode:options.currency||'USD'},currentAppInstallation:{accessScopes:(options.scopes||['write_orders']).map(handle=>({handle}))}};
     if(query===shopifyCreateMutation){mutations++;assert.equal(variables.order.lineItems[0].priceSet.shopMoney.amount,'0.00');if(throwCreate)throw Error('PRIVATE RAW ERROR');return{orderCreate:userError?{order:null,userErrors:[{message:'PRIVATE'}]}:{order:{id:'gid://shopify/Order/123',name:'#SAMPLE'},userErrors:[]}};}
@@ -54,6 +54,18 @@ test('only approved shipped requests with verified structured addresses can crea
 
 test('missing Shopify order access, wrong currency, disabled integrations and previews fail closed',async t=>{
   for(const options of [{scopes:['write_draft_orders']},{currency:'CAD'},{bridge:{enabled:false}},{bridge:{preview:true}}]){const f=fixture(t,options);await assert.rejects(f.bridge.create(staff,{...address,id:f.id}));assert.equal(f.mutations(),0);}
+});
+
+test('request tags stay within Shopify order limits and preserve the complete UUID for recovery',async t=>{
+  const f=fixture(t),payload=shippingOrderInput(f.store.requestRecord(staff,f.id),address);
+  assert.ok(payload.order.tags.every(tag=>tag.length<=55));
+  assert.ok(payload.order.tags.includes(`eo-${f.id}`));assert.equal(`eo-${f.id}`.length,39);
+  f.setThrow();await assert.rejects(f.bridge.create(staff,{...address,id:f.id}),/uncertain/);
+  f.bridge.graphql=async(query,variables)=>{
+    if(query===shopifyFindQuery)assert.equal(variables.query,`tag:eo-${f.id}`);
+    return f.graphql(query,variables);
+  };
+  assert.equal((await f.bridge.refresh(staff,f.id)).order_name,'#SAMPLE');
 });
 
 test('duplicate and simultaneous create attempts result in one linked Shopify order without stock changes',async t=>{
