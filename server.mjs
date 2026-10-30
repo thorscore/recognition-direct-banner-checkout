@@ -1045,17 +1045,22 @@ function catalogAttributeIsHidden(product, attr) {
   return handle === "table-top-banner-stand" && attr.key === "lamination";
 }
 
-function catalogOptionIsHidden(product, attr, option) {
+function verifiedRetractableOptions(product, version) {
+  return ["standard-retractable", "deluxe-retractable"].includes(productHandle(product.url)) && version === "verified-led-v1";
+}
+
+function catalogOptionIsHidden(product, attr, option, verifiedStand = false) {
   const handle = productHandle(product.url);
-  if (["standard-retractable", "deluxe-retractable", "sd-retractable"].includes(handle) && attr.key === "led" && String(option.key) === "2") return true;
+  if (!verifiedStand && ["standard-retractable", "deluxe-retractable", "sd-retractable"].includes(handle) && attr.key === "led" && String(option.key) === "2") return true;
   if (handle === "step-repeat-backdrop" && attr.key === "size" && String(option.key) === "custom") return true;
   return false;
 }
 
-function normalizeCatalogValues(product, sourceValues) {
+function normalizeCatalogValues(product, sourceValues, verifiedStand = false) {
   const values = { ...sourceValues };
   const handle = productHandle(product.url);
-  if (["standard-retractable", "deluxe-retractable", "sd-retractable"].includes(handle) && String(values.led) === "2") values.led = "1";
+  if (!verifiedStand && ["standard-retractable", "deluxe-retractable", "sd-retractable"].includes(handle) && String(values.led) === "2") values.led = "1";
+  if (verifiedStand && values.hardware === "p") values.led = "0";
   if (handle === "step-repeat-backdrop" && String(values.size) === "custom") values.size = "120x96";
   if (handle === "coroplast") values.hot_size = "custom";
   if (handle === YARD_SIGN_H_STAKE_HANDLE) values.yard_sign_size = yardSignHStakeSize(values.yard_sign_size).key;
@@ -1299,7 +1304,9 @@ async function catalogUnitPrice(product, quantity, input) {
 }
 
 function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
-  let values = normalizeCatalogValues(product, { ...defaultCatalogValues(product), ...rawValues });
+  const verifiedStand = verifiedRetractableOptions(product, field(formData, "rd_stand_options"));
+  const normalize = (values) => normalizeCatalogValues(product, values, verifiedStand);
+  let values = normalize({ ...defaultCatalogValues(product), ...rawValues });
   const hasSize = (product.attrs?.attrs || []).some((attr) => attr.component === "size");
   if (hasSize) {
     const width = readPositiveNumber(formData.get("width"), "Width");
@@ -1308,16 +1315,17 @@ function buildCatalogQuoteInput(product, quantity, rawValues, formData) {
     const inchesWide = units === "inches" ? width : width * 12;
     const inchesHigh = units === "inches" ? height : height * 12;
     values._size = `${inchesWide}x${inchesHigh}`;
-    values = normalizeCatalogValues(product, applyCatalogActions(product, values));
+    values = normalize(applyCatalogActions(product, values));
     return { values, width, height, units, squareFeetEach: (inchesWide * inchesHigh) / 144 };
   }
-  return { values: normalizeCatalogValues(product, applyCatalogActions(product, values)), width: 0, height: 0, units: "feet", squareFeetEach: 0 };
+  return { values: normalize(applyCatalogActions(product, values)), width: 0, height: 0, units: "feet", squareFeetEach: 0 };
 }
 
 async function handleCatalogProduct(req, res, url) {
   const product = catalogByHandle.get(productHandle(url.searchParams.get("handle")));
   if (!product) return json(res, 404, { error: "This catalog product is not configured." }, corsHeaders(req));
   const handle = productHandle(product.url);
+  const verifiedStand = verifiedRetractableOptions(product, url.searchParams.get("rd_stand_options"));
   if (handle === YARD_SIGN_H_STAKE_HANDLE) {
     return json(res, 200, {
       id: product.id,
@@ -1352,7 +1360,7 @@ async function handleCatalogProduct(req, res, url) {
       options: (attr.options || [])
         .filter((option) => option.visible !== false && option.label)
         .filter((option) => option.component !== "option_group")
-        .filter((option) => !catalogOptionIsHidden(product, attr, option))
+        .filter((option) => !catalogOptionIsHidden(product, attr, option, verifiedStand))
         .map((option) => ({
           key: option.key,
           label: option.label || option.key,
@@ -1368,6 +1376,7 @@ async function handleCatalogProduct(req, res, url) {
     squareFootRate,
     minimumPrice: FIXED_CATALOG_SIZE_SETS.has(handle) ? fixedCatalogSize(handle).unitPrice : Number(product.minimum || 0),
     customSizeControl: catalogCustomSizeControl(product),
+    ...(verifiedStand ? { standOptionsVersion: "verified-led-v1" } : {}),
     attrs,
   }, corsHeaders(req));
 }
