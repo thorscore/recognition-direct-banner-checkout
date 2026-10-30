@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { bannerOrderSource } from "./banner-order-source.mjs";
 import { customCartAnalyticsItem } from "./custom-cart-analytics.mjs";
 import { customCartReviewLines } from "./custom-cart-review.mjs";
+import { createCatalogQuoteHandler } from "./catalog-quotes.mjs";
 import { ATTRIBUTION_CONSENT_COOKIE, clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes, readOrderAttribution } from "./order-attribution.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
@@ -159,6 +160,10 @@ const catalogByHandle = new Map(catalogData.products.map((product) => [
   product.url.replace(/^\/+/, "").split("?")[0].replace(/-+/g, "-"),
   product,
 ]));
+const catalogQuoteHandler = await createCatalogQuoteHandler({
+  databasePath: join(DATA_DIR, "catalog-quotes.sqlite"), products: catalogData.products,
+  allowedOrigins: ALLOWED_ORIGINS, baseUrl: APP_BASE_URL, mock: MOCK_SHOPIFY,
+});
 const premierAwardCatalogs = new Map([
   ["baseball-softball", {
     id: "baseball-softball",
@@ -5891,13 +5896,14 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
-    if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1, orderAttributionVersion: 1 });
+    if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1, orderAttributionVersion: 1, catalogQuoteVersion: 1 });
     if (url.pathname.startsWith("/express-one") || url.pathname.startsWith("/api/express-one")) {
       if (!expressOnePortal) return json(res, 503, { error: "Express One customer access is not enabled. Please contact Recognition Direct." });
       return await expressOnePortal(req, res);
     }
     if (req.method === "GET" && url.pathname === "/order-attribution.js") return await servePublicFile(res, "order-attribution.js", "application/javascript; charset=utf-8");
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/catalog-")) return json(res, 204, {}, corsHeaders(req));
+    if (await catalogQuoteHandler(req, res, url)) return;
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/name-badge-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/solar-placard-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/premier-award-")) return json(res, 204, {}, corsHeaders(req));
