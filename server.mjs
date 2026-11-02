@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { bannerOrderSource } from "./banner-order-source.mjs";
 import { customCartAnalyticsItem } from "./custom-cart-analytics.mjs";
 import { customCartReviewLines } from "./custom-cart-review.mjs";
+import { expressOneOrderSplit } from "./express-one-order-split.mjs";
 import { assertCartDelivery, SPRING_VALLEY_PICKUP_LABEL, validateDeliveryMethod } from "./delivery-policy.mjs";
 import { createCatalogQuoteHandler } from "./catalog-quotes.mjs";
 import { ATTRIBUTION_CONSENT_COOKIE, clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes, readOrderAttribution } from "./order-attribution.mjs";
@@ -2745,6 +2746,7 @@ async function handleNameBadgeCheckout(req, res) {
   const formData = await requestFormData(req);
   const input = buildNameBadgeInput(formData);
   const deliveryMethod = deliveryMethodLabel(defaultedDeliveryMethodValue(formData));
+  const expressSplit = expressOneOrderSplit(formData, input.quantity);
   const isPickup = deliveryMethod !== "Ship";
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const namesFileUrl = await saveUpload(formData.get("names_file"));
@@ -2762,6 +2764,8 @@ async function handleNameBadgeCheckout(req, res) {
     attribute("Finish", nameBadgeLabel(input.finish)),
     attribute("Delivery Method", deliveryMethod),
     attribute("Express One", expressOne ? "Yes - hold extra badge stock and ship releases as needed" : "No"),
+    attribute("Badges Needed Now", expressSplit ? String(expressSplit.neededNow) : ""),
+    attribute("Badges Held for Later", expressSplit ? String(expressSplit.heldForLater) : ""),
     attribute("Names / Badge Text", field(formData, "badge_names", 3000)),
     attribute("Names File", namesFileUrl),
     attribute("Need-by Date", field(formData, "need_by")),
@@ -2782,6 +2786,7 @@ async function handleNameBadgeCheckout(req, res) {
     totalPrice: input.totalPrice,
     deliveryMethod,
     expressOne,
+    expressSplit,
     attributes,
     artworkUrl,
     namesFileUrl,

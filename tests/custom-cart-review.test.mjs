@@ -46,7 +46,7 @@ test("solar orders preserve each selected plate size, quantity and text", () => 
 });
 
 test("unrelated products and old incomplete records are unchanged", () => {
-  assert.deepEqual(customCartReviewLines({ draftInput: { tags: ["name-badges"] } }), []);
+  assert.deepEqual(customCartReviewLines({ draftInput: { tags: ["unrelated-product"] } }), []);
   assert.deepEqual(customCartReviewLines({ summary: { title: "Old item" } }), []);
   assert.deepEqual(customCartReviewLines({ draftInput: { tags: ["13oz-vinyl-banner"], lineItems: [{}] } })[0].details, []);
 });

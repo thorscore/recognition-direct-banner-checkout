@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 import { validateDeliveryMethod } from '../delivery-policy.mjs';
+import { expressOneOrderSplit } from '../express-one-order-split.mjs';
 
 const source = await readFile(new URL('../server.mjs',import.meta.url),'utf8');
 const array = name => source.match(new RegExp(`const DEFAULT_NAME_BADGE_${name}_PRICE_BREAKS = "([^"]+)"`))[1].split(',').map(item => {const [minimumQuantity,unitPrice] = item.split(':').map(Number); return {minimumQuantity,unitPrice};});
@@ -14,6 +15,7 @@ function fixture(expressOne) {
   const captured = {};
   const context = vm.createContext({
     NAME_BADGE_BASE_PRICE_BREAKS:array('BASE'),NAME_BADGE_NO_FRAME_PRICE_BREAKS:array('NO_FRAME'),NAME_BADGE_MAGNET_PRICE_BREAKS:array('MAGNET'),NAME_BADGE_DOME_PRICE_BREAKS:array('DOME'),
+    expressOneOrderSplit,
     field:(form,key) => String(form.get(key) ?? ''),readPositiveNumber:Number,
     ALLOWED_ORIGINS:new Set(),requestFormData:async () => data,deliveryMethodLabel:() => 'Spring Valley Pickup',
     defaultedDeliveryMethodValue:form => validateDeliveryMethod(form.get('delivery_method')),
@@ -56,4 +58,19 @@ test('customer-facing Express One copy does not promise initial-order rush or pe
   assert.doesNotMatch(page,/invoiced after those badges are sent/);
   assert.ok(page.includes('when your held inventory is used up'));
   assert.ok(page.includes('This timing does not apply to the initial stock order'));
+});
+
+test('structured Express One counts survive saved order and handoff without reducing paid quantity', async () => {
+  const {context,captured,data} = fixture(true);
+  data.set('express_one_split_version','1');
+  data.set('express_one_now','5');
+  data.set('express_one_held','20');
+  await context.handleNameBadgeCheckout({headers:{}},{});
+  assert.equal(captured.record.expressSplit.neededNow,5);
+  assert.equal(captured.record.expressSplit.heldForLater,20);
+  assert.equal(captured.input.lineItems[0].quantity,25);
+  assert.equal(captured.record.totalPrice,231.25);
+  const attrs=captured.input.lineItems[0].customAttributes;
+  assert.equal(attrs.find(a=>a.key==='Badges Needed Now').value,'5');
+  assert.equal(attrs.find(a=>a.key==='Badges Held for Later').value,'20');
 });

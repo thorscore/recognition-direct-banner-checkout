@@ -4,16 +4,19 @@ const REVIEW_FIELDS = new Set([
   "Player Names", "Coaches Names", "Team Parents / Volunteers", "Youth Design Ideas",
   "Banner Description", "Plate Text", "Need-by Date", "Notes",
   "Package", "H-stake",
+  "Badge Color", "Frame", "Fastener", "Finish", "Express One",
+  "Badges Needed Now", "Badges Held for Later", "Names / Badge Text",
 ]);
 const UPLOAD_FIELDS = new Set([
   "Artwork", "Youth Print-ready Artwork", "Youth Design Idea Image", "Standard Print-ready Art File",
   "Standard Example / Banner Element", "PDF Plan Sheet / Placard Design", "Additional Artwork",
+  "Names File",
 ]);
 
 export function customCartReviewLines(item) {
   const draft = item.draftInput || {};
   const tags = draft.tags || [];
-  if (!tags.some((tag) => ["13oz-vinyl-banner", "solar-placards", "yard-sign-and-h-stake"].includes(tag))) return [];
+  if (!tags.some((tag) => ["13oz-vinyl-banner", "solar-placards", "yard-sign-and-h-stake", "name-badges"].includes(tag))) return [];
   const orderDelivery = draft.customAttributes?.find(({ key }) => key === "Delivery Method")?.value || "";
   return (draft.lineItems || []).map((line) => {
     const attributes = line.customAttributes || [];
@@ -21,7 +24,7 @@ export function customCartReviewLines(item) {
     return {
       title: line.title || item.summary?.title || "Custom item",
       quantity: line.quantity || 1,
-      size: value("Product Size") || value("Size"),
+      size: value("Product Size") || value("Size") || value("Badge Size"),
       delivery: value("Delivery Method") || orderDelivery,
       details: attributes.filter(({ key, value }) => value && (REVIEW_FIELDS.has(key) || UPLOAD_FIELDS.has(key)))
         .map(({ key, value }) => ({ label: key, value: UPLOAD_FIELDS.has(key) ? "Attached" : String(value) })),
