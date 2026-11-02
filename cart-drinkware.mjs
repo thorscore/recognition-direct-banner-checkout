@@ -41,7 +41,7 @@ export function liveDrinkwareOffer(product, spec, cartId, priceForSku) {
 
 export async function loadCartDrinkware(cart, { fetchImpl = fetch, priceForSku, productHandleForSku }) {
   const delivery = cartDeliveryChoice(cart);
-  if (!hasEligibleBanner(cart) || !delivery || delivery === "pickup-spring-valley") return [];
+  if (!hasEligibleBanner(cart) || delivery !== "ship") return [];
   const existingHandles = new Set((cart.items || []).flatMap(item => (item.draftInput?.lineItems || []).map(line => {
     const sku = line.customAttributes?.find(value => value.key === "SKU")?.value;
     return productHandleForSku(sku);

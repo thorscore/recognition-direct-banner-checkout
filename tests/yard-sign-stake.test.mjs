@@ -1,3 +1,4 @@
+import { assertCartDelivery } from "../delivery-policy.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -11,9 +12,9 @@ const req = { headers: { origin: "https://recognition-direct.com" } };
 
 function scenario(size, stake, quantity = 1, sides) {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ product_handle: "yard-sign-and-h-stake", order_quantity: String(quantity), email: "test@example.invalid", delivery_method: "pickup-la-mesa", catalog_options: JSON.stringify({ yard_sign_size: size, yard_sign_stake: stake, yard_sign_sides: sides }) })) form.set(key, value);
+  for (const [key, value] of Object.entries({ product_handle: "yard-sign-and-h-stake", order_quantity: String(quantity), email: "test@example.invalid", delivery_method: "pickup-spring-valley", catalog_options: JSON.stringify({ yard_sign_size: size, yard_sign_stake: stake, yard_sign_sides: sides }) })) form.set(key, value);
   const captured = { uploads: 0, writes: 0 };
-  const context = vm.createContext({
+  const context = vm.createContext({ assertCartDelivery,
     cleanText: (value, maxLength = 500) => String(value ?? "").trim().slice(0, maxLength),
     field: (data, key) => String(data.get(key) ?? ""),
     readPositiveNumber: Number,
@@ -22,7 +23,7 @@ function scenario(size, stake, quantity = 1, sides) {
     catalogByHandle: new Map([["yard-sign-and-h-stake", product]]),
     corsHeaders: () => ({}),
     json: (_res, status, body) => ({ status, body }),
-    defaultedDeliveryMethodValue: () => "pickup-la-mesa",
+    defaultedDeliveryMethodValue: () => "pickup-spring-valley",
     deliveryMethodLabel: () => "La Mesa Pickup",
     saveUpload: async () => { captured.uploads += 1; return ""; },
     bannerOrderSource: () => null,

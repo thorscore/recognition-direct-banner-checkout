@@ -6,6 +6,12 @@ import test from 'node:test';
 import { createCatalogQuoteHandler, quoteInput, quoteMailConfig, QUOTE_FILE_LIMIT } from '../catalog-quotes.mjs';
 
 const products = JSON.parse((await readFile(new URL('../catalog/catalog-inventory.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, '')).products;
+
+test('fabric quote requests offer Troy St. pickup and reject seasonal banner locations', async () => {
+  const {payload} = await quoteInput(form({delivery_method:'pickup-spring-valley'}), products);
+  assert.match(JSON.stringify(payload), /8680 Troy St/);
+  for (const delivery_method of ['pickup-la-mesa','pickup-pine-valley']) await assert.rejects(quoteInput(form({delivery_method}),products), /pickup option/);
+});
 function form(overrides = {}, file) {
   const data = new FormData();
   for (const [key, value] of Object.entries({ product_handle: 'custom-seg-fabric', name: 'Quote Test Only', email: 'info@recognition-direct.com',

@@ -1,3 +1,4 @@
+import { assertCartDelivery } from "../delivery-policy.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -19,9 +20,9 @@ test("source attribution is limited to the named guide and 13oz banners", () => 
 
 async function configuredOrder(handle, guideSource) {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ product_handle: handle, order_quantity: "1", name: "Test Buyer", email: "test@example.invalid", delivery_method: "pickup-la-mesa", rd_source: guideSource || "" })) form.set(key, value);
+  for (const [key, value] of Object.entries({ product_handle: handle, order_quantity: "1", name: "Test Buyer", email: "test@example.invalid", delivery_method: handle === "13oz-vinyl-banner" ? "pickup-la-mesa" : "pickup-spring-valley", rd_source: guideSource || "" })) form.set(key, value);
   const captured = {};
-  const context = vm.createContext({
+  const context = vm.createContext({ assertCartDelivery,
     bannerOrderSource,
     orderAttributionAttributes,
     ALLOWED_ORIGINS: new Set(["https://recognition-direct.com"]),
@@ -33,7 +34,7 @@ async function configuredOrder(handle, guideSource) {
     buildCatalogQuoteInput: () => ({ values: {}, width: 5, height: 3, units: "feet", squareFeetEach: 15 }),
     YARD_SIGN_H_STAKE_HANDLE: "yard-sign-and-h-stake",
     catalogUnitPrice: async () => 37.5,
-    defaultedDeliveryMethodValue: () => "pickup-la-mesa",
+    defaultedDeliveryMethodValue: () => handle === "13oz-vinyl-banner" ? "pickup-la-mesa" : "pickup-spring-valley",
     DEFAULT_13OZ_BANNER_DELIVERY_METHOD: "pickup-la-mesa",
     deliveryMethodLabel: () => "La Mesa Pickup",
     saveUpload: async () => "",

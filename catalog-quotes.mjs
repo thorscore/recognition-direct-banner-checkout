@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { dirname, extname } from 'node:path';
+import { SPRING_VALLEY_PICKUP_LABEL } from './delivery-policy.mjs';
 
 export const QUOTE_FILE_LIMIT = 10 * 1024 * 1024;
 const BODY_LIMIT = QUOTE_FILE_LIMIT + 64 * 1024;
@@ -51,7 +52,7 @@ export async function quoteInput(form, products) {
   if (!emailValid(email)) throw new QuoteError('Enter a valid email address.');
   const quantity = number(get('order_quantity', 8), 'whole-number quantity', 10000, true);
   const deliveryValue = get('delivery_method', 50);
-  const delivery = { ship: 'Ship', 'pickup-la-mesa': 'Pickup at La Mesa', 'pickup-pine-valley': 'Pickup at Pine Valley' }[deliveryValue];
+  const delivery = { ship: 'Ship', 'pickup-spring-valley': SPRING_VALLEY_PICKUP_LABEL }[deliveryValue];
   if (!delivery) throw new QuoteError('Select shipping or a pickup option.');
   const needBy = get('need_by', 10);
   if (needBy && (!/^\d{4}-\d{2}-\d{2}$/.test(needBy) || !Number.isFinite(Date.parse(needBy)) || new Date(needBy).toISOString().slice(0, 10) !== needBy)) throw new QuoteError('Enter a valid need-by date.');

@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { bannerOrderSource } from "./banner-order-source.mjs";
 import { customCartAnalyticsItem } from "./custom-cart-analytics.mjs";
 import { customCartReviewLines } from "./custom-cart-review.mjs";
+import { assertCartDelivery, SPRING_VALLEY_PICKUP_LABEL, validateDeliveryMethod } from "./delivery-policy.mjs";
 import { createCatalogQuoteHandler } from "./catalog-quotes.mjs";
 import { ATTRIBUTION_CONSENT_COOKIE, clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes, readOrderAttribution } from "./order-attribution.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
@@ -884,16 +885,15 @@ function attribute(key, value) {
 function deliveryMethodLabel(value) {
   if (value === "pickup-la-mesa") return "Pickup at La Mesa";
   if (value === "pickup-pine-valley") return "Pickup at Pine Valley";
-  if (value === "pickup-spring-valley") return "Pickup at Spring Valley";
+  if (value === "pickup-spring-valley") return SPRING_VALLEY_PICKUP_LABEL;
   if (value === "league-billed") return "Billed to Jamul AYSO";
   return "Ship";
 }
 
-function defaultedDeliveryMethodValue(formData, defaultValue = "ship") {
-  const selected = field(formData, "delivery_method");
-  if (selected) return selected;
-  formData.set("delivery_method", defaultValue);
-  return defaultValue;
+function defaultedDeliveryMethodValue(formData, defaultValue = "ship", is13ozBanner = false) {
+  const selected = validateDeliveryMethod(field(formData, "delivery_method") || defaultValue, is13ozBanner);
+  formData.set("delivery_method", selected);
+  return selected;
 }
 
 function premierAwardTier(product, quantity) {
@@ -2000,6 +2000,7 @@ async function persistOrderRecord(orderRecord) {
 async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary = {}) {
   const url = new URL(req.url, APP_BASE_URL);
   const cart = await getOrCreateCustomOrderCart(req, url);
+  assertCartDelivery([...(cart.items || []), { draftInput }]);
   if (req.orderAttribution?.consent === "denied") clearOrderAttribution(cart);
   const attribution = mergeOrderAttribution(null, req.orderAttribution);
   if (attribution) {
@@ -2015,7 +2016,7 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
     sku => polarCamelVariantBySku.get(sku)?.product.handle,
   )) {
     const delivery = cartDeliveryChoice(cart);
-    if (!delivery || delivery === "pickup-spring-valley" || !draftInput.tags.includes(delivery)) {
+    if (delivery !== "ship" || !draftInput.tags.includes(delivery)) {
       throw new Error("Please use the same delivery choice as your banner to add drinkware to this cart.");
     }
     orderRecord.offerSource = BANNER_DRINKWARE_SOURCE;
@@ -2077,6 +2078,7 @@ function truncateShopifyDraftNote(note, limit = SHOPIFY_DRAFT_NOTE_LIMIT) {
 function combineCustomCartDraftInput(cart) {
   const items = cart.items || [];
   if (!items.length) throw new Error("Your custom order cart is empty.");
+  assertCartDelivery(items);
   const firstInput = items[0].draftInput || {};
   const lineItems = items.flatMap((item) => item.draftInput?.lineItems || []);
   const tags = Array.from(new Set(items.flatMap((item) => item.draftInput?.tags || [])));
@@ -2114,6 +2116,8 @@ async function handleCustomOrderCartCheckout(req, res) {
     res.writeHead(303, { Location: `${APP_BASE_URL}/custom-order-cart?cart=${encodeURIComponent(cart.id)}` });
     return res.end();
   }
+
+  assertCartDelivery(cart.items);
 
   if (MOCK_SHOPIFY) {
     cart.status = "checked_out";
@@ -2361,7 +2365,7 @@ async function handleCustomOrderCartPage(req, res, url) {
               </div>
               <div class="confidence-item">
                 <strong>Pickup or shipping</strong>
-                <span>Pickup and shipping options are handled during checkout.</span>
+                <span>13oz banners: La Mesa or Pine Valley pickup. Other products: 8680 Troy St., Spring Valley, CA 91977. Shipping is also available. Use separate orders for different delivery choices.</span>
               </div>
               <div class="confidence-item">
                 <strong>Need a change?</strong>
@@ -2438,7 +2442,7 @@ async function handleCheckout(req, res) {
   const unitPrice = Number((squareFeetEach * 2.5).toFixed(2));
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
   const unitLabel = units === "inches" ? "in" : "ft";
-  const deliveryMethodValue = defaultedDeliveryMethodValue(formData, DEFAULT_13OZ_BANNER_DELIVERY_METHOD);
+  const deliveryMethodValue = defaultedDeliveryMethodValue(formData, DEFAULT_13OZ_BANNER_DELIVERY_METHOD, true);
   const deliveryMethod = deliveryMethodLabel(deliveryMethodValue);
   const isPickup = deliveryMethod !== "Ship";
 
@@ -2626,6 +2630,7 @@ async function handleCatalogCheckout(req, res) {
   const deliveryMethodValue = defaultedDeliveryMethodValue(
     formData,
     handle === "13oz-vinyl-banner" ? DEFAULT_13OZ_BANNER_DELIVERY_METHOD : "ship",
+    handle === "13oz-vinyl-banner",
   );
   const deliveryMethod = deliveryMethodLabel(deliveryMethodValue);
   const isPickup = deliveryMethod !== "Ship";
@@ -2739,7 +2744,7 @@ async function handleNameBadgeCheckout(req, res) {
 
   const formData = await requestFormData(req);
   const input = buildNameBadgeInput(formData);
-  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const deliveryMethod = deliveryMethodLabel(defaultedDeliveryMethodValue(formData));
   const isPickup = deliveryMethod !== "Ship";
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const namesFileUrl = await saveUpload(formData.get("names_file"));
@@ -3241,7 +3246,7 @@ async function handleSolarPlacardCheckout(req, res) {
   const orderTotalPrice = Number(inputs.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2));
   const planUrl = await saveUpload(formData.get("plan_file"));
   const artworkUrl = await saveUpload(formData.get("artwork"));
-  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const deliveryMethod = deliveryMethodLabel(defaultedDeliveryMethodValue(formData));
   const isPickup = deliveryMethod !== "Ship";
   const shipping = shippingPlan("solar", deliveryMethod, totalQuantity);
   const commonAttributes = [
@@ -3376,7 +3381,7 @@ async function handlePremierAwardCheckout(req, res) {
   const productDisplayName = product.displayName || product.title;
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const namesFileUrl = await saveUpload(formData.get("names_file"));
-  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const deliveryMethod = deliveryMethodLabel(defaultedDeliveryMethodValue(formData));
   const isPickup = deliveryMethod !== "Ship";
   const shipping = classifyPremierAwardShipping(catalog, product, quantity, deliveryMethod);
   const attributes = [
@@ -3488,7 +3493,7 @@ async function handlePolarCamelCheckout(req, res) {
   const { product, variant, quantity, tier, unitPrice, totalPrice } = input;
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const personalizationFileUrl = await saveUpload(formData.get("personalization_file"));
-  const deliveryMethod = deliveryMethodLabel(field(formData, "delivery_method"));
+  const deliveryMethod = deliveryMethodLabel(defaultedDeliveryMethodValue(formData));
   const isPickup = deliveryMethod !== "Ship";
   const shipping = shippingPlan("standard", deliveryMethod, quantity, { standard: 6, large: Math.max(12, Number(variant.caseQuantity || 12)), oversized: 48 });
   const attributes = [
@@ -3812,9 +3817,7 @@ function nameBadgePageHtml() {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
-                <option value="pickup-spring-valley">Pickup at Spring Valley</option>
-                <option value="pickup-pine-valley">Pickup at Pine Valley</option>
+                <option value="pickup-spring-valley">${SPRING_VALLEY_PICKUP_LABEL}</option>
               </select>
             </div>
             <div class="full">
@@ -4291,8 +4294,7 @@ function premierAwardsPageHtml(catalogId = "baseball-softball") {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
-                <option value="pickup-pine-valley">Pickup at Pine Valley</option>
+                <option value="pickup-spring-valley">${SPRING_VALLEY_PICKUP_LABEL}</option>
               </select>
             </div>
             <div class="full">
@@ -4699,9 +4701,7 @@ function polarCamelPageHtml(categorySlug = "") {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
-                <option value="pickup-pine-valley">Pickup at Pine Valley</option>
-                <option value="pickup-spring-valley">Pickup at Spring Valley</option>
+                <option value="pickup-spring-valley">${SPRING_VALLEY_PICKUP_LABEL}</option>
               </select>
             </div>
             <div class="full">
@@ -5444,7 +5444,7 @@ function solarPlacardsPageHtml() {
         name: "Do you offer local pickup for solar placards?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes. Solar placard orders can be shipped or picked up locally at La Mesa or Spring Valley when available."
+          text: "Yes. Solar placard orders can be shipped or picked up at 8680 Troy St., Spring Valley, CA 91977."
         }
       },
       {
@@ -5616,8 +5616,7 @@ function solarPlacardsPageHtml() {
               <label for="delivery_method">Delivery</label>
               <select id="delivery_method" name="delivery_method">
                 <option value="ship">Ship</option>
-                <option value="pickup-la-mesa">Local pickup in Spring Valley (near La Mesa)</option>
-                <option value="pickup-spring-valley">Pickup at Spring Valley</option>
+                <option value="pickup-spring-valley">${SPRING_VALLEY_PICKUP_LABEL}</option>
               </select>
             </div>
             <div data-custom-size hidden>

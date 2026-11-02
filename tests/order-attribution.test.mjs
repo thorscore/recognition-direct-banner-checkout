@@ -1,3 +1,4 @@
+import { assertCartDelivery } from "../delivery-policy.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -120,7 +121,7 @@ test("stale capture is replaced; constrained campaign tags are retained without 
 test("combined draft input retains capture while preserving guide source, pricing, shipping and tax", () => {
   const data = capture();
   const cart = { id: "test-only", attribution: data, items: [{ orderId: "test-only-config", summary: { title: "13oz Vinyl Banner" }, draftInput: { email: "test@example.invalid", note: "Existing note", tags: ["chatgpt-banner-guide"], lineItems: [{ title: "Banner", quantity: 1, originalUnitPriceWithCurrency: { amount: "37.50", currencyCode: "USD" }, taxable: true, customAttributes: [{ key: "Order Source", value: "ChatGPT banner guide" }] }] } }] };
-  const context = vm.createContext({ orderAttributionAttributes, combinedCartShippingLine: () => ({ priceWithCurrency: { amount: "19.95", currencyCode: "USD" } }), truncateShopifyDraftNote: value => value });
+  const context = vm.createContext({ assertCartDelivery, orderAttributionAttributes, combinedCartShippingLine: () => ({ priceWithCurrency: { amount: "19.95", currencyCode: "USD" } }), truncateShopifyDraftNote: value => value });
   vm.runInContext(source.slice(source.indexOf("function combineCustomCartDraftInput("), source.indexOf("async function handleCustomOrderCartCheckout(")), context);
   const result = context.combineCustomCartDraftInput(cart);
   assert.ok(result.customAttributes.some(a => a.key === "Acquisition First Source" && /google.com/.test(a.value)));

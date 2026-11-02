@@ -40,7 +40,7 @@ test("real multipart requests carry consented capture through an isolated mock c
     const attribution = { version: 1, consent: "allowed", first: visit, last: visit, orderPage: "https://recognition-direct.com/pages/name-badges-san-diego" };
     async function add(cartId, metadata) {
       const form = new FormData();
-      for (const [key, value] of Object.entries({ email: "test@example.invalid", order_quantity: "1", badge_frame: "no-frame", badge_fastener: "pin", badge_finish: "standard", badge_size: "1x3", badge_color: "white", delivery_method: "pickup-la-mesa", rd_attribution: JSON.stringify(metadata) })) form.set(key, value);
+      for (const [key, value] of Object.entries({ email: "test@example.invalid", order_quantity: "1", badge_frame: "no-frame", badge_fastener: "pin", badge_finish: "standard", badge_size: "1x3", badge_color: "white", delivery_method: "pickup-spring-valley", rd_attribution: JSON.stringify(metadata) })) form.set(key, value);
       const response = await fetch(`${base}/api/name-badge-checkout${cartId ? `?cart=${cartId}` : ""}`, { method: "POST", body: form, headers: { Origin: "https://recognition-direct.com", Accept: "application/json" } });
       const result = await response.json();
       assert.equal(response.status, 200, JSON.stringify(result));
@@ -56,6 +56,14 @@ test("real multipart requests carry consented capture through an isolated mock c
     assert.equal(await add(cartId, attribution), cartId);
     cart = JSON.parse(await readFile(cartPath));
     assert.equal(cart.items.length, 2);
+    for (const method of ['pickup-la-mesa', 'pickup-pine-valley', 'ship']) {
+      const invalid = new FormData();
+      for (const [key,value] of Object.entries({email:'test@example.invalid',order_quantity:'1',badge_frame:'no-frame',badge_fastener:'pin',badge_finish:'standard',badge_size:'1x3',badge_color:'white',delivery_method:method})) invalid.set(key,value);
+      const rejected = await fetch(`${base}/api/name-badge-checkout?cart=${cartId}`, {method:'POST',body:invalid,headers:{Accept:'application/json'}});
+      assert.equal(rejected.status,400);
+      assert.match((await rejected.json()).error, method === 'ship' ? /separate orders/ : /13oz banners only/);
+      assert.equal(JSON.parse(await readFile(cartPath)).items.length,2);
+    }
     assert.equal(cart.items[1].draftInput.lineItems[0].originalUnitPriceWithCurrency.amount, originalPrice);
     const response = await fetch(`${base}/api/custom-order-cart/checkout?cart=${cartId}`, { method: "POST", redirect: "manual", headers: { Cookie: "rd_acquisition_consent=denied" } });
     assert.equal(response.status, 303);

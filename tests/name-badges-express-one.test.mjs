@@ -2,19 +2,21 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
+import { validateDeliveryMethod } from '../delivery-policy.mjs';
 
 const source = await readFile(new URL('../server.mjs',import.meta.url),'utf8');
 const array = name => source.match(new RegExp(`const DEFAULT_NAME_BADGE_${name}_PRICE_BREAKS = "([^"]+)"`))[1].split(',').map(item => {const [minimumQuantity,unitPrice] = item.split(':').map(Number); return {minimumQuantity,unitPrice};});
 
 function fixture(expressOne) {
   const data = new FormData();
-  for (const [key,value] of Object.entries({order_quantity:'25',badge_size:'1x3',badge_color:'white',badge_frame:'no-frame',badge_fastener:'magnetic',badge_finish:'standard',delivery_method:'pickup-la-mesa',email:'test@example.invalid',badge_names:'Test Person',notes:'Release 5 now; hold 20.'})) data.set(key,value);
+  for (const [key,value] of Object.entries({order_quantity:'25',badge_size:'1x3',badge_color:'white',badge_frame:'no-frame',badge_fastener:'magnetic',badge_finish:'standard',delivery_method:'pickup-spring-valley',email:'test@example.invalid',badge_names:'Test Person',notes:'Release 5 now; hold 20.'})) data.set(key,value);
   if (expressOne) data.set('express_one','yes');
   const captured = {};
   const context = vm.createContext({
     NAME_BADGE_BASE_PRICE_BREAKS:array('BASE'),NAME_BADGE_NO_FRAME_PRICE_BREAKS:array('NO_FRAME'),NAME_BADGE_MAGNET_PRICE_BREAKS:array('MAGNET'),NAME_BADGE_DOME_PRICE_BREAKS:array('DOME'),
     field:(form,key) => String(form.get(key) ?? ''),readPositiveNumber:Number,
-    ALLOWED_ORIGINS:new Set(),requestFormData:async () => data,deliveryMethodLabel:() => 'La Mesa Pickup',
+    ALLOWED_ORIGINS:new Set(),requestFormData:async () => data,deliveryMethodLabel:() => 'Spring Valley Pickup',
+    defaultedDeliveryMethodValue:form => validateDeliveryMethod(form.get('delivery_method')),
     saveUpload:async () => '',shippingPlan:() => ({label:'Pickup'}),attribute:(key,value) => value ? {key,value}:null,shippingAttributes:() => [],
     randomUUID:() => 'offline-badge-test',writeFile:async () => {},join:(...parts) => parts.join('/'),ORDER_DIR:'test-only',
     shippingTags:() => [],draftOrderPickupAddress:() => ({}),draftOrderShippingLine:() => ({}),

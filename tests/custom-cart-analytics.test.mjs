@@ -1,3 +1,4 @@
+import { assertCartDelivery } from "../delivery-policy.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -38,7 +39,7 @@ test("metadata is returned only after the custom cart has been persisted", async
   const end = source.indexOf("\nfunction truncateShopifyDraftNote", start);
   const events = [];
   const cart = { id: "test-cart", items: [] };
-  const context = vm.createContext({
+  const context = vm.createContext({ assertCartDelivery,
     customCartAnalyticsItem,
     clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes,
     getOrCreateCustomOrderCart: async () => cart,
@@ -69,7 +70,7 @@ test("credentialed cart requests are limited to existing approved origins and th
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const start = source.indexOf("function corsHeaders(req)");
   const end = source.indexOf("\nfunction html(", start);
-  const context = vm.createContext({ ALLOWED_ORIGINS: new Set(["https://recognition-direct.com"]) });
+  const context = vm.createContext({ assertCartDelivery, ALLOWED_ORIGINS: new Set(["https://recognition-direct.com"]) });
   vm.runInContext(source.slice(start, end) + ";this.headers = corsHeaders;", context);
   for (const url of ["/api/catalog-checkout", "/api/catalog-checkout?cart=test"]) {
     const response = context.headers({ url, headers: { origin: "https://recognition-direct.com" } });
