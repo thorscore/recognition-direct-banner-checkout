@@ -32,7 +32,7 @@ export async function buildAwardPilotPage(products) {
     return {...option,title:product.displayName||product.title,image:product.image,thumbnail:product.thumbnail||product.image,price};
   });
   const title='Unite Diamond Ice Acrylic Awards';
-  const description='Personalize Unite Diamond Ice acrylic awards in 7- or 8-inch sizes with a black or blue base. View prices, add wording, and approve a proof before production.';
+  const description='Personalize Unite Diamond Ice acrylic awards in two sizes with black or blue bases. View prices and approve a proof before production.';
   const orderUrl=sku=>'https://checkout.recognition-direct.com/acrylic-awards?sku='+encodeURIComponent(sku);
   const structuredData={
     '@context':'https://schema.org','@type':'ProductGroup',name:title,

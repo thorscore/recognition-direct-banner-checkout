@@ -13,7 +13,7 @@ test('all four pilot links select the exact original SKU, image and price withou
 
 test('pilot page exposes full crawlable content, exact per-option links and matching structured offers',async()=>{
   const before=JSON.stringify(products);const page=await buildAwardPilotPage(products);
-  assert.equal(page.options.length,4);assert.equal(page.structuredData.hasVariant.length,4);
+  assert.equal(page.options.length,4);assert.equal(page.structuredData.hasVariant.length,4);assert.ok(page.description.length<=140);
   for(const option of page.options){const p=products.find(p=>p.sku===option.sku);const variant=page.structuredData.hasVariant.find(v=>v.sku===option.sku);assert.equal(Number(variant.offers.price),p.prices.lessThanCase);assert.ok(page.body.includes(`?sku=${option.sku}`));assert.ok(page.body.includes(`id="${option.sku}"`));assert.ok(page.body.includes('$'+p.prices.lessThanCase.toFixed(2)));assert.ok(page.body.includes(p.image));}
   assert.match(page.body,/8680 Troy St\., Spring Valley, CA 91977/);assert.doesNotMatch(page.body,/Pine Valley|La Mesa|InStock|aggregateRating|reviewRating|availableQuantity|costs/);
   assert.match(page.body,/https:\/\/checkout\.recognition-direct\.com\/acrylic-awards\?sku=UNT11BU/);
