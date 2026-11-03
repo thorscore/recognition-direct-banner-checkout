@@ -5967,10 +5967,10 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/solar-placards") return html(res, 200, solarPlacardsPageHtml());
     if (req.method === "GET" && url.pathname === "/solar-placards/thanks") return html(res, 200, solarPlacardsThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/league-banner-order-received") return html(res, 200, leagueBannerThanksHtml(url));
-    if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball"));
-    if (req.method === "GET" && url.pathname === "/soccer-resin-trophies") return html(res, 200, premierAwardsPageHtml("soccer"));
+    if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball", url.searchParams.get("sku") || ""));
+    if (req.method === "GET" && url.pathname === "/soccer-resin-trophies") return html(res, 200, premierAwardsPageHtml("soccer", url.searchParams.get("sku") || ""));
     if (req.method === "GET" && url.pathname === "/acrylic-awards") return html(res, 200, premierAwardsPageHtml("acrylic", url.searchParams.get("sku") || ""));
-    if (req.method === "GET" && url.pathname === "/award-plaques") return html(res, 200, premierAwardsPageHtml("plaques"));
+    if (req.method === "GET" && url.pathname === "/award-plaques") return html(res, 200, premierAwardsPageHtml("plaques", url.searchParams.get("sku") || ""));
     if (req.method === "GET" && url.pathname === "/executive-awards") return html(res, 200, premierAwardsPageHtml("executive-awards"));
     if (req.method === "GET" && url.pathname === "/glass-crystal-awards") return html(res, 200, premierAwardsPageHtml("glass-crystal-awards"));
     if (req.method === "GET" && url.pathname === "/award-clocks") return html(res, 200, premierAwardsPageHtml("clocks"));

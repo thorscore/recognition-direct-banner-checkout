@@ -6,6 +6,7 @@ import {createServer} from 'node:net';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import test from 'node:test';
+import {AWARD_DETAIL_PAGES,AWARD_CATEGORY_LINKS} from '../award-pages.mjs';
 
 test('award price and cart integration preserve selected SKU, volume price, personalization, files and permitted delivery', {timeout:30000},async()=>{
   const root=new URL('../',import.meta.url);
@@ -22,6 +23,9 @@ test('award price and cart integration preserve selected SKU, volume price, pers
     }
     for(const sku of ['UNT10BK','UNT10BU','UNT11BK','UNT11BU']){
       const html=await(await fetch(base+'/acrylic-awards?sku='+sku)).text();const data=JSON.parse(html.match(/id="award-shopping-data">(.*?)<\/script>/s)[1]);assert.equal(data.initialSku,sku);assert.equal(data.invalidSku,false);
+    }
+    for(const page of AWARD_DETAIL_PAGES)for(const {sku}of page.options){
+      const html=await(await fetch(base+AWARD_CATEGORY_LINKS[page.catalog].route+'?sku='+sku)).text();const data=JSON.parse(html.match(/id="award-shopping-data">(.*?)<\/script>/s)[1]);assert.equal(data.initialSku,sku);assert.equal(data.invalidSku,false);
     }
     async function post(path,values,files={}){
       const data=new FormData();for(const [k,v]of Object.entries(values)) data.set(k,v);for(const [k,v]of Object.entries(files))data.set(k,v.blob,v.name);
@@ -41,6 +45,14 @@ test('award price and cart integration preserve selected SKU, volume price, pers
     const review=await (await fetch(base+'/custom-order-cart?cart='+result.body.cartId)).text();assert.match(review,/UNT10BU/);assert.match(review,/Sample Recipient/);assert.match(review,/Attached/);assert.match(review,/369.00/);assert.match(review,/Not applicable \(pickup\)/);assert.ok(!review.includes(attrs['Names File']));
     for(const delivery_method of ['pickup-la-mesa','pickup-pine-valley']) assert.equal((await post('/api/premier-award-checkout',{...values,delivery_method})).status,400);
     assert.equal((await post('/api/premier-award-checkout',{...values,delivery_method:'ship'})).status,200);
+    for(const page of AWARD_DETAIL_PAGES.filter(p=>p.catalog!=='acrylic')){
+      const option=page.options.at(-1);const catalogFile={'plaques':'award-plaques','soccer':'soccer-resin-trophies','baseball-softball':'baseball-softball-resin-trophies'}[page.catalog];
+      const product=JSON.parse((await readFile(join(dir,'catalog','premier-'+catalogFile+'.json'),'utf8')).replace(/^\uFEFF/,'')).products.find(p=>p.sku===option.sku);
+      const result=await post('/api/premier-award-checkout',{...values,catalog:page.catalog,sku:option.sku,order_quantity:'1'});assert.equal(result.status,200,JSON.stringify(result.body));
+      const saved=JSON.parse(await readFile(join(dir,'data','custom-carts',result.body.cartId+'.json'),'utf8'));const line=saved.items[0].draftInput.lineItems[0];
+      assert.equal(line.originalUnitPriceWithCurrency.amount,product.prices.lessThanCase.toFixed(2));assert.equal(line.customAttributes.find(a=>a.key==='SKU').value,option.sku);
+      const review=await(await fetch(base+'/custom-order-cart?cart='+result.body.cartId)).text();assert.ok(review.includes(option.sku));assert.match(review,/Sample Recipient/);assert.match(review,/Not applicable \(pickup\)/);
+    }
   }finally{
     if(child&&child.exitCode===null){child.kill();await once(child,'exit');}
     await rm(dir,{recursive:true,force:true});

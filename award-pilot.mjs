@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import {detailPageForSku,awardPageUrl} from './award-pages.mjs';
 
 export const AWARD_PILOT_HANDLE = 'unite-diamond-ice-acrylic-awards';
 export const AWARD_PILOT_URL = `https://recognition-direct.com/pages/${AWARD_PILOT_HANDLE}`;
@@ -10,7 +11,8 @@ export const AWARD_PILOT_OPTIONS = [
 ];
 
 export function awardDetailsUrl(sku) {
-  return AWARD_PILOT_OPTIONS.some(p=>p.sku===sku) ? AWARD_PILOT_URL : '';
+  if(AWARD_PILOT_OPTIONS.some(p=>p.sku===sku))return AWARD_PILOT_URL;
+  const page=detailPageForSku(sku);return page?awardPageUrl(page):'';
 }
 
 export function initialAwardSelection(groups, sku = '') {

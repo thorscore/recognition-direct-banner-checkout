@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import {awardDetailsUrl, initialAwardSelection} from './award-pilot.mjs';
+import {awardDetailsUrl, initialAwardSelection, AWARD_PILOT_URL} from './award-pilot.mjs';
+import {AWARD_DETAIL_PAGES,awardPageUrl} from './award-pages.mjs';
 
 const css = await readFile(new URL('./public/award-shopping.css', import.meta.url), 'utf8');
 const client = await readFile(new URL('./public/award-shopping.js', import.meta.url), 'utf8');
@@ -56,6 +57,8 @@ export function awardShoppingPageHtml({catalog, appBaseUrl, pickupLabel, tierFor
   const first = initial.product;
   if (!first) throw new Error('No awards are configured for this catalog.');
   const types = [...new Set(groups.map(g => g.type))].sort((a,b) => a.localeCompare(b));
+  const guides=AWARD_DETAIL_PAGES.filter(p=>p.catalog===catalog.id).map(p=>({title:p.title,url:awardPageUrl(p)}));
+  if(catalog.id==='acrylic')guides.unshift({title:'Unite Diamond Ice Acrylic Awards',url:AWARD_PILOT_URL});
   const data = JSON.stringify({groups, catalogId: catalog.id, appBaseUrl,initialSku:first.sku,requestedSku:selectedSku,invalidSku:initial.invalid}).replace(/</g, '\\u003c');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -74,6 +77,7 @@ ${seoTags}<style>${css}</style></head><body>
       <p hidden data-empty>No matching styles. Try a different search or choose all types.</p>
       <nav class="pagination" aria-label="Award catalog pages"><button type="button" data-previous>Previous</button><span data-page-count></span><button type="button" data-next>Next</button></nav>
       <p class="help">From prices are per item at quantity 1 for the lowest-priced option in that style. Select your option and quantity for its price. Tax and shipping are additional.</p>
+      ${guides.length?`<nav class="award-detail-guides" aria-label="Award style guides"><h3>Explore these award styles</h3><p class="help">Compare sizes, colors, prices and personalization details.</p><ul>${guides.map(p=>`<li><a href="${escape(p.url)}" target="_top">${escape(p.title)}</a></li>`).join('')}</ul></nav>`:''}
     </section>
     <section class="selected" id="award-options" aria-labelledby="selected-title">
       <div class="panel selection"><a data-award-details href="${escape(first.detailsUrl)}" target="_top"${first.detailsUrl?'':' hidden'}>View this award’s sizes, colors &amp; details</a><img class="preview" data-preview src="${escape(first.image)}" alt="${escape(first.imageAlt)}"><h2 id="selected-title" tabindex="-1" data-selected-title>${escape(first.title)}</h2><p class="sku" data-selected-sku></p><details><summary>Product details</summary><p class="description" data-description></p></details></div>
