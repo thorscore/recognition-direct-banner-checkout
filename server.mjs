@@ -4166,14 +4166,14 @@ function premierAwardCardsHtml(products) {
   }).join("");
 }
 
-function premierAwardsPageHtml(catalogId = "baseball-softball") {
+function premierAwardsPageHtml(catalogId = "baseball-softball", selectedSku = "") {
   const catalog = premierAwardCatalog(catalogId);
   if (["acrylic", "plaques", "baseball-softball", "soccer"].includes(catalogId)) {
     return awardShoppingPageHtml({
       catalog, appBaseUrl: APP_BASE_URL, pickupLabel: SPRING_VALLEY_PICKUP_LABEL,
       tierFor: premierAwardTier,
       seoTags: checkoutSeoTags({title: `${catalog.title} | Recognition Direct`, description: catalog.metaDescription, path: catalog.route, image: catalog.products[0]?.thumbnail}),
-      cartScript: customCartClientScript(),
+      cartScript: customCartClientScript(), selectedSku,
     });
   }
   const products = catalog.products;
@@ -5969,7 +5969,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/league-banner-order-received") return html(res, 200, leagueBannerThanksHtml(url));
     if (req.method === "GET" && url.pathname === "/baseball-softball-resin-trophies") return html(res, 200, premierAwardsPageHtml("baseball-softball"));
     if (req.method === "GET" && url.pathname === "/soccer-resin-trophies") return html(res, 200, premierAwardsPageHtml("soccer"));
-    if (req.method === "GET" && url.pathname === "/acrylic-awards") return html(res, 200, premierAwardsPageHtml("acrylic"));
+    if (req.method === "GET" && url.pathname === "/acrylic-awards") return html(res, 200, premierAwardsPageHtml("acrylic", url.searchParams.get("sku") || ""));
     if (req.method === "GET" && url.pathname === "/award-plaques") return html(res, 200, premierAwardsPageHtml("plaques"));
     if (req.method === "GET" && url.pathname === "/executive-awards") return html(res, 200, premierAwardsPageHtml("executive-awards"));
     if (req.method === "GET" && url.pathname === "/glass-crystal-awards") return html(res, 200, premierAwardsPageHtml("glass-crystal-awards"));

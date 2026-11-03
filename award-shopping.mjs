@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import {awardDetailsUrl, initialAwardSelection} from './award-pilot.mjs';
 
 const css = await readFile(new URL('./public/award-shopping.css', import.meta.url), 'utf8');
 const client = await readFile(new URL('./public/award-shopping.js', import.meta.url), 'utf8');
@@ -43,17 +44,19 @@ export function groupAwardStyles(products, tierFor) {
       image: product.image, thumbnail: product.thumbnail || product.image,
       imageAlt: product.imageAlt || product.title, description: product.description || '',
       priceAtOne: unitPrice,
+      detailsUrl: awardDetailsUrl(product.sku),
     });
   }
   return [...groups.values()].map(group => ({...group, fromPrice: Math.min(...group.variants.map(p => p.priceAtOne))}));
 }
 
-export function awardShoppingPageHtml({catalog, appBaseUrl, pickupLabel, tierFor, seoTags, cartScript}) {
+export function awardShoppingPageHtml({catalog, appBaseUrl, pickupLabel, tierFor, seoTags, cartScript, selectedSku = ''}) {
   const groups = groupAwardStyles(catalog.products, tierFor);
-  const first = groups[0]?.variants[0];
+  const initial = initialAwardSelection(groups,selectedSku);
+  const first = initial.product;
   if (!first) throw new Error('No awards are configured for this catalog.');
   const types = [...new Set(groups.map(g => g.type))].sort((a,b) => a.localeCompare(b));
-  const data = JSON.stringify({groups, catalogId: catalog.id, appBaseUrl}).replace(/</g, '\\u003c');
+  const data = JSON.stringify({groups, catalogId: catalog.id, appBaseUrl,initialSku:first.sku,requestedSku:selectedSku,invalidSku:initial.invalid}).replace(/</g, '\\u003c');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escape(catalog.title)} | Recognition Direct</title>
@@ -73,7 +76,7 @@ ${seoTags}<style>${css}</style></head><body>
       <p class="help">From prices are per item at quantity 1 for the lowest-priced option in that style. Select your option and quantity for its price. Tax and shipping are additional.</p>
     </section>
     <section class="selected" id="award-options" aria-labelledby="selected-title">
-      <div class="panel selection"><img class="preview" data-preview src="${escape(first.image)}" alt="${escape(first.imageAlt)}"><h2 id="selected-title" tabindex="-1" data-selected-title>${escape(first.title)}</h2><p class="sku" data-selected-sku></p><details><summary>Product details</summary><p class="description" data-description></p></details></div>
+      <div class="panel selection"><a data-award-details href="${escape(first.detailsUrl)}" target="_top"${first.detailsUrl?'':' hidden'}>View this award’s sizes, colors &amp; details</a><img class="preview" data-preview src="${escape(first.image)}" alt="${escape(first.imageAlt)}"><h2 id="selected-title" tabindex="-1" data-selected-title>${escape(first.title)}</h2><p class="sku" data-selected-sku></p><details><summary>Product details</summary><p class="description" data-description></p></details></div>
       <form action="${escape(appBaseUrl)}/api/premier-award-checkout" method="post" enctype="multipart/form-data" data-award-form>
         <input type="hidden" name="catalog" value="${escape(catalog.id)}">
         <fieldset class="panel"><legend>Size, color &amp; quantity</legend><label for="award_variant">Size / color / option</label><select id="award_variant" name="sku" required></select><p class="help">Each option lists its exact product name and code.</p>

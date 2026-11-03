@@ -1,5 +1,5 @@
 (() => {
-  const {groups, catalogId, appBaseUrl} = JSON.parse(document.querySelector('#award-shopping-data').textContent);
+  const {groups, catalogId, appBaseUrl,initialSku,requestedSku,invalidSku} = JSON.parse(document.querySelector('#award-shopping-data').textContent);
   const get = selector => document.querySelector(selector);
   const form = get('[data-award-form]');
   const grid = get('[data-award-grid]');
@@ -8,8 +8,10 @@
   const variant = get('#award_variant');
   const quantity = get('#order_quantity');
   const submit = get('button.submit');
-  let selectedGroup = groups[0];
-  let selectedProduct = selectedGroup.variants[0];
+  let selectedGroup = groups.find(g=>g.variants.some(p=>p.sku===initialSku))||groups[0];
+  let selectedProduct = selectedGroup.variants.find(p=>p.sku===initialSku)||selectedGroup.variants[0];
+  let needsSelection = invalidSku;
+  if(requestedSku&&!invalidSku) search.value=selectedGroup.title;
   let page = 0;
   let timer;
   let request;
@@ -49,6 +51,7 @@
       const price = document.createElement('b'); price.textContent = 'From ' + money(group.fromPrice) + ' each';
       card.append(image,title,options,price);
       card.addEventListener('click',() => {
+        needsSelection = false;
         selectedGroup = group;
         const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
         selectedProduct = group.variants.find(p => terms.every(term => [group.title,group.type,p.sku,p.title,p.optionValue,p.size].join(' ').toLowerCase().includes(term))) || group.variants[0];
@@ -79,6 +82,9 @@
     get('[data-selected-sku]').textContent = 'Product code: ' + selectedProduct.sku;
     get('[data-description]').textContent = selectedProduct.description;
     get('[data-review-option]').textContent = selectedProduct.title + ' (' + selectedProduct.sku + ')';
+    const details=get('[data-award-details]');
+    details.hidden=!selectedProduct.detailsUrl;
+    if(selectedProduct.detailsUrl)details.href=selectedProduct.detailsUrl;
     queuePrice(); sendHeight();
   }
   function queuePrice() {
@@ -88,6 +94,7 @@
     get('[data-price-label]').textContent = validQuantity() ? 'Calculating price…' : 'Enter a whole-number quantity of 1–10,000.';
     get('[data-review-price]').textContent = validQuantity() ? 'Calculating price…' : 'Enter a valid quantity to calculate your price.';
     get('[data-price-message]').textContent = 'Before tax and shipping.';
+    if(needsSelection){get('[data-price-label]').textContent='This award option was not found. Please choose a style and option.';get('[data-review-price]').textContent='Choose an award to confirm your selection.';return;}
     if (validQuantity()) timer = setTimeout(updatePrice,180);
   }
   async function updatePrice() {
@@ -121,12 +128,12 @@
   }
   document.addEventListener('submit',event => {
     if (event.target !== form) return;
-    if (readyKey !== key() || !validQuantity() || !form.reportValidity()) {
+    if (needsSelection || readyKey !== key() || !validQuantity() || !form.reportValidity()) {
       event.preventDefault(); event.stopImmediatePropagation();
       if (readyKey !== key()) { get('[data-error]').textContent = 'Please wait for a confirmed price before adding to cart.'; get('[data-error]').hidden = false; }
     }
   },true);
-  variant.addEventListener('change',() => {selectedProduct = selectedGroup.variants.find(p=>p.sku===variant.value); renderSelection();});
+  variant.addEventListener('change',() => {needsSelection=false;selectedProduct = selectedGroup.variants.find(p=>p.sku===variant.value); renderSelection();});
   quantity.addEventListener('input',queuePrice);
   quantity.addEventListener('change',queuePrice);
   form.elements.delivery_method.addEventListener('change',delivery);
@@ -141,4 +148,5 @@
   window.addEventListener('resize',()=>{if(window.innerWidth !== previousWidth){previousWidth=window.innerWidth;renderCards();}});
   if ('ResizeObserver' in window) new ResizeObserver(sendHeight).observe(get('main'));
   renderVariants(); renderCards(); renderSelection(); delivery();
+  if(requestedSku&&!invalidSku)requestAnimationFrame(()=>moveTo('#award-options'));
 })();

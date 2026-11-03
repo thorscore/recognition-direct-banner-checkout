@@ -20,6 +20,9 @@ test('award price and cart integration preserve selected SKU, volume price, pers
     for(const path of ['/acrylic-awards','/award-plaques','/baseball-softball-resin-trophies','/soccer-resin-trophies']){
       const html=await (await fetch(base+path)).text();assert.match(html,/data-award-shopping="1"/);assert.match(html,/Personalization/);assert.doesNotMatch(html,/pickup-la-mesa|pickup-pine-valley/);
     }
+    for(const sku of ['UNT10BK','UNT10BU','UNT11BK','UNT11BU']){
+      const html=await(await fetch(base+'/acrylic-awards?sku='+sku)).text();const data=JSON.parse(html.match(/id="award-shopping-data">(.*?)<\/script>/s)[1]);assert.equal(data.initialSku,sku);assert.equal(data.invalidSku,false);
+    }
     async function post(path,values,files={}){
       const data=new FormData();for(const [k,v]of Object.entries(values)) data.set(k,v);for(const [k,v]of Object.entries(files))data.set(k,v.blob,v.name);
       const response=await fetch(base+path,{method:'POST',body:data,headers:{Accept:'application/json'}});return {status:response.status,body:await response.json()};
