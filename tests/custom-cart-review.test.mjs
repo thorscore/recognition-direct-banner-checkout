@@ -63,3 +63,33 @@ test("review HTML escapes customer text and keeps private upload URLs out", asyn
   assert.ok(!html.includes("private-artwork.pdf"));
   assert.ok(html.includes("Review customization"));
 });
+
+test("sign carts show saved production choices and hide private configuration data", () => {
+  const item = { draftInput: {
+    tags: ["catalog-configuration", "aluminum-sign"],
+    lineItems: [{ title: "Aluminum Sign", quantity: 2, customAttributes: [
+      attribute("Size", '18" x 24"'), attribute("# of Sides", "2 Sides"),
+      attribute("Corner Style", "Straight Corner"), attribute("Holes Punch", "Center-Top and Bottom"),
+      attribute("Print", "UV Ink - Matte Finish"), attribute("Delivery Method", "Ship"),
+      attribute("Artwork", "https://example.com/private-sign-artwork.pdf"),
+      attribute("Customer Email", "private@example.com"), attribute("Original Catalog URL", "private-vendor-url"),
+    ] }],
+  } };
+  const before = JSON.stringify(item);
+  const [line] = customCartReviewLines(item);
+  assert.equal(line.size, '18" x 24"');
+  assert.equal(line.quantity, 2);
+  assert.equal(line.delivery, "Ship");
+  for (const label of ["# of Sides", "Corner Style", "Holes Punch", "Print"]) assert.ok(line.details.some(detail => detail.label === label));
+  assert.deepEqual(line.details.find(detail => detail.label === "Artwork"), { label: "Artwork", value: "Attached" });
+  assert.ok(!JSON.stringify(line).includes("private"));
+  assert.equal(JSON.stringify(item), before);
+});
+
+test("supported sign materials retain custom sizes and selected accessories in cart review", () => {
+  for (const handle of ["coroplast", "foamcore", "pvc-board", "gatorfoam", "styrene", "magnets", "aluminum-sandwich-board", "dry-erase-pvc-board", "dry-erase-foamcore", "dry-erase-aluminum-sandwich-board", "dry-erase-coroplast", "dry-erase-magnet", "reflective-aluminum-sandwich-board", "reflective-coroplast", "reflective-car-magnet", "reflective-aluminum-sign", "acrylic-prints"]) {
+    const [line] = customCartReviewLines({ draftInput: { tags: [handle], lineItems: [{ customAttributes: [attribute("Product Size", "24 in x 18 in"), attribute("Stand off", "Four corners"), attribute("Grommets", "All corners"), attribute("Lamination", "Dry erase")] }] } });
+    assert.equal(line.size, "24 in x 18 in", handle);
+    assert.deepEqual(line.details.map(detail => detail.label), ["Stand off", "Grommets", "Lamination"], handle);
+  }
+});

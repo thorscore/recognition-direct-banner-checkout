@@ -6,6 +6,14 @@ const REVIEW_FIELDS = new Set([
   "Package", "H-stake",
   "Badge Color", "Frame", "Fastener", "Finish", "Express One",
   "Badges Needed Now", "Badges Held for Later", "Names / Badge Text",
+  "Corner Style", "Holes Punch", "Print", "Grommets", "H-Stake", "Acrylic", "Stand off", "Lamination",
+]);
+const REVIEW_TAGS = new Set([
+  "13oz-vinyl-banner", "solar-placards", "yard-sign-and-h-stake", "name-badges",
+  "aluminum-sign", "reflective-aluminum-sign", "coroplast", "foamcore", "pvc-board", "gatorfoam",
+  "styrene", "magnets", "aluminum-sandwich-board", "dry-erase-pvc-board", "dry-erase-foamcore",
+  "dry-erase-aluminum-sandwich-board", "dry-erase-coroplast", "dry-erase-magnet",
+  "reflective-aluminum-sandwich-board", "reflective-coroplast", "reflective-car-magnet", "acrylic-prints",
 ]);
 const UPLOAD_FIELDS = new Set([
   "Artwork", "Youth Print-ready Artwork", "Youth Design Idea Image", "Standard Print-ready Art File",
@@ -16,7 +24,7 @@ const UPLOAD_FIELDS = new Set([
 export function customCartReviewLines(item) {
   const draft = item.draftInput || {};
   const tags = draft.tags || [];
-  if (!tags.some((tag) => ["13oz-vinyl-banner", "solar-placards", "yard-sign-and-h-stake", "name-badges"].includes(tag))) return [];
+  if (!tags.some((tag) => REVIEW_TAGS.has(tag))) return [];
   const orderDelivery = draft.customAttributes?.find(({ key }) => key === "Delivery Method")?.value || "";
   return (draft.lineItems || []).map((line) => {
     const attributes = line.customAttributes || [];
