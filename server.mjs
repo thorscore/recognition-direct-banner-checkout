@@ -9,6 +9,7 @@ import { expressOneOrderSplit } from "./express-one-order-split.mjs";
 import { assertCartDelivery, SPRING_VALLEY_PICKUP_LABEL, validateDeliveryMethod } from "./delivery-policy.mjs";
 import { createCatalogQuoteHandler } from "./catalog-quotes.mjs";
 import { awardShoppingPageHtml } from "./award-shopping.mjs";
+import { serveAwardSitemap } from "./award-sitemap.mjs";
 import { ATTRIBUTION_CONSENT_COOKIE, clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes, readOrderAttribution } from "./order-attribution.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
@@ -5919,6 +5920,7 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
+    if (serveAwardSitemap(req, res, url)) return;
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1, orderAttributionVersion: 1, catalogQuoteVersion: 1 });
     if (url.pathname.startsWith("/express-one") || url.pathname.startsWith("/api/express-one")) {
       if (!expressOnePortal) return json(res, 503, { error: "Express One customer access is not enabled. Please contact Recognition Direct." });

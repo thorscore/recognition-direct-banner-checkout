@@ -18,6 +18,9 @@ test('award price and cart integration preserve selected SKU, volume price, pers
     const base=`http://127.0.0.1:${port}`;
     child=spawn(process.execPath,[join(dir,'server.mjs')],{cwd:dir,env:{...process.env,PORT:String(port),APP_BASE_URL:base,MOCK_SHOPIFY:'true',EXPRESS_ONE_ENABLED:'false',SHOPIFY_CLIENT_ID:'',SHOPIFY_CLIENT_SECRET:'',SHOPIFY_ACCESS_TOKEN:''},windowsHide:true,stdio:['ignore','pipe','pipe']});
     await new Promise((resolve,reject)=>{child.stdout.on('data',c=>{if(String(c).includes('listening on'))resolve();});child.on('error',reject);child.on('exit',c=>reject(new Error('Mock exited '+c)));});
+    const sitemapResponse=await fetch(base+'/awards-sitemap.xml');const sitemap=await sitemapResponse.text();
+    assert.equal(sitemapResponse.status,200);assert.equal(sitemapResponse.headers.get('content-type'),'application/xml; charset=utf-8');assert.equal(sitemapResponse.headers.get('x-robots-tag'),null);assert.equal((sitemap.match(/<loc>/g)||[]).length,9);
+    const sitemapHead=await fetch(base+'/awards-sitemap.xml',{method:'HEAD'});assert.equal(sitemapHead.status,200);assert.equal(await sitemapHead.text(),'');
     for(const path of ['/acrylic-awards','/award-plaques','/baseball-softball-resin-trophies','/soccer-resin-trophies']){
       const html=await (await fetch(base+path)).text();assert.match(html,/data-award-shopping="1"/);assert.match(html,/Personalization/);assert.doesNotMatch(html,/pickup-la-mesa|pickup-pine-valley/);
     }
