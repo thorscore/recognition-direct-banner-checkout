@@ -8,6 +8,7 @@ import { customCartReviewLines } from "./custom-cart-review.mjs";
 import { expressOneOrderSplit } from "./express-one-order-split.mjs";
 import { assertCartDelivery, SPRING_VALLEY_PICKUP_LABEL, validateDeliveryMethod } from "./delivery-policy.mjs";
 import { createCatalogQuoteHandler } from "./catalog-quotes.mjs";
+import { awardShoppingPageHtml } from "./award-shopping.mjs";
 import { ATTRIBUTION_CONSENT_COOKIE, clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes, readOrderAttribution } from "./order-attribution.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
@@ -2204,6 +2205,7 @@ async function handleCustomOrderCartPage(req, res, url) {
   const items = cart.items || [];
   const productSubtotal = cartProductSubtotal(cart);
   const shippingSubtotal = cartShippingSubtotal(cart);
+  const pickupCart = cartDeliveryChoice(cart)?.startsWith("pickup-");
   const total = productSubtotal + shippingSubtotal;
   const added = url.searchParams.get("added") === "1";
   const removed = url.searchParams.get("removed") === "1";
@@ -2342,7 +2344,7 @@ async function handleCustomOrderCartPage(req, res, url) {
           </table>
           <section class="totals" aria-label="Cart totals">
             <div><span>Products</span><span>${formatMoney(productSubtotal)}</span></div>
-            <div><span>Shipping & handling</span><span>${shippingSubtotal ? formatMoney(shippingSubtotal) : "Calculated at checkout"}</span></div>
+            <div><span>Shipping & handling</span><span>${shippingSubtotal ? formatMoney(shippingSubtotal) : pickupCart ? "Not applicable (pickup)" : "Calculated at checkout"}</span></div>
             <div><strong>Total before tax</strong><strong>${formatMoney(total)}</strong></div>
           </section>
           <div class="actions">
@@ -4166,6 +4168,14 @@ function premierAwardCardsHtml(products) {
 
 function premierAwardsPageHtml(catalogId = "baseball-softball") {
   const catalog = premierAwardCatalog(catalogId);
+  if (["acrylic", "plaques", "baseball-softball", "soccer"].includes(catalogId)) {
+    return awardShoppingPageHtml({
+      catalog, appBaseUrl: APP_BASE_URL, pickupLabel: SPRING_VALLEY_PICKUP_LABEL,
+      tierFor: premierAwardTier,
+      seoTags: checkoutSeoTags({title: `${catalog.title} | Recognition Direct`, description: catalog.metaDescription, path: catalog.route, image: catalog.products[0]?.thumbnail}),
+      cartScript: customCartClientScript(),
+    });
+  }
   const products = catalog.products;
   const first = products[0];
   const itemPlural = catalog.itemPlural || "trophies";

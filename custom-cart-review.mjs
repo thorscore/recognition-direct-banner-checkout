@@ -7,6 +7,7 @@ const REVIEW_FIELDS = new Set([
   "Badge Color", "Frame", "Fastener", "Finish", "Express One",
   "Badges Needed Now", "Badges Held for Later", "Names / Badge Text",
   "Corner Style", "Holes Punch", "Print", "Grommets", "H-Stake", "Acrylic", "Stand off", "Lamination",
+  "SKU", "Option", "Plate / Personalization Text", "Proof Required",
 ]);
 const REVIEW_TAGS = new Set([
   "13oz-vinyl-banner", "solar-placards", "yard-sign-and-h-stake", "name-badges",
@@ -14,11 +15,13 @@ const REVIEW_TAGS = new Set([
   "styrene", "magnets", "aluminum-sandwich-board", "dry-erase-pvc-board", "dry-erase-foamcore",
   "dry-erase-aluminum-sandwich-board", "dry-erase-coroplast", "dry-erase-magnet",
   "reflective-aluminum-sandwich-board", "reflective-coroplast", "reflective-car-magnet", "acrylic-prints",
+  "acrylic-awards", "award-plaques", "baseball-softball-trophies", "soccer-trophies",
 ]);
 const UPLOAD_FIELDS = new Set([
   "Artwork", "Youth Print-ready Artwork", "Youth Design Idea Image", "Standard Print-ready Art File",
   "Standard Example / Banner Element", "PDF Plan Sheet / Placard Design", "Additional Artwork",
   "Names File",
+  "Logo / Artwork",
 ]);
 
 export function customCartReviewLines(item) {
