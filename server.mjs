@@ -147,6 +147,19 @@ await mkdir(ORDER_DIR, { recursive: true });
 await mkdir(CUSTOM_CART_DIR, { recursive: true });
 await mkdir(EXPRESS_ONE_RELEASE_DIR, { recursive: true });
 await mkdir(EXPRESS_ONE_EMAIL_DIR, { recursive: true });
+const BADGE_DESIGN_PATH = "/api/badge-design-account";
+const badgeDesignMode = process.env.BADGE_DESIGN_ACCOUNTS_MODE;
+const badgeDesignAccount = ["preview", "live"].includes(badgeDesignMode)
+  ? await (await import("./badge-design-account.mjs"))
+    .configureBadgeDesignAccount({
+      mode: badgeDesignMode,
+      databasePath: join(DATA_DIR, `badge-design-${badgeDesignMode}.sqlite`),
+    })
+    .catch(() => {
+      console.error("Badge design sign-in is unavailable. Check the private storage and email settings.");
+      return null;
+    })
+  : null;
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierSoccerAwardsData = JSON.parse((await readFile(PREMIER_SOCCER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
@@ -5920,6 +5933,10 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
+    if (url.pathname.startsWith(BADGE_DESIGN_PATH + "/")) {
+      if (!badgeDesignAccount) return json(res, 503, { error: "SAVED_DESIGNS_UNAVAILABLE" });
+      return await badgeDesignAccount.handle(req, res, url);
+    }
     if (serveAwardSitemap(req, res, url)) return;
     if (req.method === "GET" && url.pathname === "/health") return json(res, 200, { ok: true, customCartAnalyticsVersion: 1, orderAttributionVersion: 1, catalogQuoteVersion: 1 });
     if (url.pathname.startsWith("/express-one") || url.pathname.startsWith("/api/express-one")) {
