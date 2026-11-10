@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Badge order review | Recognition Direct</title>
+<style>
+  body { max-width: 48rem; margin: 3rem auto; padding: 0 1rem; font: 1rem/1.5 system-ui, sans-serif; color: #162a3b; }
+  label { display: block; margin: 1rem 0; }
+  input, button { padding: .5rem; font: inherit; }
+  dd { margin: 0 0 .6rem; }
+  dt { font-weight: 650; }
+  #order-names { white-space: pre-wrap; }
+</style>
+<main>
+  <h1>Badge order review</h1>
+  <p>Sign in with your Recognition Direct business email to review the paid badge order and prepare its proof.</p>
+  <form id="email-form" hidden>
+    <label>Business email <input type="email" id="email" autocomplete="email" required></label>
+    <button>Email a sign-in code</button>
+  </form>
+  <form id="code-form" hidden>
+    <label>Sign-in code <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{8}" maxlength="8" required></label>
+    <button>Verify code</button>
+  </form>
+  <p id="status" role="status">Checking the order link…</p>
+  <section id="order" hidden>
+    <h2>Paid badge configuration</h2>
+    <dl id="order-details"></dl>
+    <h3>Names and titles</h3>
+    <p id="order-names"></p>
+    <p><a id="artwork" hidden>Download original logo</a></p>
+    <p><a id="shopify-order" hidden>Open paid order in Shopify</a></p>
+  </section>
+  <button id="sign-out" type="button" hidden>Sign out</button>
+</main>
+<script src="/badge-production.js" type="module"></script>
+</html>

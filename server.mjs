@@ -154,6 +154,8 @@ const badgeDesignAccount = ["preview", "live"].includes(badgeDesignMode)
     .configureBadgeDesignAccount({
       mode: badgeDesignMode,
       databasePath: join(DATA_DIR, `badge-design-${badgeDesignMode}.sqlite`),
+      graphql: shopifyGraphql,
+      base: APP_BASE_URL,
     })
     .catch(() => {
       console.error("Badge design sign-in is unavailable. Check the private storage and email settings.");
@@ -3610,10 +3612,10 @@ async function handleUpload(req, res, pathname) {
   }
 }
 
-async function servePublicFile(res, name, contentType) {
+async function servePublicFile(res, name, contentType, extraHeaders = {}) {
   try {
     const bytes = await readFile(join(PUBLIC_DIR, name));
-    const headers = { "Content-Type": contentType };
+    const headers = { "Content-Type": contentType, ...extraHeaders };
     if (contentType.includes("text/html")) headers["X-Robots-Tag"] = "noindex, nofollow";
     res.writeHead(200, headers);
     res.end(bytes);
@@ -5933,6 +5935,17 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
+    if (req.method === "GET" && badgeDesignAccount &&
+        (url.pathname === "/badge-production" || url.pathname === "/badge-production.js")) {
+      const page = url.pathname === "/badge-production";
+      const headers = {
+        "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow",
+        "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+      };
+      return await servePublicFile(res, page ? "badge-production.html" : "badge-production.js",
+        page ? "text/html; charset=utf-8" : "text/javascript; charset=utf-8", headers);
+    }
     if (url.pathname.startsWith(BADGE_DESIGN_PATH + "/")) {
       if (!badgeDesignAccount) return json(res, 503, { error: "SAVED_DESIGNS_UNAVAILABLE" });
       return await badgeDesignAccount.handle(req, res, url);

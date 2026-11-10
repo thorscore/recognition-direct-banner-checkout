@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { BADGE_ORDER_BODY_LIMIT, BadgeOrderError, createBadgeDesignerOrders } from './badge-designer/orders.mjs';
 
 export const BADGE_DESIGN_PATH = '/api/badge-design-account';
 const COOKIE = '__Secure-rd_badge_design';
@@ -81,7 +82,7 @@ function checkedDesign(input) {
   };
 }
 
-export function createBadgeDesignAccount({ databasePath, origins, sendCode, previewEmail, now = Date.now }) {
+export function createBadgeDesignAccount({ databasePath, origins, sendCode, previewEmail, production, now = Date.now }) {
   if (!databasePath || typeof sendCode !== 'function' || !origins.length) throw new Error('Badge design account setup is incomplete.');
   const allowedOrigins = new Set(origins);
   const db = new DatabaseSync(databasePath);
@@ -104,6 +105,10 @@ export function createBadgeDesignAccount({ databasePath, origins, sendCode, prev
   db.prepare('INSERT OR IGNORE INTO badge_library_key VALUES (1, ?)').run(token());
   const key = db.prepare('SELECT secret FROM badge_library_key WHERE id = 1').get().secret;
   const mac = value => createHmac('sha256', key).update(value).digest('hex');
+  const orderService = production && createBadgeDesignerOrders({
+    db, graphql: production.graphql, base: production.base, previewEmail, now,
+  });
+  const productionOwner = production && mac('email:' + production.owner);
   const saveCookie = (value, age) => `${COOKIE}=${value}; Path=${BADGE_DESIGN_PATH}; Max-Age=${age}; Secure; HttpOnly; SameSite=Strict`;
 
   function session(req) {
@@ -210,7 +215,16 @@ export function createBadgeDesignAccount({ databasePath, origins, sendCode, prev
         const verified = verifyCode(await readJson(req, 1024), session(req));
         return reply(200, { session: verified.key }, { 'Set-Cookie': saveCookie(verified.raw, SESSION_AGE / 1000) });
       }
+      if (path === '/checkout' && orderService) {
+        return reply(200, await orderService.checkout(await readJson(req, BADGE_ORDER_BODY_LIMIT)));
+      }
       if (!active || req.headers['x-badge-session'] !== sessionKey(active)) reject(401, 'SIGN_IN_REQUIRED');
+      if (path === '/production' && orderService) {
+        if (origin !== production.base || active.owner !== productionOwner) reject(403, 'ORDER_OWNER_REQUIRED');
+        const { id } = await readJson(req, 1024);
+        if (session(req)?.id !== active.id) reject(401, 'SIGN_IN_REQUIRED');
+        return reply(200, await orderService.production(id));
+      }
       if (path === '/sign-out') {
         db.prepare('DELETE FROM badge_library_sessions WHERE id = ?').run(active.id);
         return reply(200, {}, { 'Set-Cookie': saveCookie('', 0) });
@@ -235,8 +249,9 @@ export function createBadgeDesignAccount({ databasePath, origins, sendCode, prev
       }
       reject(404, 'NOT_FOUND');
     } catch (error) {
-      return reply(error instanceof RequestError ? error.status : 503, {
-        error: error instanceof RequestError ? error.message : 'SAVED_DESIGNS_UNAVAILABLE',
+      const known = error instanceof RequestError || error instanceof BadgeOrderError;
+      return reply(known ? error.status : 503, {
+        error: known ? error.message : path === '/checkout' ? 'ORDER_REVIEW_REQUIRED' : 'SAVED_DESIGNS_UNAVAILABLE',
       });
     }
   }
@@ -244,7 +259,7 @@ export function createBadgeDesignAccount({ databasePath, origins, sendCode, prev
   return { handle, close: () => db.close() };
 }
 
-export async function configureBadgeDesignAccount({ databasePath, mode, env = process.env }) {
+export async function configureBadgeDesignAccount({ databasePath, mode, graphql, base, env = process.env }) {
   if (mode !== 'preview' && mode !== 'live') throw new Error('Badge design sign-in mode is not configured.');
   const { alertConfig } = await import('./express-one-alerts.mjs');
   const mail = alertConfig({
@@ -258,10 +273,12 @@ export async function configureBadgeDesignAccount({ databasePath, mode, env = pr
   if (!mail.enabled) throw new Error('Badge design sign-in email is not configured.');
   const { default: nodemailer } = await import('nodemailer');
   const transport = nodemailer.createTransport(mail.smtp);
+  const owner = mail.smtp.auth.user.trim().toLowerCase();
   return createBadgeDesignAccount({
     databasePath,
-    origins: ['https://recognition-direct.com', 'https://www.recognition-direct.com'],
-    previewEmail: mode === 'preview' ? mail.smtp.auth.user.trim().toLowerCase() : undefined,
+    origins: ['https://recognition-direct.com', 'https://www.recognition-direct.com', base],
+    previewEmail: mode === 'preview' ? owner : undefined,
+    production: { graphql, base, owner },
     async sendCode(to, code) {
       const result = await transport.sendMail({
         from: mail.from,
