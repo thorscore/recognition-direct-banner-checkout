@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 const files = new Map([
   ['/badge-production', ['public/badge-production.html', 'text/html; charset=utf-8']],
   ['/badge-production.js', ['public/badge-production.js', 'text/javascript; charset=utf-8']],
-  ...['render', 'layout', 'catalog', 'duets-palette', 'logo-preview', 'logo-validation', 'pdf-export'].map(name =>
+  ...['render', 'layout', 'catalog', 'duets-palette', 'logo-preview', 'logo-validation', 'svg-source', 'pdf-export'].map(name =>
     ['/badge-preview/' + name + '.js', ['public/badge-preview/' + name + '.js', 'text/javascript; charset=utf-8']]),
   ['/badge-preview/pdfjs-6-5-438.mjs', ['node_modules/pdfjs-dist/legacy/build/pdf.min.mjs', 'text/javascript; charset=utf-8']],
   ['/badge-preview/pdf-worker-6-5-438.mjs', ['node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs', 'text/javascript; charset=utf-8']],

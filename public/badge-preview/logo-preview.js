@@ -1,3 +1,4 @@
+import { prepareSvgMarkup } from './svg-source.js';
 import { BADGE_LOGO_MAX_PIXELS, validateBadgeLogo } from './logo-validation.js';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
@@ -37,8 +38,7 @@ function svgLength(raw) {
 }
 
 async function svgPreview(file, edge) {
-  const markup = await file.text();
-  if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(markup)) throw new Error(badSvg);
+  const markup = prepareSvgMarkup(await file.text());
   const xml = new DOMParser().parseFromString(markup, 'image/svg+xml');
   const root = xml.documentElement;
   if (root.localName !== 'svg' || root.namespaceURI !== svgNamespace || xml.querySelector('parsererror')) throw new Error(badSvg);
