@@ -7,7 +7,7 @@ import {createPilotAuth,PILOT_OWNER,PILOT_PATH,PilotError,fail} from './auth.mjs
 import {createPilotStore} from './store.mjs';
 import {createPhotoPilotShopify} from './shopify.mjs';
 import {createPilotSamples} from './samples.mjs';
-export const VERSION='photo-id-private-pilot-20261111.2';
+export const VERSION='photo-id-private-pilot-20261111.3';
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow, noarchive','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' blob: data:; font-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 const staticFiles=new Map([['/', ['index.html','text/html; charset=utf-8']],['/app.mjs',['app.mjs','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']]]);
 async function body(req,max=256*1024){const chunks=[];let n=0;if(req.headers['content-encoding'])fail(415,'ENCODING_UNSUPPORTED');for await(const c of req){n+=c.length;if(n>max)fail(413,'FILE_TOO_LARGE');chunks.push(c);}return Buffer.concat(chunks);}
@@ -45,7 +45,7 @@ export async function configurePhotoIdPilot({databasePath,base,env=process.env,t
     if(req.method==='GET'&&!action)output(res,200,store.read(id));
     else if(req.method==='GET'&&action==='events')output(res,200,store.eventRows(id));
     else if(req.method==='GET'&&action==='production.pdf')pdf(res,await store.production(id),'photo-id-'+id.slice(0,12)+'-production-test');
-    else if(req.method==='POST'&&action==='assets')output(res,201,await store.upload(id,{role:req.headers['x-photo-role'],type:req.headers['content-type'],bytes:await body(req,10*1024*1024)}));
+    else if(req.method==='POST'&&action==='assets'){let filename;try{filename=decodeURIComponent(req.headers['x-photo-filename']??'');}catch{fail(422,'ARTWORK_FILE_INVALID');}output(res,201,await store.upload(id,{role:req.headers['x-photo-role'],type:req.headers['content-type'],filename,bytes:await body(req,10*1024*1024)}));}
     else if(req.method==='POST'){
      const data=await json(req);
      if(!action)output(res,200,store.save(id,data));
@@ -57,6 +57,7 @@ export async function configurePhotoIdPilot({databasePath,base,env=process.env,t
     }else fail(405,'METHOD_NOT_ALLOWED');return true;
    }
    const asset=path.match(/^\/api\/assets\/([a-f0-9]{32})$/);if(asset&&req.method==='GET'){output(res,200,store.image(asset[1]),'image/png');return true;}
+   const original=path.match(/^\/api\/assets\/([a-f0-9]{32})\/original$/);if(original&&req.method==='GET'){const file=store.original(original[1]);output(res,200,file.bytes,file.type,{'Content-Disposition':`attachment; filename="${file.filename}"`,'Content-Security-Policy':"default-src 'none'; sandbox"});return true;}
    const proof=path.match(/^\/api\/proofs\/([a-f0-9]{32})(?:\/(pdf|send|decision))?$/);
    if(proof){const [,id,action]=proof;if(req.method==='GET'&&!action)output(res,200,store.proof(id));else if(req.method==='GET'&&action==='pdf')pdf(res,store.proofPdf(id),'photo-id-proof-'+id.slice(0,12));else if(req.method==='POST'&&action==='send')output(res,200,await store.sendProof(id,await json(req)));else if(req.method==='POST'&&action==='decision')output(res,200,await store.decide(id,await json(req)));else fail(405,'METHOD_NOT_ALLOWED');return true;}
    fail(404,'NOT_FOUND');

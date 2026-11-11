@@ -13,6 +13,7 @@
     "node": ">=22.13"
   },
   "dependencies": {
+    "@napi-rs/canvas": "1.1.0",
     "csv-parse": "7.0.3",
     "nodemailer": "10.2.1",
     "openid-client": "6.8.8",

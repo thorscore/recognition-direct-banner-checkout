@@ -1,10 +1,8 @@
-import sharp from 'sharp';
+import {normalizeArtwork} from './artwork.mjs';
 import {opaque,isId,hash,fail,PILOT_OWNER} from './auth.mjs';
 import {checkDocument,newDocument,documentAssets,financialSignature} from './document.mjs';
 import {cardPdf,proofPdf} from './pdf.mjs';
-const MAX_SOURCE=10*1024*1024,MAX_STORAGE=128*1024*1024;
-const allowed=new Set(['image/png','image/jpeg','image/webp']);
-function signature(bytes,type){return type==='image/png'?bytes.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex')):type==='image/jpeg'?bytes.subarray(0,3).equals(Buffer.from('ffd8ff','hex')):bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP';}
+const MAX_STORAGE=128*1024*1024;
 export function createPilotStore({db,shopify,send,base,now=Date.now,pdfs={cardPdf,proofPdf}}){
  db.exec(`PRAGMA journal_mode=WAL;PRAGMA busy_timeout=5000;PRAGMA foreign_keys=ON;
  CREATE TABLE IF NOT EXISTS photo_pilot_jobs(id TEXT PRIMARY KEY,revision INTEGER NOT NULL,document TEXT NOT NULL,created INTEGER NOT NULL,updated INTEGER NOT NULL);
@@ -12,6 +10,7 @@ export function createPilotStore({db,shopify,send,base,now=Date.now,pdfs={cardPd
  CREATE TABLE IF NOT EXISTS photo_pilot_runs(id TEXT PRIMARY KEY,job_id TEXT NOT NULL UNIQUE,side TEXT NOT NULL UNIQUE,record TEXT NOT NULL,status TEXT NOT NULL,error_code TEXT,draft_id TEXT UNIQUE,checkout_url TEXT,paid TEXT,FOREIGN KEY(job_id) REFERENCES photo_pilot_jobs(id));
  CREATE TABLE IF NOT EXISTS photo_pilot_proofs(id TEXT PRIMARY KEY,job_id TEXT NOT NULL,revision INTEGER NOT NULL,document_hash TEXT NOT NULL,document TEXT NOT NULL,pdf BLOB NOT NULL,pdf_hash TEXT NOT NULL,status TEXT NOT NULL,message_id TEXT,decision TEXT,decided INTEGER,UNIQUE(job_id,revision),FOREIGN KEY(job_id) REFERENCES photo_pilot_jobs(id));
  CREATE TABLE IF NOT EXISTS photo_pilot_events(id TEXT PRIMARY KEY,job_id TEXT NOT NULL,proof_id TEXT,event TEXT NOT NULL,at INTEGER NOT NULL,detail TEXT NOT NULL);`);
+ if(!db.prepare('PRAGMA table_info(photo_pilot_assets)').all().some(c=>c.name==='filename'))db.exec("ALTER TABLE photo_pilot_assets ADD COLUMN filename TEXT NOT NULL DEFAULT ''");
  db.prepare("UPDATE photo_pilot_proofs SET status='email-uncertain' WHERE status='sending'").run();
  db.prepare("UPDATE photo_pilot_runs SET status='needs-review',error_code='INTERRUPTED_CHECKOUT_REVIEW' WHERE status IN ('preflight','creating','verifying')").run();
  function event(job,kind,detail={},proof=null){db.prepare('INSERT INTO photo_pilot_events VALUES(?,?,?,?,?,?)').run(opaque(),job,proof,kind,now(),JSON.stringify(detail));}
@@ -28,11 +27,12 @@ export function createPilotStore({db,shopify,send,base,now=Date.now,pdfs={cardPd
   list(){return db.prepare('SELECT id,revision,updated FROM photo_pilot_jobs ORDER BY updated DESC').all().map(row=>view(job(row.id)));},
   create(){if(db.prepare('SELECT COUNT(*) AS count FROM photo_pilot_jobs').get().count>=12)fail(507,'PILOT_JOB_LIMIT');const id=opaque(),document=newDocument();db.prepare('INSERT INTO photo_pilot_jobs VALUES(?,?,?,?,?)').run(id,1,JSON.stringify(document),now(),now());event(id,'draft-created');return view(job(id));},
   read(id){return view(job(id));},
-  async upload(id,{role,type,bytes}){
-   const j=job(id);if(!['portrait','logo','back'].includes(role)||!allowed.has(type)||!Buffer.isBuffer(bytes)||!bytes.length||bytes.length>MAX_SOURCE||!signature(bytes,type))fail(422,'USE_JPG_PNG_WEBP');
-   let metadata,normalized,preview;try{const image=sharp(bytes,{limitInputPixels:16_000_000,animated:false,failOn:'error'});metadata=await image.metadata();if(!metadata.width||!metadata.height||metadata.width*metadata.height>16_000_000||(metadata.pages??1)!==1)throw Error();normalized=await image.rotate().png().toBuffer();metadata=await sharp(normalized).metadata();preview=await sharp(normalized).resize({width:900,height:900,fit:'inside',withoutEnlargement:true}).png().toBuffer();}catch{fail(422,'IMAGE_COULD_NOT_BE_READ');}
-   db.exec('BEGIN IMMEDIATE');try{job(id);const usage=db.prepare('SELECT COALESCE(SUM(length(source)+length(normalized)+length(preview)),0) AS bytes FROM photo_pilot_assets').get().bytes;if(usage+bytes.length+normalized.length+preview.length>MAX_STORAGE)fail(507,'PILOT_STORAGE_FULL');const asset=opaque();db.prepare('INSERT INTO photo_pilot_assets VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(asset,j.id,role,type,metadata.width,metadata.height,bytes,normalized,preview,hash(bytes),hash(normalized));db.exec('COMMIT');return {id:asset,width:metadata.width,height:metadata.height,previewUrl:base+'/photo-id-pilot/api/assets/'+asset};}catch(e){db.exec('ROLLBACK');throw e;}
+  async upload(id,{role,type,bytes,filename=''}){
+   const j=job(id);if(typeof filename!=='string'||filename.length>180||/[\u0000-\u001f\u007f\\/]/.test(filename))fail(422,'ARTWORK_FILE_INVALID');
+   const {normalized,preview,width,height,type:sourceType,previewKind}=await normalizeArtwork({role,type,bytes,filename});
+   db.exec('BEGIN IMMEDIATE');try{job(id);const usage=db.prepare('SELECT COALESCE(SUM(length(source)+length(normalized)+length(preview)),0) AS bytes FROM photo_pilot_assets').get().bytes;if(usage+bytes.length+normalized.length+preview.length>MAX_STORAGE)fail(507,'PILOT_STORAGE_FULL');const asset=opaque();db.prepare('INSERT INTO photo_pilot_assets(id,job_id,role,type,width,height,source,normalized,preview,source_hash,normalized_hash,filename) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(asset,j.id,role,sourceType,width,height,bytes,normalized,preview,hash(bytes),hash(normalized),filename);db.exec('COMMIT');return {id:asset,width,height,previewKind,previewUrl:base+'/photo-id-pilot/api/assets/'+asset,originalUrl:base+'/photo-id-pilot/api/assets/'+asset+'/original'};}catch(e){db.exec('ROLLBACK');throw e;}
   },
+  original(id){const row=isId(id)&&db.prepare('SELECT type,source,source_hash,filename FROM photo_pilot_assets WHERE id=?').get(id);if(!row||hash(row.source)!==row.source_hash)fail(404,'ARTWORK_NOT_FOUND');const extension=/\.ai$/i.test(row.filename)?'ai':({'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/svg+xml':'svg','application/pdf':'pdf'}[row.type]??'bin');return {bytes:Buffer.from(row.source),type:row.type,filename:'photo-id-original-'+id.slice(0,12)+'.'+extension};},
   image(id){const row=isId(id)&&db.prepare('SELECT preview FROM photo_pilot_assets WHERE id=?').get(id);if(!row)fail(404,'ARTWORK_NOT_FOUND');return Buffer.from(row.preview);},
   save(id,{expectedRevision,document}){
    const j=job(id);if(j.revision!==expectedRevision)fail(409,'DRAFT_CHANGED_RELOAD');const checked=checkDocument(document);assetsFor(j,checked.document);const r=run(id);if(r&&financialSignature(checked.document)!==financialSignature(JSON.parse(r.record.document)))fail(409,'CHECKOUT_OPTIONS_LOCKED');
