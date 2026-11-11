@@ -6,7 +6,8 @@ import {alertConfig} from '../express-one-alerts.mjs';
 import {createPilotAuth,PILOT_OWNER,PILOT_PATH,PilotError,fail} from './auth.mjs';
 import {createPilotStore} from './store.mjs';
 import {createPhotoPilotShopify} from './shopify.mjs';
-export const VERSION='photo-id-private-pilot-20261111.1';
+import {createPilotSamples} from './samples.mjs';
+export const VERSION='photo-id-private-pilot-20261111.2';
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow, noarchive','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' blob: data:; font-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 const staticFiles=new Map([['/', ['index.html','text/html; charset=utf-8']],['/app.mjs',['app.mjs','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']]]);
 async function body(req,max=256*1024){const chunks=[];let n=0;if(req.headers['content-encoding'])fail(415,'ENCODING_UNSUPPORTED');for await(const c of req){n+=c.length;if(n>max)fail(413,'FILE_TOO_LARGE');chunks.push(c);}return Buffer.concat(chunks);}
@@ -18,6 +19,7 @@ export async function configurePhotoIdPilot({databasePath,base,env=process.env,t
  const send=providedSend??(async message=>{if(message.to!==PILOT_OWNER||!transport)fail(503,'PILOT_EMAIL_SETUP_REQUIRED');const result=await transport.sendMail({...message,from:config.from});if(!result.accepted?.some(x=>typeof x==='string'&&x.toLowerCase()===PILOT_OWNER))fail(502,'PILOT_EMAIL_NOT_ACCEPTED');});
  const shopify=providedShopify??createPhotoPilotShopify({secret:env.PHOTO_ID_PILOT_SHOPIFY_SECRET});
  const auth=createPilotAuth({db,send,base,testing}),store=createPilotStore({db,send,shopify,base});
+ const sample=createPilotSamples(store);
  function output(res,status,value,type='application/json; charset=utf-8',extra={}){res.writeHead(status,{...headers,'Content-Type':type,...extra});res.end(Buffer.isBuffer(value)?value:JSON.stringify(value));}
  function pdf(res,bytes,name){output(res,200,bytes,'application/pdf',{'Content-Disposition':`inline; filename="${name}.pdf"`});}
  return {close(){transport?.close();db.close();},async handle(req,res,url){
@@ -37,6 +39,7 @@ export async function configurePhotoIdPilot({databasePath,base,env=process.env,t
    if(req.method==='POST'&&path==='/api/sign-out'){output(res,200,{ok:true},'application/json; charset=utf-8',{'Set-Cookie':auth.signOut(req)});return true;}
    if(path==='/api/jobs'&&req.method==='GET'){output(res,200,store.list());return true;}
    if(path==='/api/jobs'&&req.method==='POST'){await json(req);output(res,201,store.create());return true;}
+   if(path==='/api/samples'&&req.method==='POST'){const data=await json(req);output(res,200,await sample(data.side));return true;}
    const match=path.match(/^\/api\/jobs\/([a-f0-9]{32})(?:\/(assets|preview|checkout|sync|prepare-proof|production\.pdf|events))?$/);
    if(match){const [,id,action]=match;
     if(req.method==='GET'&&!action)output(res,200,store.read(id));
