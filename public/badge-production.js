@@ -1,9 +1,48 @@
+import {productionLogo, renderProduction} from './badge-preview/render.js';
+
 const element = id => document.getElementById(id);
 const status = element('status');
 const id = location.hash.slice(1);
 const emailForm = element('email-form');
 const codeForm = element('code-form');
-let challenge, session, download;
+let challenge, session, download, configuration, previewLogo;
+let renderVersion = 0;
+
+const inches = value => (value / 300).toFixed(3) + ' in';
+function placements(plan) {
+  const rows = [plan.logoRect ? `Logo: ${inches(plan.logoRect.w)} wide × ${inches(plan.logoRect.h)} high; left ${inches(plan.logoRect.x)}, top ${inches(plan.logoRect.y)}.` : 'Logo: none saved.'];
+  for (const line of plan.lines) rows.push(`${line.key === 'organization' ? 'Organization' : line.key === 'name' ? 'Name' : 'Title'}: “${line.value}” — ${line.fontPoints.toFixed(2)} pt, weight ${line.weight}; ${plan.alignment} anchor ${inches(line.x)}, vertical center ${inches(line.y)}.`);
+  element('preview-placement').replaceChildren(...rows.map(text => {
+    const item = document.createElement('li'); item.textContent = text; return item;
+  }));
+}
+async function showPreview() {
+  const version = ++renderVersion;
+  const selected = Number(element('badge-person').value);
+  element('download-layout').disabled = true;
+  element('preview-status').textContent = 'Rendering saved layout…';
+  try {
+    // Render offscreen so a slow vector image cannot overwrite a newer selection.
+    const canvas = document.createElement('canvas');
+    const plan = await renderProduction(canvas, configuration, selected, previewLogo);
+    if (version !== renderVersion) return;
+    const visible = element('badge-canvas');
+    visible.width = canvas.width; visible.height = canvas.height;
+    visible.getContext('2d').drawImage(canvas, 0, 0);
+    visible.setAttribute('aria-label', `Saved badge layout for ${plan.person.name || 'unnamed badge'}, ${plan.size.width} by ${plan.size.height} inches`);
+    element('canvas-wrap').hidden = false;
+    element('preview-dimensions').textContent = `${plan.size.width} × ${plan.size.height} in badge face · ${plan.stock?.name ?? 'Saved stock'} · ${plan.person.copies} ${plan.person.copies === 1 ? 'copy' : 'copies'}`;
+    element('preview-warning').textContent = plan.warnings.join(' ');
+    placements(plan);
+    element('preview-status').textContent = 'Saved customer layout';
+    element('download-layout').disabled = false;
+  } catch (error) {
+    if (version !== renderVersion) return;
+    element('canvas-wrap').hidden = true;
+    element('preview-status').textContent = error.message;
+    element('preview-placement').replaceChildren();
+  }
+}
 
 const messages = {
   CODE_INVALID: 'That code is invalid or expired. Reload the page and request a fresh code.',
@@ -26,18 +65,19 @@ async function request(action, body = {}) {
 async function showOrder() {
   element('sign-out').hidden = false;
   const order = await request('production', { id });
-  const { configuration, size, color, logo } = order;
+  const { size, color, logo } = order;
+  configuration = order.configuration;
   const design = configuration.design;
   const details = [
     ['Badge style', design.family === 'standard' ? 'Engravable' : 'Full-color printed'],
     ['Size', size], ['Stock color', color], ['Frame', design.frame],
-    ['Corners', design.cornerRadius ?? 'Set by frame'],
+    ['Corners', design.frame !== 'none' ? 'Set by frame' : (design.cornerRadius ?? '1/8') + ' in'],
     ['Finish', design.dome ? 'Epoxy dome' : design.family === 'duets' ? 'Gloss clear coat' : 'Standard'],
     ['Fastener', design.fastener], ['Total badges', design.quantity],
     ['Badge names now', configuration.namedQuantity], ['Hold for later', configuration.heldForLater],
-    ['Organization', design.organization], ['Text color', design.textColor],
+    ['Organization', design.organization], ['Text color', design.family === 'standard' ? 'Black (#111111)' : design.textColor],
     ['Text alignment', design.textAlignment ?? 'left'], ['Text size', (design.textSize ?? 100) + '%'],
-    ['Logo position', design.layout], ['Logo size', Math.round(configuration.logoScale * 100) + '%'],
+    ['Logo position', logo ? design.layout.replace('logo-', 'Logo ') : 'No logo'], ['Logo size', logo ? Math.round(configuration.logoScale * 100) + '%' : '—'],
     ['Delivery', design.delivery === 'troy' ? 'Troy Street pickup' : 'Ship'],
     ['Proof email', configuration.email], ['Layout notes', design.notes],
   ];
@@ -65,7 +105,33 @@ async function showOrder() {
   }
   element('order').hidden = false;
   status.textContent = 'Payment verified. Prepare and send the proof before production.';
+  element('badge-person').replaceChildren(...design.people.map((person, index) => {
+    const option = document.createElement('option');
+    option.value = String(index);
+    option.textContent = `${index + 1}. ${person.name || 'Unnamed badge'}${person.title ? ' — ' + person.title : ''} (${person.copies} ×)`;
+    return option;
+  }));
+  try {
+    previewLogo = await productionLogo(logo);
+    element('badge-person').disabled = false;
+    await showPreview();
+  } catch (error) {
+    // Do not silently omit an unreadable logo from a production image.
+    element('preview-status').textContent = error.message + ' The original artwork and specifications remain available.';
+  }
 }
+
+element('badge-person').addEventListener('change', () => { if (configuration) showPreview(); });
+element('download-layout').addEventListener('click', () => {
+  if (element('download-layout').disabled) return;
+  element('badge-canvas').toBlob(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'badge-layout-' + id.slice(0, 8) + '-' + (Number(element('badge-person').value) + 1) + '.png';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }, 'image/png');
+});
 
 function run(form, action) {
   form.addEventListener('submit', async event => {
@@ -96,6 +162,7 @@ element('sign-out').addEventListener('click', async () => {
   catch (error) { status.textContent = error.message; }
 });
 addEventListener('pagehide', () => { if (download) URL.revokeObjectURL(download); });
+addEventListener('hashchange', () => location.reload());
 if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(id)) {
   status.textContent = 'Open the badge order link from its Shopify order note.';
 } else {

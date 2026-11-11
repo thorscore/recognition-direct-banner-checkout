@@ -10,6 +10,7 @@ import { assertCartDelivery, SPRING_VALLEY_PICKUP_LABEL, validateDeliveryMethod 
 import { createCatalogQuoteHandler } from "./catalog-quotes.mjs";
 import { awardShoppingPageHtml } from "./award-shopping.mjs";
 import { serveAwardSitemap } from "./award-sitemap.mjs";
+import { serveBadgeProductionAsset } from "./badge-production-assets.mjs";
 import { ATTRIBUTION_CONSENT_COOKIE, clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes, readOrderAttribution } from "./order-attribution.mjs";
 import { BANNER_DRINKWARE_SOURCE, cartDeliveryChoice, hasEligibleBanner, isBannerDrinkwareAddition, loadCartDrinkware } from "./cart-drinkware.mjs";
 
@@ -5935,17 +5936,7 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
-    if (req.method === "GET" && badgeDesignAccount &&
-        (url.pathname === "/badge-production" || url.pathname === "/badge-production.js")) {
-      const page = url.pathname === "/badge-production";
-      const headers = {
-        "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow",
-        "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
-      };
-      return await servePublicFile(res, page ? "badge-production.html" : "badge-production.js",
-        page ? "text/html; charset=utf-8" : "text/javascript; charset=utf-8", headers);
-    }
+    if (await serveBadgeProductionAsset(req, res, url, Boolean(badgeDesignAccount))) return;
     if (url.pathname.startsWith(BADGE_DESIGN_PATH + "/")) {
       if (!badgeDesignAccount) return json(res, 503, { error: "SAVED_DESIGNS_UNAVAILABLE" });
       return await badgeDesignAccount.handle(req, res, url);
@@ -6047,3 +6038,4 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Recognition Direct banner checkout listening on ${APP_BASE_URL}`);
 });
+

@@ -2,18 +2,33 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Badge order review | Recognition Direct</title>
+<title>Badge production preview | Recognition Direct</title>
 <style>
-  body { max-width: 48rem; margin: 3rem auto; padding: 0 1rem; font: 1rem/1.5 system-ui, sans-serif; color: #162a3b; }
-  label { display: block; margin: 1rem 0; }
-  input, button { padding: .5rem; font: inherit; }
-  dd { margin: 0 0 .6rem; }
-  dt { font-weight: 650; }
-  #order-names { white-space: pre-wrap; }
+  * { box-sizing: border-box; }
+  body { max-width: 78rem; margin: 2rem auto; padding: 0 1.25rem 3rem; font: 1rem/1.5 system-ui, sans-serif; color: #162a3b; background: #fff; }
+  h1 { margin-bottom: .25rem; } h2 { margin: 0 0 1rem; font-size: 1.3rem; } h3 { font-size: 1.05rem; }
+  a { color: #2349b9; } label { display: block; margin: 1rem 0; font-weight: 600; }
+  input, button, select { padding: .65rem; font: inherit; border: 1px solid #a8b5c6; border-radius: .3rem; }
+  input, select { max-width: 100%; } button { cursor: pointer; background: #f5f7fb; color: #162a3b; }
+  button:disabled { cursor: wait; opacity: .6; } :focus-visible { outline: 3px solid #3157c5; outline-offset: 3px; }
+  .intro, .note { color: #526477; } .note { font-size: .9rem; }
+  #status { padding: .8rem 0; } #status:empty { display: none; }
+  .columns { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 1fr); gap: 1.5rem; align-items: start; }
+  .card { min-width: 0; padding: 1.25rem; border: 1px solid #d4dce7; border-radius: .6rem; }
+  .canvas-wrap { display: grid; place-items: center; padding: 1.5rem .75rem; min-height: 13rem; background: #f2f4f7; border: 1px solid #d4dce7; border-radius: .4rem; }
+  canvas { display: block; width: 100%; height: auto; filter: drop-shadow(0 3px 5px #00000018); }
+  select { display: block; width: 100%; margin-top: .4rem; background: #fff; }
+  dl { display: grid; grid-template-columns: minmax(7rem, .85fr) minmax(0, 1.2fr); gap: .5rem 1rem; font-size: .95rem; }
+  dt { font-weight: 650; } dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+  #order-names { white-space: pre-wrap; } #preview-warning { color: #943e00; }
+  .placement-list { padding-left: 1.2rem; font-size: .9rem; } .placement-list li { margin: .6rem 0; overflow-wrap: anywhere; }
+  .actions { display: flex; flex-wrap: wrap; gap: .75rem 1.2rem; align-items: center; margin: 1rem 0; }
+  #sign-out { margin-top: 1.5rem; } [hidden] { display: none !important; }
+  @media (max-width: 760px) { body { margin: 1.25rem auto; } .columns { grid-template-columns: minmax(0, 1fr); } .card { padding: 1rem; } }
 </style>
 <main>
   <h1>Badge order review</h1>
-  <p>Sign in with your Recognition Direct business email to review the paid badge order and prepare its proof.</p>
+  <p class="intro">Private production review. Sign in with your Recognition Direct business email to open the paid order.</p>
   <form id="email-form" hidden>
     <label>Business email <input type="email" id="email" autocomplete="email" required></label>
     <button>Email a sign-in code</button>
@@ -24,14 +39,32 @@
   </form>
   <p id="status" role="status">Checking the order link…</p>
   <section id="order" hidden>
-    <h2>Paid badge configuration</h2>
-    <dl id="order-details"></dl>
-    <h3>Names and titles</h3>
-    <p id="order-names"></p>
-    <p><a id="artwork" hidden>Download original logo</a></p>
-    <p><a id="shopify-order" hidden>Open paid order in Shopify</a></p>
+    <div class="actions"><a id="shopify-order" hidden>Open paid order in Shopify</a><a id="artwork" hidden>Download original logo</a></div>
+    <div class="columns">
+      <section class="card" aria-labelledby="preview-heading">
+        <h2 id="preview-heading">Visual production preview</h2>
+        <label for="badge-person">Badge name to preview</label>
+        <select id="badge-person" disabled></select>
+        <p id="preview-status" role="status">Preparing the saved layout…</p>
+        <div class="canvas-wrap" id="canvas-wrap" hidden><canvas id="badge-canvas" role="img" aria-label="Saved badge layout preview"></canvas></div>
+        <p id="preview-dimensions"></p>
+        <p id="preview-warning" role="status"></p>
+        <button id="download-layout" type="button" disabled>Download layout preview PNG</button>
+        <h3>Size and placement</h3>
+        <p class="note">Measurements below start at the top-left of the badge face and exclude any frame. Text coordinates give the alignment anchor and vertical center.</p>
+        <ul id="preview-placement" class="placement-list"></ul>
+        <p class="note">Reconstructed from the saved order using the designer’s layout rules. Text uses the system UI font, which can differ slightly between devices. This layout image supports production review; prepare and send the final proof before production.</p>
+      </section>
+      <section class="card" aria-labelledby="specs-heading">
+        <h2 id="specs-heading">Saved order specifications</h2>
+        <dl id="order-details"></dl>
+        <h3>Names, titles, and copies</h3>
+        <p id="order-names"></p>
+      </section>
+    </div>
   </section>
   <button id="sign-out" type="button" hidden>Sign out</button>
 </main>
 <script src="/badge-production.js" type="module"></script>
 </html>
+
