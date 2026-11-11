@@ -42,14 +42,15 @@ async function imageFromBlob(blob) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export async function productionLogo(saved) {
+export async function productionLogo(saved, options) {
   if (!saved) return null;
   const blob = new Blob([Uint8Array.from(atob(saved.base64), byte => byte.charCodeAt(0))], {type: saved.type});
   validateBadgeLogo(blob);
-  return imageFromBlob(await badgeLogoPreview(blob));
+  return imageFromBlob(await badgeLogoPreview(blob, options));
 }
 
-export async function renderProduction(canvas, configuration, index, logo) {
+export async function renderProduction(canvas, configuration, index, logo, {artworkOnly = false, pixelsPerInch = PPI} = {}) {
+  if (![PPI, 1200].includes(pixelsPerInch)) throw new Error('Unsupported production resolution.');
   const context = canvas.getContext('2d');
   const measure = (value, fontSize, weight, alignment) => {
     context.font = weight + ' ' + fontSize + 'px system-ui';
@@ -58,18 +59,20 @@ export async function renderProduction(canvas, configuration, index, logo) {
     return context.measureText(value);
   };
   const plan = productionPlan(configuration, index, logo, measure);
-  canvas.width = plan.surface?.width ?? plan.width;
-  canvas.height = plan.surface?.height ?? plan.height;
-  if (plan.surface) {
+  const scale = pixelsPerInch / PPI;
+  canvas.width = Math.round((artworkOnly ? plan.width : plan.surface?.width ?? plan.width) * scale);
+  canvas.height = Math.round((artworkOnly ? plan.height : plan.surface?.height ?? plan.height) * scale);
+  context.scale(scale, scale);
+  if (plan.surface && !artworkOnly) {
     const surfaceImage = await imageFromBlob(new Blob([plan.surface.svg], {type: 'image/svg+xml'}));
     context.drawImage(surfaceImage, 0, 0);
   }
   context.save();
-  if (plan.surface) context.translate(plan.surface.face.x, plan.surface.face.y);
+  if (plan.surface && !artworkOnly) context.translate(plan.surface.face.x, plan.surface.face.y);
   context.beginPath();
   context.roundRect(0, 0, plan.width, plan.height, plan.radius);
   context.clip();
-  if (!plan.standard) {
+  if (!plan.standard && !artworkOnly) {
     context.fillStyle = plan.stock?.preview ?? '#fff';
     context.fillRect(0, 0, plan.width, plan.height);
     if (plan.stock?.transparent) for (let y = 0; y < plan.height; y += 24) for (let x = 0; x < plan.width; x += 24) {
@@ -91,7 +94,7 @@ export async function renderProduction(canvas, configuration, index, logo) {
     context.fillText(line.value, line.x, line.y);
   }
   context.restore();
-  if (configuration.design.dome) {
+  if (configuration.design.dome && !artworkOnly) {
     const gloss = context.createLinearGradient(0, 0, plan.width, plan.height);
     gloss.addColorStop(0, '#ffffff75'); gloss.addColorStop(.45, '#ffffff00');
     context.fillStyle = gloss; context.fillRect(0, 0, plan.width, plan.height * .45);

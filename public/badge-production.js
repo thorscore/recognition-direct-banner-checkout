@@ -1,11 +1,12 @@
 import {productionLogo, renderProduction} from './badge-preview/render.js';
+import {productionArtworkPdf} from './badge-preview/pdf-export.js';
 
 const element = id => document.getElementById(id);
 const status = element('status');
 const id = location.hash.slice(1);
 const emailForm = element('email-form');
 const codeForm = element('code-form');
-let challenge, session, download, configuration, previewLogo;
+let challenge, session, download, configuration, previewLogo, savedLogo;
 let renderVersion = 0;
 
 const inches = value => (value / 300).toFixed(3) + ' in';
@@ -20,6 +21,7 @@ async function showPreview() {
   const version = ++renderVersion;
   const selected = Number(element('badge-person').value);
   element('download-layout').disabled = true;
+  element('download-pdf').disabled = true;
   element('preview-status').textContent = 'Rendering saved layout…';
   try {
     // Render offscreen so a slow vector image cannot overwrite a newer selection.
@@ -36,6 +38,7 @@ async function showPreview() {
     placements(plan);
     element('preview-status').textContent = 'Saved customer layout';
     element('download-layout').disabled = false;
+    element('download-pdf').disabled = plan.warnings.length > 0;
   } catch (error) {
     if (version !== renderVersion) return;
     element('canvas-wrap').hidden = true;
@@ -67,6 +70,7 @@ async function showOrder() {
   const order = await request('production', { id });
   const { size, color, logo } = order;
   configuration = order.configuration;
+  savedLogo = logo;
   const design = configuration.design;
   const details = [
     ['Badge style', design.family === 'standard' ? 'Engravable' : 'Full-color printed'],
@@ -122,6 +126,27 @@ async function showOrder() {
 }
 
 element('badge-person').addEventListener('change', () => { if (configuration) showPreview(); });
+element('download-pdf').addEventListener('click', async () => {
+  const button = element('download-pdf');
+  if (button.disabled || !configuration) return;
+  const index = Number(element('badge-person').value);
+  button.disabled = true;
+  element('badge-person').disabled = true;
+  element('pdf-status').textContent = 'Preparing actual-size production artwork from the saved design and original logo…';
+  try {
+    const blob = await productionArtworkPdf(configuration, index, savedLogo);
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'badge-print-' + id.slice(0, 8) + '-' + (index + 1) + '.pdf';
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    element('pdf-status').textContent = 'PDF prepared: actual badge face size, 1200 ppi flattened RGB artwork, transparent background, no bleed. Print at 100% / Actual size. The original logo remains available separately.';
+  } catch (error) {
+    element('pdf-status').textContent = error.message;
+  } finally {
+    element('badge-person').disabled = false;
+    button.disabled = false;
+  }
+});
 element('download-layout').addEventListener('click', () => {
   if (element('download-layout').disabled) return;
   element('badge-canvas').toBlob(blob => {

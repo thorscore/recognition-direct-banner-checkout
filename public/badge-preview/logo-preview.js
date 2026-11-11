@@ -1,16 +1,15 @@
 import { BADGE_LOGO_MAX_PIXELS, validateBadgeLogo } from './logo-validation.js';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
-const previewEdge = 1600;
 const cssUnits = { px: 1, in: 96, cm: 96 / 2.54, mm: 96 / 25.4, pt: 96 / 72, pc: 16 };
 const badSvg = 'Use a valid SVG with the logo artwork included in the file.';
 let pdfRenderer;
 
-function rasterSize(width, height) {
+function rasterSize(width, height, edge) {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
     throw new Error('The logo has an invalid page size.');
   }
-  const scale = previewEdge / Math.max(width, height);
+  const scale = edge / Math.max(width, height);
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
 
@@ -37,7 +36,7 @@ function svgLength(raw) {
   return Number.isFinite(length) && length > 0 ? length : null;
 }
 
-async function svgPreview(file) {
+async function svgPreview(file, edge) {
   const markup = await file.text();
   if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(markup)) throw new Error(badSvg);
   const xml = new DOMParser().parseFromString(markup, 'image/svg+xml');
@@ -48,7 +47,7 @@ async function svgPreview(file) {
   if (viewBox != null && (box.length !== 4 || !box.every(Number.isFinite) || box[2] <= 0 || box[3] <= 0)) throw new Error(badSvg);
   const width = svgLength(root.getAttribute('width')) ?? box?.[2] ?? 300;
   const height = svgLength(root.getAttribute('height')) ?? box?.[3] ?? 150;
-  const size = rasterSize(width, height);
+  const size = rasterSize(width, height, edge);
   if (!viewBox) root.setAttribute('viewBox', `0 0 ${width} ${height}`);
   root.setAttribute('width', String(size.width));
   root.setAttribute('height', String(size.height));
@@ -80,7 +79,7 @@ function loadPdfRenderer() {
   return pdfRenderer;
 }
 
-async function pdfPreview(file) {
+async function pdfPreview(file, edge) {
   const data = new Uint8Array(await file.arrayBuffer());
   const header = new TextDecoder().decode(data.subarray(0, 1024));
   if (!/%PDF-\d\.\d/.test(header)) {
@@ -103,8 +102,8 @@ async function pdfPreview(file) {
     const pdf = await loading.promise;
     const page = await pdf.getPage(1);
     const original = page.getViewport({ scale: 1 });
-    const size = rasterSize(original.width, original.height);
-    const viewport = page.getViewport({ scale: previewEdge / Math.max(original.width, original.height) });
+    const size = rasterSize(original.width, original.height, edge);
+    const viewport = page.getViewport({ scale: edge / Math.max(original.width, original.height) });
     const canvas = previewCanvas(size);
     // The default PDF.js canvas context is opaque and turns transparent areas black.
     const canvasContext = canvas.getContext('2d', { alpha: true });
@@ -121,9 +120,10 @@ async function pdfPreview(file) {
   }
 }
 
-export async function badgeLogoPreview(file) {
+export async function badgeLogoPreview(file, {edge = 1600} = {}) {
   validateBadgeLogo(file);
-  if (file.type === 'image/svg+xml') return svgPreview(file);
-  if (file.type === 'application/pdf') return pdfPreview(file);
+  if (!Number.isInteger(edge) || edge < 1600 || edge > 3600) throw new Error('Invalid logo rendering resolution.');
+  if (file.type === 'image/svg+xml') return svgPreview(file, edge);
+  if (file.type === 'application/pdf') return pdfPreview(file, edge);
   return file;
 }
