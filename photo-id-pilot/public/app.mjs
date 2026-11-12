@@ -18,13 +18,13 @@ function layoutThumbnail(layout,orientation,palette){
   shape(art,'polygon',{points:`0,0 ${w*.49},0 0,${h*.49}`,fill:secondary});shape(art,'polygon',{points:`0,0 ${w*.34},0 0,${h*.36}`,fill:primary});
   shape(art,'polygon',{points:`${w*.69},${h} ${w},${h*.61} ${w},${h}`,fill:primary});shape(art,'polygon',{points:`${w*.76},${h} ${w},${h*.73} ${w},${h}`,fill:secondary});
  }else if(layout==='clean-header.v1'){
-  shape(art,'rect',{width:w,height:portrait?43:28,fill:secondary});shape(art,'rect',{y:portrait?43:28,width:w,height:4,fill:primary});
+  shape(art,'rect',{width:w,height:portrait?21:17,fill:primary});shape(art,'rect',{y:portrait?21:17,width:w,height:2,fill:secondary});
  }else if(layout==='side-stripe.v1'){
-  shape(art,'rect',{width:14,height:h,fill:secondary});shape(art,'rect',{x:14,width:5,height:h,fill:primary});
+  shape(art,'rect',{width:portrait?13:25,height:h,fill:primary});shape(art,'rect',{x:portrait?13:25,width:portrait?3:4,height:h,fill:secondary});
  }else if(layout==='framed-id.v1'){
-  shape(art,'rect',{x:7,y:7,width:w-14,height:h-14,rx:6,fill:'none',stroke:secondary,'stroke-width':2});shape(art,'rect',{x:22,y:17,width:w-44,height:5,rx:2,fill:primary});
+  shape(art,'rect',{x:7,y:7,width:w-14,height:h-14,rx:6,fill:'none',stroke:primary,'stroke-width':2});shape(art,'rect',{x:portrait?24:105,y:portrait?48:44,width:portrait?106:118,height:1.25,fill:secondary});
  }else if(layout==='soft-panel.v1'){
-  shape(art,'rect',{x:10,y:10,width:portrait?w-20:83,height:portrait?155:h-20,rx:9,fill:primary,'fill-opacity':.13});shape(art,'rect',{x:portrait?25:105,y:portrait?h-20:h-25,width:portrait?w-50:w-123,height:4,rx:2,fill:secondary});
+  shape(art,'rect',{x:portrait?23:10,y:portrait?46:18,width:portrait?107:89,height:portrait?122:114,rx:6,fill:'#eef4f7'});shape(art,'rect',{x:0,y:portrait?216:121.5,width:w,height:portrait?27:31.5,fill:secondary});shape(art,'rect',{width:w,height:3,fill:primary});
  }
  const px=portrait?39:24,py=portrait?58:43,pw=portrait?75:63,ph=portrait?98:88;
  shape(art,'rect',{x:px,y:py,width:pw,height:ph,rx:5,fill:'#e5edf3'});
@@ -32,7 +32,7 @@ function layoutThumbnail(layout,orientation,palette){
  shape(art,'path',{d:`M ${px+pw*.16} ${py+ph*.88} Q ${px+pw*.16} ${py+ph*.57} ${px+pw*.5} ${py+ph*.57} Q ${px+pw*.84} ${py+ph*.57} ${px+pw*.84} ${py+ph*.88} Z`,fill:'#9aaec0'});
  const tx=portrait?26:106,ty=portrait?176:65,tw=portrait?w-52:w-128;
  shape(art,'rect',{x:tx,y:ty,width:tw,height:7,rx:2,fill:'#152946'});shape(art,'rect',{x:tx,y:ty+14,width:tw*.72,height:7,rx:2,fill:'#152946'});shape(art,'rect',{x:tx,y:ty+32,width:tw*.86,height:3,rx:1.5,fill:'#91a1b4'});
- const lx=portrait?w/2-15:w-49,ly=layout==='clean-header.v1'?12:portrait?30:26,logoColor=layout==='clean-header.v1'?'#fff':secondary;
+ const lx=portrait?w/2-15:w-49,ly=portrait?30:26,logoColor=secondary;
  shape(art,'rect',{x:lx,y:ly,width:10,height:10,rx:2,fill:logoColor});shape(art,'rect',{x:lx+14,y:ly+1,width:17,height:3,rx:1,fill:logoColor});shape(art,'rect',{x:lx+14,y:ly+7,width:13,height:2,rx:1,fill:logoColor});
  shape(svg,'rect',{x:1,y:1,width:w-2,height:h-2,rx:10,fill:'none',stroke:'#c5d1df','stroke-width':2});return svg;
 }
