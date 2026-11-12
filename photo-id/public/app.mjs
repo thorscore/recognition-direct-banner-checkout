@@ -1,3 +1,4 @@
+import {mirrorCropPreview} from './preview-follow.mjs';
 import {checkPaymentStatus,paymentFeedback} from './payment-status.mjs';
 import {showProofOutcome,submitProofDecision} from './proof-decision.mjs';
 import {createPreviewQueue,previewSnapshot} from './preview-queue.mjs';
@@ -133,7 +134,7 @@ async function renderPreview(snapshot,current){
    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;if(!current())return;
    if(n===start)frontCanvas=canvas;const figure=document.createElement('figure'),label=document.createElement('figcaption');label.textContent=n===start?'FRONT':'BACK';figure.append(label,canvas);fragments.append(figure);
   }
-  if(current()){const crop=$('cropCanvas');crop.width=frontCanvas.width;crop.height=frontCanvas.height;crop.getContext('2d').drawImage(frontCanvas,0,0);$('cropPreview').hidden=!snapshot.document.people[snapshot.personIndex].photo;$('cropPreviewNote').textContent='Adjust the sliders below to update this preview.';$('canvases').replaceChildren(fragments);$('previewnote').textContent='Person '+(snapshot.personIndex+1)+' · '+badgeDimensions(snapshot.document)+' (width × height) · '+(snapshot.document.orientation==='portrait'?'Portrait':'Landscape');}
+  if(current()){mirrorCropPreview(frontCanvas,$('cropCanvas'),$('cropPreview'),$('cropPreviewNote'));$('canvases').replaceChildren(fragments);$('previewnote').textContent='Person '+(snapshot.personIndex+1)+' · '+badgeDimensions(snapshot.document)+' (width × height) · '+(snapshot.document.orientation==='portrait'?'Portrait':'Landscape');}
  }finally{await task.destroy();}
 }
 action('checkout',async()=>{if(!$('orderEmail').reportValidity())return;await save();if(dirty)throw Error('SAVE_CHANGES_FIRST');job=await request('/jobs/'+job.id+'/checkout',{method:'POST',data:{expectedRevision:job.revision,email:$('orderEmail').value}});$('orderEmail').readOnly=true;drawOptions();queue();message('Your secure checkout is ready.');if(window.parent!==window){try{window.top.location.href=job.checkout.url;}catch{window.open(job.checkout.url,'_blank','noopener');}}else location.assign(job.checkout.url);});

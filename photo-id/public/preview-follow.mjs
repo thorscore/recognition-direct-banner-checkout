@@ -1,5 +1,12 @@
 const storefrontOrigins=new Set(['https://recognition-direct.com','https://www.recognition-direct.com']);
 
+export function mirrorCropPreview(source,canvas,panel,note){
+ if(!source){panel.hidden=true;return;}
+ canvas.width=source.width;canvas.height=source.height;
+ canvas.getContext('2d').drawImage(source,0,0);
+ panel.hidden=false;note.textContent='Adjust the sliders below to update this preview.';
+}
+
 export function previewOffset({visibleTop,layoutTop,layoutHeight,previewHeight,width}){
  if(![visibleTop,layoutTop,layoutHeight,previewHeight,width].every(Number.isFinite)||width<=760)return 0;
  return Math.round(Math.max(0,Math.min(visibleTop-layoutTop+14,layoutHeight-previewHeight-22)));

@@ -1,5 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {previewOffset,installPreviewFollow} from './public/preview-follow.mjs';
+import {previewOffset,installPreviewFollow,mirrorCropPreview} from './public/preview-follow.mjs';
+
+test('The phone crop preview reuses the finished front artwork at the correct aspect ratio',()=>{
+ const copies=[],canvas={getContext:()=>({drawImage:(...args)=>copies.push(args)})},panel={hidden:true},note={};
+ for(const [width,height]of [[608,383],[383,608]]){const source={width,height};mirrorCropPreview(source,canvas,panel,note);assert.equal(canvas.width,width);assert.equal(canvas.height,height);assert.equal(copies.at(-1)[0],source);assert.equal(panel.hidden,false);assert.match(note.textContent,/sliders/);}
+ mirrorCropPreview(null,canvas,panel,note);assert.equal(panel.hidden,true);assert.equal(copies.length,2);
+});
 
 test('The preview follows the storefront viewport down to photo crops and stays inside the form',()=>{
  const bounds={layoutTop:300,layoutHeight:2800,previewHeight:620,width:1100};
