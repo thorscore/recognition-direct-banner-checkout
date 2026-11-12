@@ -33,7 +33,7 @@ export async function submitProofDecision({decision,checkbox,notes,approve,reque
  const previous=[approve.disabled,requestChanges.disabled];let saved=false;
  approve.disabled=true;requestChanges.disabled=true;button.setAttribute('aria-busy','true');
  button.textContent=decision==='approved'?'Saving approval…':'Saving change request…';
- paymentFeedback(feedback,decision==='approved'?'Saving your approval and checking the linked Shopify test order. Please wait…':'Saving your change request. Please wait…');
+ paymentFeedback(feedback,decision==='approved'?'Saving your approval and checking the linked Shopify order. Please wait…':'Saving your change request. Please wait…');
  try{
   const result=await send();
   if(result?.decision!==decision)throw Error('PROOF_DECISION_UNCONFIRMED');

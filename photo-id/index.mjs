@@ -8,19 +8,19 @@ import {createPhotoAuth,PATH,validEmail} from './auth.mjs';
 import {createPhotoOrderStore} from './store.mjs';
 import {createPhotoShopify} from './shopify.mjs';
 
-export const VERSION='photo-id-orders-20261112.1';
+export const VERSION='photo-id-orders-20261112.2';
 export async function sendPhotoEmail(transport,from,message){if(!validEmail(message.to)||!transport)fail(503,'PILOT_EMAIL_SETUP_REQUIRED');const result=await transport.sendMail({...message,from});if(!result.accepted?.some(x=>typeof x==='string'&&x.toLowerCase()===message.to.toLowerCase()))fail(502,'PILOT_EMAIL_NOT_ACCEPTED');}
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow, noarchive','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' blob: data:; font-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob:; base-uri 'none'; frame-ancestors https://recognition-direct.com https://www.recognition-direct.com; form-action 'self'"};
 const staticFiles=new Map([['/', ['index.html','text/html; charset=utf-8']],['/staff',['index.html','text/html; charset=utf-8']],['/app.mjs',['app.mjs','text/javascript; charset=utf-8']],['/preview-queue.mjs',['preview-queue.mjs','text/javascript; charset=utf-8']],['/payment-status.mjs',['payment-status.mjs','text/javascript; charset=utf-8']],['/proof-decision.mjs',['proof-decision.mjs','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']]]);
 async function body(req,max=256*1024){const chunks=[];let n=0;if(req.headers['content-encoding'])fail(415,'ENCODING_UNSUPPORTED');for await(const c of req.iterator({destroyOnReturn:false})){n+=c.length;if(n>max){req.resume();fail(413,'FILE_TOO_LARGE');}chunks.push(c);}return Buffer.concat(chunks);}
 async function json(req){if(!req.headers['content-type']?.startsWith('application/json'))fail(415,'JSON_REQUIRED');try{return JSON.parse((await body(req)).toString());}catch(e){if(e instanceof PilotError)throw e;fail(422,'REQUEST_INVALID');}}
-export async function configurePhotoOrders({databasePath,base,env=process.env,testing=false,send:providedSend,shopify:providedShopify,graphql,shop}){
+export async function configurePhotoOrders({databasePath,base,env=process.env,testing=false,send:providedSend,shopify:providedShopify,graphql,shop,now=Date.now}){
  base=new URL(base).origin;await mkdir(dirname(databasePath),{recursive:true});const db=new DatabaseSync(databasePath);
  const config=alertConfig({...env,EXPRESS_ONE_EMAIL_ENABLED:'true'},false);
  const transport=config.enabled?nodemailer.createTransport(config.smtp):null;
  const send=providedSend??(message=>sendPhotoEmail(transport,config.from,message));
  const shopify=providedShopify??createPhotoShopify({graphql,shop,base});
- const auth=createPhotoAuth({db,send,base,testing}),store=createPhotoOrderStore({db,send,shopify,base,storageRoot:databasePath===':memory:'?undefined:dirname(databasePath)});
+ const store=createPhotoOrderStore({db,send,shopify,base,now,storageRoot:databasePath===':memory:'?undefined:dirname(databasePath)}),auth=createPhotoAuth({db,send,base,testing,now,onVerify:(prior,actor)=>store.claimGuest(prior,actor)});
 
  function output(res,status,value,type='application/json; charset=utf-8',extra={}){res.writeHead(status,{...headers,'Content-Type':type,...extra});res.end(Buffer.isBuffer(value)?value:JSON.stringify(value));}
  function pdf(res,bytes,name){output(res,200,bytes,'application/pdf',{'Content-Disposition':`inline; filename="${name}.pdf"`});}
@@ -31,13 +31,14 @@ export async function configurePhotoOrders({databasePath,base,env=process.env,te
    if(req.method==='GET'&&path==='/health'){output(res,200,{ok:true,version:VERSION,liveStore:true,emailConfigured:!!providedSend||config.enabled,checkoutConfigured:shopify.configured});return true;}
    if(req.method==='GET'&&staticFiles.has(path)){const [file,type]=staticFiles.get(path);output(res,200,await readFile(new URL('./public/'+file,import.meta.url)),type);return true;}
    if(!path.startsWith('/api/'))fail(404,'NOT_FOUND');
+   if(req.method==='POST'&&path==='/api/guest'){if(req.headers.origin!==base)fail(403,'SAME_TAB_REQUIRED');await json(req);const guest=auth.guest(req);output(res,200,{ok:true},'application/json; charset=utf-8',guest.cookie?{'Set-Cookie':guest.cookie}:{});return true;}
    if(req.method==='POST'&&['/api/code','/api/verify'].includes(path)){
     if(req.headers.origin!==base)fail(403,'SAME_TAB_REQUIRED');const data=await json(req);
     if(path==='/api/code')output(res,200,await auth.request(data.email));
     else{const verified=auth.verify(data.challenge,data.code,auth.session(req));output(res,200,{ok:true},'application/json; charset=utf-8',{'Set-Cookie':verified.cookie});}return true;
    }
    const s=req.method==='GET'?auth.requireSession(req):auth.mutation(req);
-   if(req.method==='GET'&&path==='/api/session'){output(res,200,{owner:s.email,staff:s.staff,session:auth.csrf(s),version:VERSION,checkoutConfigured:shopify.configured,emailConfigured:!!providedSend||config.enabled});return true;}
+   if(req.method==='GET'&&path==='/api/session'){output(res,200,{owner:s.email,guest:s.guest,staff:s.staff,session:auth.csrf(s),version:VERSION,checkoutConfigured:shopify.configured,emailConfigured:!!providedSend||config.enabled});return true;}
    if(req.method==='POST'&&path==='/api/sign-out'){output(res,200,{ok:true},'application/json; charset=utf-8',{'Set-Cookie':auth.signOut(req)});return true;}
    if(path==='/api/jobs'&&req.method==='GET'){output(res,200,store.list(s));return true;}
    if(path==='/api/jobs'&&req.method==='POST'){await json(req);output(res,201,store.create(s));return true;}
