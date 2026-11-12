@@ -25,6 +25,11 @@ function source(doc,asset,rect,target){
 function message(doc,text,x,y,width,bottom,size=28){
  if(!text)return;font(doc);doc.fontSize(size);const height=doc.heightOfString(text,{width,lineGap:5});if(y+height>bottom)fail(422,'BACK_TEXT_DOES_NOT_FIT');doc.fillColor('#172639').text(text,x,y,{width,lineGap:5,height:bottom-y});
 }
+function fittedMessage(doc,text,{x,y,width,bottom,max=48,min=28}){
+ if(!text)return;font(doc);
+ for(let size=max;size>=min;size--){doc.fontSize(size);if(y+doc.heightOfString(text,{width,lineGap:5})<=bottom){doc.fillColor('#172639').text(text,x,y,{width,lineGap:5,height:bottom-y});return;}}
+ fail(422,'BACK_TEXT_DOES_NOT_FIT');
+}
 export function drawCard(doc,document,person,assets,{side='front',x=0,y=0,scale=.25,guide=false}={}){
  const layout=layoutFor(document),g=layout.geometry;
  doc.save().translate(x,y).scale(scale).roundedRect(0,0,g.width,g.height,g.cornerRadius).clip().rect(0,0,g.width,g.height).fill('#ffffff');
@@ -43,7 +48,14 @@ export function drawCard(doc,document,person,assets,{side='front',x=0,y=0,scale=
   doc.roundedRect(header.x,header.y,header.width,header.height,header.radius).fill(document.color);
   fit(doc,document.organization,back.organization,'bold',readableInk(document.color));
   if(document.backMode==='template'){
-   fit(doc,'YOUR MESSAGE',back.title);const m=back.message;message(doc,document.backText,m.x,m.y,m.width,m.bottom,m.size);const r=back.rule;doc.rect(r.x,r.y,r.width,r.height).fill(document.secondaryColor);
+   // Absence marks historical designs: retain the exact back layout of old approved proofs.
+   const m=back.message;
+   if(Object.hasOwn(document,'backHeading')){
+    const heading=document.backHeading.trim();
+    if(heading)fit(doc,heading,{...back.title,max:g.orientation==='portrait'?52:60,min:28});
+    fittedMessage(doc,document.backText,{...m,y:heading?m.y:(g.orientation==='portrait'?280:200),max:heading?42:48});
+   }else{fit(doc,'YOUR MESSAGE',back.title);message(doc,document.backText,m.x,m.y,m.width,m.bottom,m.size);}
+   const r=back.rule;doc.rect(r.x,r.y,r.width,r.height).fill(document.secondaryColor);
   }else{
    const artwork=assets.get(document.backArtwork),area=back.custom,height=artwork?(document.backText.trim()?area.withTextHeight:area.aloneHeight):0;
    if(artwork)source(doc,artwork,{x:0,y:0,width:artwork.width,height:artwork.height},{x:area.x,y:area.y,width:area.width,height});

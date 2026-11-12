@@ -24,6 +24,6 @@ export function previewSnapshot(job,personIndex){
  if(!job)return null;
  const document=structuredClone(job.document),person=document.people[personIndex];
  if(!person)return null;
- const visual={layout:document.layout,orientation:document.orientation??'landscape',organization:document.organization,color:document.color,secondaryColor:document.secondaryColor,logo:document.logo,logoScale:document.logoScale,logoCrop:document.logoCrop,printSides:document.printSides,backMode:document.backMode,backText:document.backText,backArtwork:document.backArtwork,attachment:document.attachment,punch:document.punch,person:{firstLine:person.firstLine,secondLine:person.secondLine,organization:person.organization,photo:person.photo,crop:person.crop}};
+ const visual={layout:document.layout,orientation:document.orientation??'landscape',organization:document.organization,color:document.color,secondaryColor:document.secondaryColor,logo:document.logo,logoScale:document.logoScale,logoCrop:document.logoCrop,printSides:document.printSides,backMode:document.backMode,backHeading:document.backHeading,backText:document.backText,backArtwork:document.backArtwork,attachment:document.attachment,punch:document.punch,person:{firstLine:person.firstLine,secondLine:person.secondLine,organization:person.organization,photo:person.photo,crop:person.crop}};
  return {jobId:job.id,personIndex,document,key:JSON.stringify([job.id,personIndex,visual])};
 }
