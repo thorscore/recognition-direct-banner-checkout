@@ -1,0 +1,106 @@
+import sharp from 'sharp';
+import {statfsSync} from 'node:fs';
+import {normalizeArtwork} from '../photo-id-pilot/artwork.mjs';
+import {opaque,isId,hash,fail,PILOT_OWNER} from '../photo-id-pilot/auth.mjs';
+import {checkDocument,newDocument,documentAssets,financialSignature} from '../photo-id-pilot/document.mjs';
+import {cardPdf,proofPdf} from '../photo-id-pilot/pdf.mjs';
+const MAX_STORAGE=2*1024*1024*1024,ACCOUNT_STORAGE=512*1024*1024;
+export function createPhotoOrderStore({db,shopify,send,base,storageRoot,now=Date.now,pdfs={cardPdf:(d,a,o)=>cardPdf(d,a,{...o,live:true}),proofPdf:(d,a,o)=>proofPdf(d,a,{...o,live:true})}}){
+ db.exec(`PRAGMA journal_mode=WAL;PRAGMA busy_timeout=5000;PRAGMA foreign_keys=ON;
+ CREATE TABLE IF NOT EXISTS photo_orders_jobs(id TEXT PRIMARY KEY,owner TEXT NOT NULL,email TEXT NOT NULL,revision INTEGER NOT NULL,document TEXT NOT NULL,created INTEGER NOT NULL,updated INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS photo_orders_assets(id TEXT PRIMARY KEY,job_id TEXT NOT NULL,role TEXT NOT NULL,type TEXT NOT NULL,width INTEGER NOT NULL,height INTEGER NOT NULL,source BLOB NOT NULL,normalized BLOB NOT NULL,preview BLOB NOT NULL,source_hash TEXT NOT NULL,normalized_hash TEXT NOT NULL,FOREIGN KEY(job_id) REFERENCES photo_orders_jobs(id));
+ CREATE TABLE IF NOT EXISTS photo_orders_runs(id TEXT PRIMARY KEY,job_id TEXT NOT NULL UNIQUE,side TEXT NOT NULL,record TEXT NOT NULL,status TEXT NOT NULL,error_code TEXT,draft_id TEXT UNIQUE,checkout_url TEXT,paid TEXT,FOREIGN KEY(job_id) REFERENCES photo_orders_jobs(id));
+ CREATE TABLE IF NOT EXISTS photo_orders_proofs(id TEXT PRIMARY KEY,job_id TEXT NOT NULL,revision INTEGER NOT NULL,document_hash TEXT NOT NULL,document TEXT NOT NULL,pdf BLOB NOT NULL,pdf_hash TEXT NOT NULL,status TEXT NOT NULL,message_id TEXT,decision TEXT,decided INTEGER,UNIQUE(job_id,revision),FOREIGN KEY(job_id) REFERENCES photo_orders_jobs(id));
+ CREATE TABLE IF NOT EXISTS photo_orders_events(id TEXT PRIMARY KEY,job_id TEXT NOT NULL,proof_id TEXT,event TEXT NOT NULL,at INTEGER NOT NULL,detail TEXT NOT NULL);`);
+ if(!db.prepare('PRAGMA table_info(photo_orders_assets)').all().some(c=>c.name==='filename'))db.exec("ALTER TABLE photo_orders_assets ADD COLUMN filename TEXT NOT NULL DEFAULT ''");
+ db.prepare("UPDATE photo_orders_proofs SET status='email-uncertain' WHERE status='sending'").run();
+ db.prepare("UPDATE photo_orders_runs SET status='needs-review',error_code='INTERRUPTED_CHECKOUT_REVIEW' WHERE status IN ('preflight','creating','verifying')").run();
+ function event(job,kind,detail={},proof=null){db.prepare('INSERT INTO photo_orders_events VALUES(?,?,?,?,?,?)').run(opaque(),job,proof,kind,now(),JSON.stringify(detail));}
+ function job(id,actor){const row=isId(id)&&db.prepare('SELECT * FROM photo_orders_jobs WHERE id=?').get(id);if(!row||(!actor?.staff&&row.owner!==actor?.owner))fail(404,'BADGE_JOB_NOT_FOUND');return {...row,document:JSON.parse(row.document)};}
+ function run(id){const row=db.prepare('SELECT * FROM photo_orders_runs WHERE job_id=?').get(id);return row?{...row,record:JSON.parse(row.record),paid:row.paid?JSON.parse(row.paid):null}:null;}
+ function proofRow(id,actor){const row=isId(id)&&db.prepare('SELECT * FROM photo_orders_proofs WHERE id=?').get(id);if(!row)fail(404,'PROOF_NOT_FOUND');job(row.job_id,actor);if(!actor.staff&&!['sent','approved','changes-requested'].includes(row.status))fail(404,'PROOF_NOT_FOUND');return row;}
+ function assetsFor(j,document=j.document,{display=false}={}){const map=new Map();for(const id of new Set(documentAssets(document))){
+  const row=db.prepare('SELECT * FROM photo_orders_assets WHERE id=? AND job_id=?').get(id,j.id);const role=id===document.logo?'logo':id===document.backArtwork?'back':'portrait';if(!row||row.role!==role||hash(row.normalized)!==row.normalized_hash||hash(row.source)!==row.source_hash)fail(409,'ARTWORK_NEEDS_REVIEW');map.set(id,display?{width:row.width,height:row.height,normalized:Buffer.from(row.preview)}:{id:row.id,role:row.role,width:row.width,height:row.height,source_hash:row.source_hash,normalized_hash:row.normalized_hash,normalized:Buffer.from(row.normalized),preview:Buffer.from(row.preview)});
+ }return map;}
+ async function proofAssets(j){const map=assetsFor(j);for(const [id,a]of map){if(a.role==='portrait'){const meta=await sharp(a.preview).metadata();map.set(id,{...a,normalized:meta.hasAlpha?Buffer.from(a.preview):await sharp(a.preview).jpeg({quality:95}).toBuffer()});}}return map;}
+ function publicProof(p,j){const detail=p.decision==='changes-requested'?db.prepare("SELECT detail FROM photo_orders_events WHERE proof_id=? AND event='customer-proof-changes-requested' ORDER BY rowid DESC LIMIT 1").get(p.id):null;return {note:detail?JSON.parse(detail.detail).note:'',id:p.id,revision:p.revision,pdfHash:p.pdf_hash,status:p.status,decision:p.decision,decided:p.decided,superseded:p.revision!==j.revision||p.document_hash!==hash(JSON.stringify(j.document)),pdfUrl:base+'/photo-id/api/proofs/'+p.id+'/pdf'};}
+ function view(j,actor){const r=run(j.id),proofs=db.prepare('SELECT id,revision,document_hash,pdf_hash,status,decision,decided FROM photo_orders_proofs WHERE job_id=? ORDER BY revision DESC').all(j.id);return {id:j.id,revision:j.revision,document:j.document,price:checkDocument(j.document).price,checkout:r?{status:r.status,error:r.error_code,url:r.checkout_url,paid:!!r.paid,orderName:r.paid?.orderName,totalCents:r.paid?.totalCents}:null,email:j.email,proofs:proofs.filter(p=>actor.staff||['sent','approved','changes-requested'].includes(p.status)).map(p=>publicProof(p,j)),productionReleased:false,productionReleaseSupported:false};}
+ async function reconcile(j,r){try{const result=await shopify.read({...r.record,draftId:r.draft_id,checkoutUrl:r.checkout_url});db.prepare('UPDATE photo_orders_runs SET status=?,checkout_url=?,paid=?,error_code=NULL WHERE id=?').run(result.paid?'paid':'checkout-ready',result.checkoutUrl,result.paid?JSON.stringify(result):null,r.id);event(j.id,result.paid?'payment-verified':'checkout-verified',{draftId:r.draft_id});return result;}catch(e){db.prepare('UPDATE photo_orders_runs SET status=?,error_code=? WHERE id=?').run('needs-review',e.code??'TEST_STORE_CONNECTION_FAILED',r.id);throw e;}}
+ return {
+  list(actor){return (actor.staff?db.prepare('SELECT id FROM photo_orders_jobs ORDER BY updated DESC LIMIT 50').all():db.prepare('SELECT id FROM photo_orders_jobs WHERE owner=? ORDER BY updated DESC LIMIT 30').all(actor.owner)).map(row=>view(job(row.id,actor),actor));},
+  create(actor){if(db.prepare('SELECT COUNT(*) AS count FROM photo_orders_jobs WHERE owner=?').get(actor.owner).count>=30)fail(507,'PILOT_JOB_LIMIT');const id=opaque(),document=newDocument();db.prepare('INSERT INTO photo_orders_jobs VALUES(?,?,?,?,?,?,?)').run(id,actor.owner,actor.email,1,JSON.stringify(document),now(),now());event(id,'draft-created');return view(job(id,actor),actor);},
+  read(actor,id){return view(job(id,actor),actor);},
+  reorder(actor,id){
+   const original=job(id,actor);assetsFor(original);
+   if(db.prepare('SELECT COUNT(*) AS n FROM photo_orders_jobs WHERE owner=?').get(original.owner).n>=30)fail(507,'PILOT_JOB_LIMIT');
+   const rows=db.prepare('SELECT * FROM photo_orders_assets WHERE job_id=?').all(id),referenced=new Set(documentAssets(original.document)),used=rows.filter(a=>referenced.has(a.id));
+   const bytes=used.reduce((n,a)=>n+a.source.length+a.normalized.length+a.preview.length,0),total=db.prepare('SELECT COALESCE(SUM(length(source)+length(normalized)+length(preview)),0) AS n FROM photo_orders_assets').get().n,account=db.prepare('SELECT COALESCE(SUM(length(a.source)+length(a.normalized)+length(a.preview)),0) AS n FROM photo_orders_assets a JOIN photo_orders_jobs j ON a.job_id=j.id WHERE j.owner=?').get(original.owner).n;
+   if(total+bytes>MAX_STORAGE||account+bytes>ACCOUNT_STORAGE)fail(507,'PILOT_STORAGE_FULL');
+   if(storageRoot){const disk=statfsSync(storageRoot);if(disk.bavail*disk.bsize<bytes+256*1024*1024)fail(507,'PILOT_STORAGE_FULL');}
+   const next=opaque(),mapping=new Map(used.map(a=>[a.id,opaque()])),document=structuredClone(original.document);
+   document.logo=document.logo?mapping.get(document.logo):null;document.backArtwork=document.backArtwork?mapping.get(document.backArtwork):null;document.people=document.people.map(p=>({...p,id:crypto.randomUUID(),photo:p.photo?mapping.get(p.photo):null}));
+   db.exec('BEGIN IMMEDIATE');try{db.prepare('INSERT INTO photo_orders_jobs VALUES(?,?,?,?,?,?,?)').run(next,original.owner,original.email,1,JSON.stringify(document),now(),now());for(const a of used)db.prepare('INSERT INTO photo_orders_assets(id,job_id,role,type,width,height,source,normalized,preview,source_hash,normalized_hash,filename) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(mapping.get(a.id),next,a.role,a.type,a.width,a.height,a.source,a.normalized,a.preview,a.source_hash,a.normalized_hash,a.filename);event(next,'reorder-created');db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}
+   return view(job(next,actor),actor);
+  },
+  async upload(actor,id,{role,type,bytes,filename=''}){
+   const j=job(id,actor);if(typeof filename!=='string'||filename.length>180||/[\u0000-\u001f\u007f\\/]/.test(filename))fail(422,'ARTWORK_FILE_INVALID');
+   let {normalized,preview,width,height,type:sourceType,previewKind,largePhoto}=await normalizeArtwork({role,type,bytes,filename});
+   if(role==='portrait'&&sourceType==='image/jpeg'&&(await sharp(normalized).metadata()).format!=='jpeg')normalized=await sharp(normalized).jpeg({quality:95}).toBuffer();
+   db.exec('BEGIN IMMEDIATE');try{job(id,actor);const account=db.prepare('SELECT COALESCE(SUM(length(a.source)+length(a.normalized)+length(a.preview)),0) AS bytes FROM photo_orders_assets a JOIN photo_orders_jobs j ON j.id=a.job_id WHERE j.owner=?').get(j.owner).bytes;if(account+bytes.length+normalized.length+preview.length>ACCOUNT_STORAGE)fail(507,'PILOT_STORAGE_FULL');if(storageRoot){const disk=statfsSync(storageRoot);if(disk.bavail*disk.bsize<bytes.length+normalized.length+preview.length+256*1024*1024)fail(507,'PILOT_STORAGE_FULL');}const usage=db.prepare('SELECT COALESCE(SUM(length(source)+length(normalized)+length(preview)),0) AS bytes FROM photo_orders_assets').get().bytes;if(usage+bytes.length+normalized.length+preview.length>MAX_STORAGE)fail(507,'PILOT_STORAGE_FULL');const asset=opaque();db.prepare('INSERT INTO photo_orders_assets(id,job_id,role,type,width,height,source,normalized,preview,source_hash,normalized_hash,filename) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(asset,j.id,role,sourceType,width,height,bytes,normalized,preview,hash(bytes),hash(normalized),filename);db.exec('COMMIT');return {id:asset,width,height,previewKind,largePhoto,previewUrl:base+'/photo-id/api/assets/'+asset,originalUrl:base+'/photo-id/api/assets/'+asset+'/original'};}catch(e){db.exec('ROLLBACK');throw e;}
+  },
+  original(actor,id){if(!actor.staff)fail(403,'PHOTO_STAFF_REQUIRED');const row=isId(id)&&db.prepare('SELECT job_id,type,source,source_hash,filename FROM photo_orders_assets WHERE id=?').get(id);if(!row||hash(row.source)!==row.source_hash)fail(404,'ARTWORK_NOT_FOUND');job(row.job_id,actor);const extension=/\.ai$/i.test(row.filename)?'ai':({'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/svg+xml':'svg','application/pdf':'pdf'}[row.type]??'bin');return {bytes:Buffer.from(row.source),type:row.type,filename:'photo-id-original-'+id.slice(0,12)+'.'+extension};},
+  image(actor,id){const row=isId(id)&&db.prepare('SELECT job_id,preview FROM photo_orders_assets WHERE id=?').get(id);if(!row)fail(404,'ARTWORK_NOT_FOUND');job(row.job_id,actor);return Buffer.from(row.preview);},
+  save(actor,id,{expectedRevision,document}){
+   const j=job(id,actor);if(j.revision!==expectedRevision)fail(409,'DRAFT_CHANGED_RELOAD');const checked=checkDocument(document);assetsFor(j,checked.document);const r=run(id);if(r&&financialSignature(checked.document)!==financialSignature(JSON.parse(r.record.document)))fail(409,'CHECKOUT_OPTIONS_LOCKED');
+   if(JSON.stringify(checked.document)===JSON.stringify(j.document))return view(j,actor);if(!actor.staff&&db.prepare("SELECT 1 FROM photo_orders_proofs WHERE job_id=? AND revision=? AND decision='approved'").get(id,j.revision))fail(409,'APPROVED_ORDER_LOCKED');
+   const result=db.prepare('UPDATE photo_orders_jobs SET revision=revision+1,document=?,updated=? WHERE id=? AND revision=?').run(JSON.stringify(checked.document),now(),id,expectedRevision);if(!result.changes)fail(409,'DRAFT_CHANGED_RELOAD');event(id,'design-revision-saved');return view(job(id,actor),actor);
+  },
+  async preview(actor,id,document,{personIndex}={}){
+   const j=job(id,actor),checked=checkDocument(document);
+   if(personIndex!==undefined&&(!Number.isSafeInteger(personIndex)||personIndex<0||personIndex>=checked.document.people.length))fail(422,'PREVIEW_PERSON_INVALID');
+   const visible=personIndex===undefined?checked.document:{...checked.document,people:[checked.document.people[personIndex]]};
+   // The 900px display images preserve source coordinates and transparency.
+   // Checkout, proofs, originals and production continue to use full artwork.
+   const assets=assetsFor(j,visible,{display:true});
+   return pdfs.cardPdf(visible,assets,{guide:true,title:'Photo ID preview'});
+  },
+  async checkout(actor,id,{expectedRevision}){
+   const j=job(id,actor);if(expectedRevision!==j.revision)fail(409,'DRAFT_CHANGED_RELOAD');const checked=checkDocument(j.document,{complete:true}),assets=assetsFor(j);await pdfs.cardPdf(j.document,assets,{guide:true});
+   let existing=run(id);if(existing?.checkout_url)return view(j,actor);if(existing&&existing.status!=='not-created')fail(409,'CHECKOUT_NEEDS_STATUS_CHECK');
+   if(!shopify.configured)fail(503,'TEST_CHECKOUT_SETUP_REQUIRED');
+   const record={id:existing?.id??opaque(),jobId:id,email:j.email,side:j.document.printSides,delivery:j.document.delivery,quantity:checked.price.quantity,unitCents:checked.price.unitCents,subtotalCents:checked.price.subtotalCents,document:JSON.stringify(j.document),revision:j.revision,assetHashes:[...assets.values()].map(a=>[a.id,a.source_hash,a.normalized_hash])};
+   try{if(existing)db.prepare('UPDATE photo_orders_runs SET record=?,status=?,error_code=NULL WHERE id=?').run(JSON.stringify(record),'preflight',record.id);else db.prepare('INSERT INTO photo_orders_runs(id,job_id,side,record,status) VALUES(?,?,?,?,?)').run(record.id,id,record.side,JSON.stringify(record),'preflight');}catch{fail(409,'PILOT_SIDE_ALREADY_HAS_CHECKOUT');}
+   try{record.pickup=await shopify.preflight(record);}catch(e){db.prepare('UPDATE photo_orders_runs SET status=?,error_code=? WHERE id=?').run('not-created',e.code??'TEST_STORE_CONNECTION_FAILED',record.id);throw e;}
+   db.prepare('UPDATE photo_orders_runs SET status=?,record=? WHERE id=?').run('creating',JSON.stringify(record),record.id);
+   let draftId;try{draftId=await shopify.create(record);}catch(e){db.prepare('UPDATE photo_orders_runs SET status=?,error_code=?,draft_id=? WHERE id=?').run(e.code==='TEST_DRAFT_REJECTED'&&!e.draftId?'not-created':'needs-review',e.code??'CREATE_RESULT_UNCERTAIN',e.draftId??null,record.id);throw e;}
+   db.prepare('UPDATE photo_orders_runs SET draft_id=?,status=? WHERE id=?').run(draftId,'verifying',record.id);event(id,'checkout-created',{draftId});
+   await reconcile(j,run(id));return view(job(id,actor),actor);
+  },
+  async sync(actor,id){const j=job(id,actor),r=run(id);if(!r?.draft_id)fail(409,'NO_VERIFIED_DRAFT_TO_CHECK');await reconcile(j,r);return view(j,actor);},
+  async prepareProof(actor,id){if(!actor.staff)fail(403,'PHOTO_STAFF_REQUIRED');
+   const j=job(id,actor),r=run(id);if(!r?.paid)fail(409,'VERIFIED_TEST_PAYMENT_REQUIRED');checkDocument(j.document,{complete:true});
+   const existing=db.prepare('SELECT * FROM photo_orders_proofs WHERE job_id=? AND revision=?').get(id,j.revision);if(existing)return publicProof(existing,j);
+   const bytes=await pdfs.proofPdf(j.document,await proofAssets(j),{id:r.paid.orderName??j.id,revision:j.revision,subtotalCents:r.record.subtotalCents});if(bytes.length>15*1024*1024)fail(413,'PROOF_PDF_TOO_LARGE');if(job(id,actor).revision!==j.revision)fail(409,'DRAFT_CHANGED_RELOAD');
+   const proof=opaque();db.prepare('INSERT OR IGNORE INTO photo_orders_proofs(id,job_id,revision,document_hash,document,pdf,pdf_hash,status) VALUES(?,?,?,?,?,?,?,?)').run(proof,id,j.revision,hash(JSON.stringify(j.document)),JSON.stringify(j.document),bytes,hash(bytes),'prepared');event(id,'proof-prepared',{},proof);return publicProof(db.prepare('SELECT * FROM photo_orders_proofs WHERE job_id=? AND revision=?').get(id,j.revision),j);
+  },
+  proof(actor,id){const p=proofRow(id,actor),j=job(p.job_id,actor);return {...publicProof(p,j),jobId:j.id,email:j.email,document:JSON.parse(p.document),pdfUrl:base+'/photo-id/api/proofs/'+p.id+'/pdf'};},
+  proofPdf(actor,id){return Buffer.from(proofRow(id,actor).pdf);},
+  async sendProof(actor,id,{pdfHash,reviewed}){if(!actor.staff)fail(403,'PHOTO_STAFF_REQUIRED');
+   {const row=proofRow(id,actor),j=job(row.job_id,actor),r=run(j.id);if(!r?.paid)fail(409,'VERIFIED_TEST_PAYMENT_REQUIRED');await reconcile(j,r);}
+   const p=proofRow(id,actor),j=job(p.job_id,actor),r=run(j.id);if(!r?.paid||p.revision!==j.revision||p.document_hash!==hash(JSON.stringify(j.document)))fail(409,'PROOF_SUPERSEDED');if(reviewed!==true||pdfHash!==p.pdf_hash)fail(422,'REVIEW_PROOF_FIRST');
+   if(p.status==='sent'||p.status==='approved'||p.status==='changes-requested')return this.proof(actor,id);if(p.status!=='prepared')fail(409,'EMAIL_SEND_NEEDS_REVIEW');
+   const messageId=`<photo-id-proof-${p.id}@recognition-direct.com>`;db.prepare('UPDATE photo_orders_proofs SET status=?,message_id=? WHERE id=? AND status=?').run('sending',messageId,id,'prepared');
+   try{await send({to:j.email,subject:`Recognition Direct | Photo ID proof version ${p.revision} is ready`,messageId,text:`Your Photo ID badge proof is attached. Review every name, photo, crop, logo, color, printed side and attachment.\n\nOpen your private proof link to approve or request changes:\n${base}/photo-id/#proof=${p.id}\n\nSign in with the code emailed to ${j.email}. We wait for your approval before production.`,attachments:[{filename:`PHOTO-ID-${j.id.slice(0,12)}-proof-v${p.revision}.pdf`,content:Buffer.from(p.pdf),contentType:'application/pdf'}]});db.prepare('UPDATE photo_orders_proofs SET status=? WHERE id=?').run('sent',id);event(j.id,'proof-email-accepted',{},id);}catch{db.prepare('UPDATE photo_orders_proofs SET status=? WHERE id=?').run('email-uncertain',id);event(j.id,'proof-email-uncertain',{},id);fail(502,'PROOF_EMAIL_NEEDS_REVIEW');}
+   return this.proof(actor,id);
+  },
+  async decide(actor,id,{pdfHash,decision,note,confirmed}){
+   {const row=proofRow(id,actor),j=job(row.job_id,actor),r=run(j.id);if(!r?.paid)fail(409,'VERIFIED_TEST_PAYMENT_REQUIRED');await reconcile(j,r);}
+   const p=proofRow(id,actor),j=job(p.job_id,actor);if(actor.email!==j.email)fail(403,'PROOF_OWNER_REQUIRED');if(p.revision!==j.revision||p.document_hash!==hash(JSON.stringify(j.document)))fail(409,'PROOF_SUPERSEDED');if(!run(j.id)?.paid)fail(409,'VERIFIED_TEST_PAYMENT_REQUIRED');
+   if(confirmed!==true||pdfHash!==p.pdf_hash||!['approved','changes-requested'].includes(decision)||typeof note!=='string'||note.length>2000||(decision==='changes-requested'&&!note.trim()))fail(422,'PROOF_DECISION_REQUIRED');
+   if(p.decision){if(p.decision===decision)return this.proof(actor,id);fail(409,'PROOF_ALREADY_REVIEWED');}if(p.status!=='sent')fail(409,'PROOF_NOT_SENT');
+   db.prepare('UPDATE photo_orders_proofs SET status=?,decision=?,decided=? WHERE id=? AND decision IS NULL').run(decision,decision,now(),id);event(j.id,'customer-proof-'+decision,{note:note.trim(),pdfHash,reviewKind:'customer-proof-review'},id);return this.proof(actor,id);
+  },
+  async production(actor,id){if(!actor.staff)fail(403,'PHOTO_STAFF_REQUIRED');const initial=job(id,actor),initialRun=run(id);if(!initialRun?.paid)fail(409,'LATEST_APPROVED_PROOF_REQUIRED');await reconcile(initial,initialRun);const j=job(id,actor),r=run(id),p=db.prepare("SELECT * FROM photo_orders_proofs WHERE job_id=? AND revision=? AND decision='approved'").get(id,j.revision);if(!r?.paid||!p||p.document_hash!==hash(JSON.stringify(j.document)))fail(409,'LATEST_APPROVED_PROOF_REQUIRED');return pdfs.cardPdf(JSON.parse(p.document),assetsFor(j),{guide:false,title:'Photo ID badge artwork '+id});},
+  eventRows(actor,id){if(!actor.staff)fail(403,'PHOTO_STAFF_REQUIRED');job(id,actor);return db.prepare('SELECT event,at,detail,proof_id FROM photo_orders_events WHERE job_id=? ORDER BY rowid').all(id);}
+ };
+}

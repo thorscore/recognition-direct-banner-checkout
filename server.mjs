@@ -166,6 +166,11 @@ const badgeDesignAccount = ["preview", "live"].includes(badgeDesignMode)
 const photoIdPilot = APP_BASE_URL.startsWith('https://') ? await import('./photo-id-pilot/index.mjs')
   .then(({configurePhotoIdPilot})=>configurePhotoIdPilot({databasePath:join(DATA_DIR,'photo-id-pilot.sqlite'),base:APP_BASE_URL}))
   .catch(() => { console.error('Private Photo ID pilot is unavailable. Check its HTTPS, storage and email configuration.'); return null; }) : null;
+const photoIdOrders = APP_BASE_URL.startsWith('https://') && !MOCK_SHOPIFY && SHOPIFY_SHOP === 'f375fe-2d'
+  ? await import('./photo-id/index.mjs')
+    .then(({configurePhotoOrders})=>configurePhotoOrders({databasePath:join(DATA_DIR,'photo-id-orders.sqlite'),base:APP_BASE_URL,graphql:shopifyGraphql,shop:SHOPIFY_SHOP}))
+    .catch(()=>{console.error('Photo ID ordering is unavailable. Check its private storage and existing email/store connection.');return null;})
+  : null;
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierSoccerAwardsData = JSON.parse((await readFile(PREMIER_SOCCER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
@@ -5939,6 +5944,11 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
+    if(url.pathname==='/photo-id'||url.pathname.startsWith('/photo-id/')){
+      if(photoIdOrders)await photoIdOrders.handle(req,res,url);
+      else {res.writeHead(503,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});res.end('Photo ID ordering is temporarily unavailable. Please call (619) 465-0055.');}
+      return;
+    }
     if(url.pathname==='/photo-id-pilot'||url.pathname.startsWith('/photo-id-pilot/')){
       if(photoIdPilot)await photoIdPilot.handle(req,res,url);
       else {res.writeHead(503,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});res.end('The private Photo ID pilot is temporarily unavailable. Public ordering is unchanged.');}

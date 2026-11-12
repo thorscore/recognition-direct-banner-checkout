@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';
+import {createPhotoOrderStore} from './store.mjs';
+import {STAFF_EMAIL} from './auth.mjs';
+import {samplePortrait} from '../photo-id-pilot/fixtures.mjs';
+const alice={owner:'a'.repeat(64),email:'alice@example.test',staff:false},bob={owner:'b'.repeat(64),email:'bob@example.test',staff:false},staff={owner:'c'.repeat(64),email:STAFF_EMAIL,staff:true};
+async function setup(){const db=new DatabaseSync(':memory:'),mail=[],orders=new Map();let paid=false,creates=0;const shopify={configured:true,async preflight(){return null;},async create(run){creates++;const id='gid://shopify/DraftOrder/'+creates;orders.set(id,run);return id;},async read(run){return {paid,checkoutUrl:'https://recognition-direct.com/123/invoices/sample',...(paid?{orderName:'#SAMPLE',orderId:'gid://shopify/Order/123',totalCents:run.subtotalCents+1295}:{})};}};const store=createPhotoOrderStore({db,shopify,base:'https://checkout.example.test',send:async m=>mail.push(m)});let job=store.create(alice);const photo=await store.upload(alice,job.id,{role:'portrait',type:'image/png',bytes:await samplePortrait()});Object.assign(job.document.people[0],{firstLine:'ALEX',photo:photo.id});job=store.save(alice,job.id,{expectedRevision:1,document:job.document});return {db,store,job,photo,mail,paid(value=true){paid=value;},creates:()=>creates};}
+
+test('Customers can only access their own jobs, assets and images, while only staff gets originals',async()=>{
+ const {db,store,job,photo}=await setup();try{
+  assert.equal(store.list(alice).length,1);assert.equal(store.list(bob).length,0);assert.equal(store.list(staff).length,1);
+  for(const read of [()=>store.read(bob,job.id),()=>store.save(bob,job.id,{expectedRevision:job.revision,document:job.document}),()=>store.image(bob,photo.id)])assert.throws(read,e=>e.code==='BADGE_JOB_NOT_FOUND');
+  await assert.rejects(()=>store.preview(bob,job.id,job.document),e=>e.code==='BADGE_JOB_NOT_FOUND');assert.throws(()=>store.original(alice,photo.id),e=>e.code==='PHOTO_STAFF_REQUIRED');assert.ok(store.original(staff,photo.id).bytes.length>0);
+ }finally{db.close();}
+});
+
+test('Live checkout deduplicates by job while allowing different customers to order the same printed side',async()=>{
+ const f=await setup();try{const {store,job}=f;await store.checkout(alice,job.id,{expectedRevision:job.revision});await store.checkout(alice,job.id,{expectedRevision:job.revision});assert.equal(f.creates(),1);let second=store.create(bob);const asset=await store.upload(bob,second.id,{role:'portrait',type:'image/png',bytes:await samplePortrait()});Object.assign(second.document.people[0],{firstLine:'JAMIE',photo:asset.id});second=store.save(bob,second.id,{expectedRevision:1,document:second.document});await store.checkout(bob,second.id,{expectedRevision:second.revision});assert.equal(f.creates(),2);const changed=structuredClone(job.document);changed.delivery='troy';assert.throws(()=>store.save(alice,job.id,{expectedRevision:job.revision,document:changed}),e=>e.code==='CHECKOUT_OPTIONS_LOCKED');}finally{f.db.close();}
+});
+
+test('Only staff can send a paid proof; customers see it only after sending and approval unlocks staff production',async()=>{
+ const f=await setup();try{const {store,job}=f;await store.checkout(alice,job.id,{expectedRevision:job.revision});await assert.rejects(()=>store.prepareProof(staff,job.id),e=>e.code==='VERIFIED_TEST_PAYMENT_REQUIRED');f.paid();await store.sync(alice,job.id);
+  await assert.rejects(()=>store.prepareProof(alice,job.id),e=>e.code==='PHOTO_STAFF_REQUIRED');const proof=await store.prepareProof(staff,job.id);assert.equal(store.read(alice,job.id).proofs.length,0);assert.throws(()=>store.proofPdf(alice,proof.id),e=>e.code==='PROOF_NOT_FOUND');
+  await assert.rejects(()=>store.sendProof(alice,proof.id,{pdfHash:proof.pdfHash,reviewed:true}),e=>e.code==='PHOTO_STAFF_REQUIRED');await store.sendProof(staff,proof.id,{pdfHash:proof.pdfHash,reviewed:true});assert.equal(f.mail.length,1);assert.equal(f.mail[0].to,alice.email);assert.match(f.mail[0].text,/\/photo-id\/#proof=/);assert.equal(store.read(alice,job.id).proofs.length,1);assert.ok(store.proofPdf(alice,proof.id).length>1000);assert.throws(()=>store.proof(bob,proof.id),e=>e.code==='BADGE_JOB_NOT_FOUND');
+  await assert.rejects(()=>store.decide(staff,proof.id,{pdfHash:proof.pdfHash,decision:'approved',confirmed:true,note:''}),e=>e.code==='PROOF_OWNER_REQUIRED');await store.decide(alice,proof.id,{pdfHash:proof.pdfHash,decision:'approved',confirmed:true,note:''});await assert.rejects(()=>store.production(alice,job.id),e=>e.code==='PHOTO_STAFF_REQUIRED');assert.ok((await store.production(staff,job.id)).length>1000);
+  const next=structuredClone(job.document);next.people[0].firstLine='CHANGED';assert.throws(()=>store.save(alice,job.id,{expectedRevision:job.revision,document:next}),e=>e.code==='APPROVED_ORDER_LOCKED');const reorder=store.reorder(alice,job.id);assert.equal(reorder.checkout,null);assert.equal(reorder.proofs.length,0);assert.notEqual(reorder.document.people[0].photo,job.document.people[0].photo);assert.deepEqual(store.original(staff,reorder.document.people[0].photo).bytes,store.original(staff,job.document.people[0].photo).bytes);const revised=store.save(staff,job.id,{expectedRevision:job.revision,document:next});assert.equal(revised.revision,job.revision+1);await assert.rejects(()=>store.production(staff,job.id),e=>e.code==='LATEST_APPROVED_PROOF_REQUIRED');
+ }finally{f.db.close();}
+});
+
+test('Customer change requests appear in the staff queue and never approve or release the order',async()=>{
+ const f=await setup();try{const {store,job}=f;await store.checkout(alice,job.id,{expectedRevision:job.revision});f.paid();await store.sync(alice,job.id);const proof=await store.prepareProof(staff,job.id);await store.sendProof(staff,proof.id,{pdfHash:proof.pdfHash,reviewed:true});const note='Please move the logo right and use the new title.';await store.decide(alice,proof.id,{pdfHash:proof.pdfHash,decision:'changes-requested',note,confirmed:true});assert.equal(store.read(staff,job.id).proofs[0].note,note);assert.equal(store.proof(alice,proof.id).note,note);await assert.rejects(()=>store.production(staff,job.id),e=>e.code==='LATEST_APPROVED_PROOF_REQUIRED');const d=structuredClone(job.document);d.people[0].secondLine='Updated title';assert.equal(store.save(alice,job.id,{expectedRevision:job.revision,document:d}).revision,job.revision+1);}finally{f.db.close();}
+});
