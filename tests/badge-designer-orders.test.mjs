@@ -68,14 +68,17 @@ test('guest designs create verified shipping and native pickup checkouts and pre
   t.after(() => db.close());
   const shop = shopify();
   const orders = createBadgeDesignerOrders({ db, graphql: shop.graphql, base, previewEmail: owner });
-  const standard = order('standard');
-  const duets = order('duets', {textVerticalPosition: 64});
+  const standard = {...order('standard'),contact:{name:'Sample Buyer',company:'Sample Organization',phone:'(619) 555-0123'}};
+  const duets = {...order('duets', {textVerticalPosition: 64}),contact:{name:'Sample Buyer',company:'Sample Organization',phone:''}};
   await assert.rejects(orders.checkout({ ...standard, email: 'other@example.test' }), /PREVIEW_EMAIL_REQUIRED/);
   await assert.rejects(orders.checkout({ ...standard, subtotalCents: 1 }), /ORDER_OPTIONS_CHANGED/);
   await assert.rejects(orders.checkout(order('standard', { people: [{ name: '', copies: 1 }] })), /ORDER_NAMES_REQUIRED/);
+  await assert.rejects(orders.checkout({...standard,contact:{name:'',company:'',phone:''}}), /CONTACT_NAME_REQUIRED/);
   assert.equal(shop.creates, 0);
   const first = await orders.checkout(standard);
   assert.match(first.checkoutUrl, /fake-reference-1$/);
+  assert.equal(shop.drafts.get('gid://shopify/DraftOrder/1').input.phone,'+16195550123');
+  assert.ok(shop.drafts.get('gid://shopify/DraftOrder/1').input.customAttributes.some(a=>a.key==='Order contact name'&&a.value==='Sample Buyer'));
   assert.deepEqual(await orders.checkout(standard), first);
   const second = await orders.checkout(duets);
   assert.match(second.checkoutUrl, /fake-reference-2$/);
@@ -98,6 +101,7 @@ test('guest designs create verified shipping and native pickup checkouts and pre
   assert.deepEqual(details.logo, duets.logo);
   assert.equal(details.configuration.design.cornerRadius, '1/4');
   assert.equal(details.configuration.design.textVerticalPosition, 64);
+  assert.deepEqual(details.configuration.contact,duets.contact);
 });
 
 test('checkout endpoint requires no customer session and production details require one', async t => {

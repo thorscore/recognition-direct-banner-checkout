@@ -1,3 +1,4 @@
+import {normalizeBadgeContact,badgeContactShopifyFields,badgeContactNote} from '../badge-order-contact.mjs';
 import { createHash } from 'node:crypto';
 import { CATALOG_VERSION, DUETS_COLORS, FIXED_SIZES, STANDARD_COLORS } from './catalog.mjs';
 import { draftInput, normalizeDraft, priceDraft } from './model.mjs';
@@ -70,6 +71,8 @@ function orderInput(body, previewEmail) {
   if (email.length > 254 || !/^[^\s@<>,;]+@[^\s@<>,;]+\.[a-z]{2,63}$/.test(email)) fail(422, 'EMAIL_INVALID');
   if (previewEmail && email !== previewEmail) fail(403, 'PREVIEW_EMAIL_REQUIRED');
   if (!validKey(body.key) || body.catalogVersion !== CATALOG_VERSION) fail(409, 'ORDER_OPTIONS_CHANGED');
+  let contact;
+  try { contact = normalizeBadgeContact(body.contact); } catch (error) { fail(422, error.message); }
   let document, price;
   try {
     document = normalizeDraft(body.configuration);
@@ -80,7 +83,7 @@ function orderInput(body, previewEmail) {
   const logoScale = body.logoScale;
   if (!Number.isFinite(logoScale) || logoScale < 0.25 || logoScale > 1) fail(422, 'LOGO_INVALID');
   return {
-    key: body.key, email, design: draftInput(document), price, logo: readLogo(body.logo), logoScale,
+    key: body.key, email, ...(contact ? {contact} : {}), design: draftInput(document), price, logo: readLogo(body.logo), logoScale,
     namedQuantity: document.namedQuantity, heldForLater: document.heldForLater,
   };
 }
@@ -178,14 +181,14 @@ export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, now
         }
         const { draftOrderCreate: created } = await graphql(CREATE, {
           input: {
-            lineItems: [line], email: order.email, shippingLine,
+            lineItems: [line], email: order.email, shippingLine, ...badgeContactShopifyFields(order.contact),
             ...(pickup ? { shippingAddress: PICKUP_ADDRESS } : {}),
             presentmentCurrencyCode: 'USD', taxExempt: false,
             acceptAutomaticDiscounts: false, allowDiscountCodesInCheckout: false, useCustomerDefaultAddress: false,
             tags: ['name-badges', 'proof-required', 'rd-badge-designer', pickup ? 'pickup-spring-valley' : 'ship',
               ...(previewEmail ? ['badge-designer-preview'] : [])],
             note: 'Review the badge configuration and artwork before preparing the proof: ' +
-              new URL('/badge-production#' + order.key, base).href,
+              new URL('/badge-production#' + order.key, base).href + (order.contact ? '\n\n' + badgeContactNote(order.contact) : ''),
           },
         });
         if (!created?.draftOrder && created?.userErrors?.length > 0) {

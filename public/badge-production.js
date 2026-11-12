@@ -73,6 +73,7 @@ async function showOrder() {
   savedLogo = logo;
   const design = configuration.design;
   const details = [
+    ...(configuration.contact ? [['Order company', configuration.contact.company], ['Order contact name', configuration.contact.name], ['Order contact phone', configuration.contact.phone]] : []),
     ['Badge style', design.family === 'standard' ? 'Engravable' : 'Full-color printed'],
     ['Size', size], ['Stock color', color], ['Frame', design.frame],
     ['Corners', design.frame !== 'none' ? 'Set by frame' : (design.cornerRadius ?? '1/8') + ' in'],
