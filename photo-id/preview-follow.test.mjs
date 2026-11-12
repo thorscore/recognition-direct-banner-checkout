@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {previewOffset,installPreviewFollow,mirrorCropPreview} from './public/preview-follow.mjs';
+import {previewOffset,installPreviewFollow,mirrorCropPreview,installPreviewFaces} from './public/preview-follow.mjs';
 
 test('The phone crop preview reuses the finished front artwork at the correct aspect ratio',()=>{
  const copies=[],canvas={getContext:()=>({drawImage:(...args)=>copies.push(args)})},panel={hidden:true},note={};
@@ -29,3 +29,6 @@ test('Viewport messages accept only the actual storefront parent and batch movem
  assert.deepEqual(writes.at(-1),['--preview-offset','1514px']);assert.ok(classes.includes('preview-follow-embedded'));assert.equal(observed,2);
  window.innerWidth=390;events.resize();frames.shift()();assert.deepEqual(writes.at(-1),['--preview-offset','0px']);
 });
+
+
+test('Back editing opens a full-size back view, front editing returns to front and Both remains available',()=>{const events={},buttons={};let count=1,changed;for(const id of ['previewFront','previewBack','previewBoth'])buttons[id]={handlers:{},attributes:{},setAttribute(k,v){this.attributes[k]=v;},addEventListener(k,v){this.handlers[k]=v;}};const canvases={dataset:{},querySelectorAll:()=>Array(count)},controls={hidden:false},document={getElementById:id=>id==='canvases'?canvases:id==='previewFaceControls'?controls:buttons[id],addEventListener:(k,v)=>events[k]=v};installPreviewFaces({document,MutationObserver:class{constructor(fn){changed=fn;}observe(){}}});assert.equal(controls.hidden,true);events.focusin({target:{closest:s=>s==='#backfields'}});count=2;changed();assert.equal(controls.hidden,false);assert.equal(canvases.dataset.previewSide,'back');assert.equal(buttons.previewBack.attributes['aria-pressed'],'true');buttons.previewBoth.handlers.click();assert.equal(canvases.dataset.previewSide,'both');events.focusin({target:{closest:s=>s==='.fields'}});assert.equal(canvases.dataset.previewSide,'front');count=1;changed();assert.equal(controls.hidden,true);});

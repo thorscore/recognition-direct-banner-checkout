@@ -23,3 +23,9 @@
  .crop-preview canvas{display:block;width:auto;max-width:100%;height:auto;max-height:180px;margin:0 auto;border:1px solid #ccd6e2;border-radius:8px;background:#fff;}
  .crop-preview .small{margin:8px 0 0;}
 }
+
+.preview-face-controls{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+.preview-face-controls button{flex:1;min-height:40px;padding:9px 12px}
+.preview-face-controls button[aria-pressed=true]{background:#3653ba;color:#fff;border-color:#3653ba}
+#canvases[data-preview-side=front] figure:not(:first-child),#canvases[data-preview-side=back] figure:first-child{display:none}
+@media(min-width:761px){#badgePreview #canvases:not([data-preview-side=both]){grid-template-columns:1fr}}

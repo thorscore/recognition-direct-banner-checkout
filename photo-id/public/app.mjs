@@ -116,25 +116,25 @@ function renderer(){
  if(!rendererPromise)rendererPromise=(async()=>{const library=await import('/badge-preview/pdfjs-6-5-438.mjs');library.GlobalWorkerOptions.workerSrc='/badge-preview/pdf-worker-6-5-438.mjs';const worker=new library.PDFWorker();await worker.promise;return {library,worker};})().catch(e=>{rendererPromise=null;throw e;});
  return rendererPromise;
 }
-const previews=createPreviewQueue({render:renderPreview,onError:e=>{$('previewnote').textContent=e.name==='TimeoutError'?'The preview took too long. Adjust a setting to try again; your design is preserved.':errors[e.message]||'Preview is unavailable. Save and check the badge details.';$('canvases').replaceChildren();$('cropPreview').hidden=true;}});
+const previews=createPreviewQueue({render:renderPreview,onError:e=>{$('previewnote').textContent=e.name==='TimeoutError'?'The preview took too long. Adjust a setting to try again; your design is preserved.':errors[e.message]||'Preview is unavailable. Save and check the badge details.';$('canvases').replaceChildren();$('cropPreview').hidden=true;$('backDesignPreview').hidden=true;}});
 function schedulePreview(){if(!job)return;readFields();previews.schedule(previewSnapshot(job,personIndex));}
 async function renderPreview(snapshot,current){
- if(!current())return;$('previewnote').textContent='Updating preview…';$('cropPreviewNote').textContent='Updating photo crop…';
+ if(!current())return;$('previewnote').textContent='Updating preview…';$('cropPreviewNote').textContent='Updating photo crop…';$('backDesignNote').textContent='Updating back preview…';
  // Load PDF.js and its reusable worker alongside the first preview request.
  const [data,{library,worker}]=await Promise.all([request('/jobs/'+snapshot.jobId+'/preview',{method:'POST',data:{document:snapshot.document,personIndex:snapshot.personIndex},pdf:true,timeoutMs:15000}),renderer()]);
  if(!current())return;
  const task=library.getDocument({data:new Uint8Array(data),isEvalSupported:false,worker});
  try{
   const pdf=await task.promise;if(!current())return;
-  let frontCanvas;const fragments=document.createDocumentFragment(),count=snapshot.document.printSides==='front-only'?1:2;
+  let frontCanvas,backCanvas;const fragments=document.createDocumentFragment(),count=snapshot.document.printSides==='front-only'?1:2;
   // Older servers still return all people during a rolling deployment.
   const start=pdf.numPages===count?1:snapshot.personIndex*count+1;
   for(let n=start;n<=Math.min(start+count-1,pdf.numPages);n++){
    if(!current())return;const page=await pdf.getPage(n),viewport=page.getViewport({scale:2.5}),canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;if(!current())return;
-   if(n===start)frontCanvas=canvas;const figure=document.createElement('figure'),label=document.createElement('figcaption');label.textContent=n===start?'FRONT':'BACK';figure.append(label,canvas);fragments.append(figure);
+   if(n===start)frontCanvas=canvas;else backCanvas=canvas;const figure=document.createElement('figure'),label=document.createElement('figcaption');label.textContent=n===start?'FRONT':'BACK';figure.append(label,canvas);fragments.append(figure);
   }
-  if(current()){mirrorCropPreview(frontCanvas,$('cropCanvas'),$('cropPreview'),$('cropPreviewNote'));$('canvases').replaceChildren(fragments);$('previewnote').textContent='Person '+(snapshot.personIndex+1)+' · '+badgeDimensions(snapshot.document)+' (width × height) · '+(snapshot.document.orientation==='portrait'?'Portrait':'Landscape');}
+  if(current()){mirrorCropPreview(frontCanvas,$('cropCanvas'),$('cropPreview'),$('cropPreviewNote'));mirrorCropPreview(backCanvas,$('backDesignCanvas'),$('backDesignPreview'),$('backDesignNote'),'Update the heading and message below to change this preview.');$('canvases').replaceChildren(fragments);$('previewnote').textContent='Person '+(snapshot.personIndex+1)+' · '+badgeDimensions(snapshot.document)+' (width × height) · '+(snapshot.document.orientation==='portrait'?'Portrait':'Landscape');}
  }finally{await task.destroy();}
 }
 action('checkout',async()=>{if(!$('orderEmail').reportValidity())return;await save();if(dirty)throw Error('SAVE_CHANGES_FIRST');job=await request('/jobs/'+job.id+'/checkout',{method:'POST',data:{expectedRevision:job.revision,email:$('orderEmail').value}});$('orderEmail').readOnly=true;drawOptions();queue();message('Your secure checkout is ready.');if(window.parent!==window){try{window.top.location.href=job.checkout.url;}catch{window.open(job.checkout.url,'_blank','noopener');}}else location.assign(job.checkout.url);});

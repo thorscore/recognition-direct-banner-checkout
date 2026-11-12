@@ -1,10 +1,19 @@
 const storefrontOrigins=new Set(['https://recognition-direct.com','https://www.recognition-direct.com']);
 
-export function mirrorCropPreview(source,canvas,panel,note){
+export function mirrorCropPreview(source,canvas,panel,note,help='Adjust the sliders below to update this preview.'){
  if(!source){panel.hidden=true;return;}
  canvas.width=source.width;canvas.height=source.height;
  canvas.getContext('2d').drawImage(source,0,0);
- panel.hidden=false;note.textContent='Adjust the sliders below to update this preview.';
+ panel.hidden=false;note.textContent=help;
+}
+
+export function installPreviewFaces({document,MutationObserver}){
+ const canvases=document.getElementById('canvases'),controls=document.getElementById('previewFaceControls');if(!canvases||!controls)return;
+ const choices=['front','back','both'],buttons=choices.map(side=>document.getElementById('preview'+side[0].toUpperCase()+side.slice(1)));let requested='front';
+ function refresh(){const two=canvases.querySelectorAll('figure').length>1,side=two?requested:'front';controls.hidden=!two;canvases.dataset.previewSide=side;buttons.forEach((button,i)=>button.setAttribute('aria-pressed',String(choices[i]===side)));}
+ buttons.forEach((button,i)=>button.addEventListener('click',()=>{requested=choices[i];refresh();}));
+ document.addEventListener('focusin',event=>{if(event.target.closest('#backfields'))requested='back';else if(event.target.closest('.fields'))requested='front';else return;refresh();});
+ new MutationObserver(refresh).observe(canvases,{childList:true});refresh();
 }
 
 export function previewOffset({visibleTop,layoutTop,layoutHeight,previewHeight,width}){
@@ -34,4 +43,4 @@ export function installPreviewFollow({window,document,ResizeObserver}){
  const observer=new ResizeObserver(schedule);observer.observe(layout);observer.observe(preview);
 }
 
-if(typeof window!=='undefined'&&typeof document!=='undefined')installPreviewFollow({window,document,ResizeObserver});
+if(typeof window!=='undefined'&&typeof document!=='undefined'){installPreviewFollow({window,document,ResizeObserver});installPreviewFaces({document,MutationObserver});}
