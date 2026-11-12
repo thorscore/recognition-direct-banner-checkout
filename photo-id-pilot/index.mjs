@@ -7,7 +7,7 @@ import {createPilotAuth,PILOT_OWNER,PILOT_PATH,PilotError,fail} from './auth.mjs
 import {createPilotStore} from './store.mjs';
 import {createPhotoPilotShopify} from './shopify.mjs';
 import {createPilotSamples} from './samples.mjs';
-export const VERSION='photo-id-private-pilot-20261112.7';
+export const VERSION='photo-id-private-pilot-20261112.8';
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow, noarchive','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' blob: data:; font-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 const staticFiles=new Map([['/', ['index.html','text/html; charset=utf-8']],['/app.mjs',['app.mjs','text/javascript; charset=utf-8']],['/payment-status.mjs',['payment-status.mjs','text/javascript; charset=utf-8']],['/proof-decision.mjs',['proof-decision.mjs','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']]]);
 async function body(req,max=256*1024){const chunks=[];let n=0;if(req.headers['content-encoding'])fail(415,'ENCODING_UNSUPPORTED');for await(const c of req){n+=c.length;if(n>max)fail(413,'FILE_TOO_LARGE');chunks.push(c);}return Buffer.concat(chunks);}

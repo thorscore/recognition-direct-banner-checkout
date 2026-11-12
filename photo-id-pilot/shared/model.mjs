@@ -25,12 +25,12 @@ export function logoSourceRect(width,height,crop={}){
   const left=edge('left'),right=edge('right'),top=edge('top'),bottom=edge('bottom');
   return {x:width*left,y:height*top,width:width*(1-left-right),height:height*(1-top-bottom)};
 }
-export function logoBounds(width,height,percent=100){
+export function logoBounds(width,height,percent=100,area=LOGO_AREA){
   if(!(width>0&&height>0))throw new Error('Invalid logo dimensions');
   const size=Math.max(25,Math.min(150,Number(percent)||100));
-  const factor=Math.min(LOGO_AREA.width/width,LOGO_AREA.height/height)*size/150;
+  const factor=Math.min(area.width/width,area.height/height)*size/150;
   const w=width*factor,h=height*factor;
-  return {x:LOGO_AREA.x+(LOGO_AREA.width-w)/2,y:LOGO_AREA.y+(LOGO_AREA.height-h)/2,width:w,height:h};
+  return {x:area.x+(area.width-w)/2,y:area.y+(area.height-h)/2,width:w,height:h};
 }
 export const ATTACHMENTS = Object.freeze({
   none: { label: 'No attachment', mount: 'none' },
@@ -47,9 +47,9 @@ export function totalCopies(people) {
   if(!Array.isArray(people)||!people.length)return null;let sum=0;
   for(const p of people){if(!validQuantity(p?.copies)||!Number.isSafeInteger(sum+p.copies))return null;sum+=p.copies;}return sum;
 }
-export function cropRect(width, height, crop) {
+export function cropRect(width, height, crop,aspect=CARD.photoWidth / CARD.photoHeight) {
   if (!(width > 0 && height > 0)) throw new Error('Invalid image dimensions');
-  const aspect = CARD.photoWidth / CARD.photoHeight;
+  if(!(aspect>0&&Number.isFinite(aspect)))throw new Error('Invalid photo aspect ratio');
   const zoom = Math.max(1, Math.min(3, Number(crop.zoom) || 1));
   let w = Math.min(width, height * aspect) / zoom;
   let h = w / aspect;
