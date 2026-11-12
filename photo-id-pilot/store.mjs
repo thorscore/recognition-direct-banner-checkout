@@ -17,8 +17,8 @@ export function createPilotStore({db,shopify,send,base,now=Date.now,pdfs={cardPd
  function job(id){const row=isId(id)&&db.prepare('SELECT * FROM photo_pilot_jobs WHERE id=?').get(id);if(!row)fail(404,'BADGE_JOB_NOT_FOUND');return {...row,document:JSON.parse(row.document)};}
  function run(id){const row=db.prepare('SELECT * FROM photo_pilot_runs WHERE job_id=?').get(id);return row?{...row,record:JSON.parse(row.record),paid:row.paid?JSON.parse(row.paid):null}:null;}
  function proofRow(id){const row=isId(id)&&db.prepare('SELECT * FROM photo_pilot_proofs WHERE id=?').get(id);if(!row)fail(404,'PROOF_NOT_FOUND');return row;}
- function assetsFor(j,document=j.document){const map=new Map();for(const id of documentAssets(document)){
-  const row=db.prepare('SELECT * FROM photo_pilot_assets WHERE id=? AND job_id=?').get(id,j.id);const role=id===document.logo?'logo':id===document.backArtwork?'back':'portrait';if(!row||row.role!==role||hash(row.normalized)!==row.normalized_hash||hash(row.source)!==row.source_hash)fail(409,'ARTWORK_NEEDS_REVIEW');map.set(id,{...row,normalized:Buffer.from(row.normalized)});
+ function assetsFor(j,document=j.document,{display=false}={}){const map=new Map();for(const id of new Set(documentAssets(document))){
+  const row=db.prepare('SELECT * FROM photo_pilot_assets WHERE id=? AND job_id=?').get(id,j.id);const role=id===document.logo?'logo':id===document.backArtwork?'back':'portrait';if(!row||row.role!==role||hash(row.normalized)!==row.normalized_hash||hash(row.source)!==row.source_hash)fail(409,'ARTWORK_NEEDS_REVIEW');map.set(id,display?{width:row.width,height:row.height,normalized:Buffer.from(row.preview)}:{...row,normalized:Buffer.from(row.normalized)});
  }return map;}
  function publicProof(p,j){return {id:p.id,revision:p.revision,pdfHash:p.pdf_hash,status:p.status,decision:p.decision,decided:p.decided,superseded:p.revision!==j.revision||p.document_hash!==hash(JSON.stringify(j.document)),pdfUrl:base+'/photo-id-pilot/api/proofs/'+p.id+'/pdf'};}
  function view(j){const r=run(j.id),proofs=db.prepare('SELECT id,revision,document_hash,pdf_hash,status,decision,decided FROM photo_pilot_proofs WHERE job_id=? ORDER BY revision DESC').all(j.id);return {id:j.id,revision:j.revision,document:j.document,price:checkDocument(j.document).price,checkout:r?{status:r.status,error:r.error_code,url:r.checkout_url,paid:!!r.paid,orderName:r.paid?.orderName,totalCents:r.paid?.totalCents}:null,proofs:proofs.map(p=>publicProof(p,j)),productionReleased:false,productionReleaseSupported:false};}
@@ -39,7 +39,15 @@ export function createPilotStore({db,shopify,send,base,now=Date.now,pdfs={cardPd
    if(JSON.stringify(checked.document)===JSON.stringify(j.document))return view(j);
    const result=db.prepare('UPDATE photo_pilot_jobs SET revision=revision+1,document=?,updated=? WHERE id=? AND revision=?').run(JSON.stringify(checked.document),now(),id,expectedRevision);if(!result.changes)fail(409,'DRAFT_CHANGED_RELOAD');event(id,'design-revision-saved');return view(job(id));
   },
-  async preview(id,document){const j=job(id),checked=checkDocument(document);return pdfs.cardPdf(checked.document,assetsFor(j,checked.document),{guide:true,title:'Photo ID pilot preview'});},
+  async preview(id,document,{personIndex}={}){
+   const j=job(id),checked=checkDocument(document);
+   if(personIndex!==undefined&&(!Number.isSafeInteger(personIndex)||personIndex<0||personIndex>=checked.document.people.length))fail(422,'PREVIEW_PERSON_INVALID');
+   const visible=personIndex===undefined?checked.document:{...checked.document,people:[checked.document.people[personIndex]]};
+   // The 900px display images preserve source coordinates and transparency.
+   // Checkout, proofs, originals and production continue to use full artwork.
+   const assets=assetsFor(j,visible,{display:true});
+   return pdfs.cardPdf(visible,assets,{guide:true,title:'Photo ID pilot preview'});
+  },
   async checkout(id,{expectedRevision,fictionalDataConfirmed}){
    const j=job(id);if(expectedRevision!==j.revision)fail(409,'DRAFT_CHANGED_RELOAD');if(fictionalDataConfirmed!==true)fail(422,'PILOT_CONFIRMATION_REQUIRED');const checked=checkDocument(j.document,{complete:true}),assets=assetsFor(j);await pdfs.cardPdf(j.document,assets,{guide:true});
    let existing=run(id);if(existing?.checkout_url)return view(j);if(existing&&existing.status!=='not-created')fail(409,'CHECKOUT_NEEDS_STATUS_CHECK');
