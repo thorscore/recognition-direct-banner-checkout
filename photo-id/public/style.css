@@ -29,3 +29,5 @@
 .preview-face-controls button[aria-pressed=true]{background:#3653ba;color:#fff;border-color:#3653ba}
 #canvases[data-preview-side=front] figure:not(:first-child),#canvases[data-preview-side=back] figure:first-child{display:none}
 @media(min-width:761px){#badgePreview #canvases:not([data-preview-side=both]){grid-template-columns:1fr}}
+
+@media(max-width:600px){#orderContactFields .row{grid-template-columns:minmax(0,1fr)}}
