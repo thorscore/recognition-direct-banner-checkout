@@ -58,7 +58,7 @@ function drawFrame(doc,document,layout){
  if(layout.id===LAYOUT_ID){for(const shape of cornerShapesFor(document))doc.path('M '+shape.points.map(p=>p.join(' ')).join(' L ')+' Z').fill(document[shape.color]);}
  else if(layout.id==='clean-header.v1'){doc.rect(0,0,g.width,portrait?84:68).fill(document.color);doc.rect(0,portrait?84:68,g.width,8).fill(document.secondaryColor);}
  else if(layout.id==='side-stripe.v1'){const stripe=portrait?52:100;doc.rect(0,0,stripe,g.height).fill(document.color);doc.rect(stripe,0,portrait?12:16,g.height).fill(document.secondaryColor);}
- else if(layout.id==='framed-id.v1'){doc.save().lineWidth(8).strokeColor(document.color).roundedRect(24,24,g.width-48,g.height-48,24).stroke().restore();doc.rect(portrait?94:420,portrait?193:175,portrait?424:470,5).fill(document.secondaryColor);}
+ else if(layout.id==='framed-id.v1'){doc.save().lineWidth(8).strokeColor(document.color).roundedRect(24,24,g.width-48,g.height-48,24).stroke().restore();doc.rect(portrait?94:420,layout.dividerY??(portrait?193:175),portrait?424:470,5).fill(document.secondaryColor);}
  else if(layout.id==='soft-panel.v1'){
   const p=layout.photo;doc.roundedRect(p.x-22,p.y-18,p.w+44,p.h+36,22).fill('#eef4f7');
   doc.rect(0,portrait?864:486,g.width,portrait?108:126).fill(document.secondaryColor);

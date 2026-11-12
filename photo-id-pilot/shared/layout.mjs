@@ -42,7 +42,29 @@ const portrait={
 };
 export function layoutFor(document={}){
  const id=normalizeLayout(document.layout),geometry=cardGeometry(document);
- return {...(geometry.orientation==='portrait'?portrait:landscape)[id],id,label:DESIGN_OPTIONS.find(x=>x.id===id).label,geometry};
+ const base=(geometry.orientation==='portrait'?portrait:landscape)[id];
+ const growth=document.logo?Math.max(0,Math.min(1,((Number(document.logoScale)||100)-150)/150)):0;
+ const result={...base,id,label:DESIGN_OPTIONS.find(x=>x.id===id).label,geometry};
+ // Preserve every existing layout through its former slider maximum. Beyond
+ // that point, reserve real space for the logo rather than drawing over names.
+ if(!growth)return result;
+ const blend=(a,b)=>a+(b-a)*growth;
+ if(geometry.orientation==='portrait'){
+  const height=306,width=height*base.photo.w/base.photo.h;
+  result.logo={...base.logo,y:blend(base.logo.y,92),height:blend(base.logo.height,230)};
+  result.photo={x:blend(base.photo.x,base.photo.x+(base.photo.w-width)/2),y:blend(base.photo.y,352),w:blend(base.photo.w,width),h:blend(base.photo.h,height)};
+  result.dividerY=blend(193,334);
+  if(base.organizationOnColor)result.rule={...base.rule,y:Math.max(blend(base.rule.y,334),result.logo.y+result.logo.height+12)};
+ }else{
+  const x=base.first.x;
+  result.logo={x:blend(base.logo.x,x),y:blend(base.logo.y,90),width:blend(base.logo.width,geometry.width-x-42),height:blend(base.logo.height,220)};
+  result.first={...base.first,y:blend(base.first.y,base.organizationOnColor?390:402),max:blend(base.first.max,base.organizationOnColor?70:80)};
+  result.second={...base.second,y:blend(base.second.y,base.organizationOnColor?464:486),max:blend(base.second.max,base.organizationOnColor?70:80)};
+  result.organization={...base.organization,y:blend(base.organization.y,548),max:blend(base.organization.max,30)};
+  result.rule={...base.rule,y:blend(base.rule.y,574)};
+  result.dividerY=blend(175,322);
+ }
+ return result;
 }
 export function cornerShapesFor(document={}){
  if(cardGeometry(document).orientation==='landscape')return CORNER_SHAPES;

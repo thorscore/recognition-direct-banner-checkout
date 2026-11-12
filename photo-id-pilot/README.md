@@ -17,3 +17,5 @@ Local tests inject mock Shopify/email adapters and never use production secrets.
 Badge designs: landscape (3.375 × 2.125 inches) or portrait (2.125 × 3.375 inches), with Corner accents, Clean header, Side stripe, Classic frame and Color panels layouts. Both sides remain upright. The browser preview, proof and actual-size artwork share the same geometry, photo crop and slot clearance. Layout and orientation are artwork choices with no price difference.
 
 Older documents without an orientation remain byte-stable on an unchanged save, preserving existing revision and approval checks. Selecting a different layout or orientation creates a new revision requiring another proof and approval. Existing paid quantity, printing, attachment and delivery choices stay locked to their verified Shopify order.
+
+Logo size supports 25–300%. Through 150%, prior layout geometry is preserved. Higher sizes expand the logo area; landscape name lines move downward with fitting, while portrait photos shrink proportionally to make room. Punched logos retain slot clearance. The preview, proof and artwork renderer share this layout. Existing saved jobs are never rewritten automatically.
