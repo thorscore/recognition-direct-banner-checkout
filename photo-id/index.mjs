@@ -8,7 +8,7 @@ import {createPhotoAuth,PATH,validEmail} from './auth.mjs';
 import {createPhotoOrderStore} from './store.mjs';
 import {createPhotoShopify} from './shopify.mjs';
 
-export const VERSION='photo-id-orders-20261112.2';
+export const VERSION='photo-id-orders-20261112.3';
 export async function sendPhotoEmail(transport,from,message){if(!validEmail(message.to)||!transport)fail(503,'PILOT_EMAIL_SETUP_REQUIRED');const result=await transport.sendMail({...message,from});if(!result.accepted?.some(x=>typeof x==='string'&&x.toLowerCase()===message.to.toLowerCase()))fail(502,'PILOT_EMAIL_NOT_ACCEPTED');}
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow, noarchive','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' blob: data:; font-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob:; base-uri 'none'; frame-ancestors https://recognition-direct.com https://www.recognition-direct.com; form-action 'self'"};
 const staticFiles=new Map([['/', ['index.html','text/html; charset=utf-8']],['/staff',['index.html','text/html; charset=utf-8']],['/app.mjs',['app.mjs','text/javascript; charset=utf-8']],['/preview-queue.mjs',['preview-queue.mjs','text/javascript; charset=utf-8']],['/payment-status.mjs',['payment-status.mjs','text/javascript; charset=utf-8']],['/proof-decision.mjs',['proof-decision.mjs','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']]]);
@@ -40,7 +40,7 @@ export async function configurePhotoOrders({databasePath,base,env=process.env,te
    const s=req.method==='GET'?auth.requireSession(req):auth.mutation(req);
    if(req.method==='GET'&&path==='/api/session'){output(res,200,{owner:s.email,guest:s.guest,staff:s.staff,session:auth.csrf(s),version:VERSION,checkoutConfigured:shopify.configured,emailConfigured:!!providedSend||config.enabled});return true;}
    if(req.method==='POST'&&path==='/api/sign-out'){output(res,200,{ok:true},'application/json; charset=utf-8',{'Set-Cookie':auth.signOut(req)});return true;}
-   if(path==='/api/jobs'&&req.method==='GET'){output(res,200,store.list(s));return true;}
+   if(path==='/api/jobs'&&req.method==='GET'){output(res,200,store.list(s,{ownOnly:url.searchParams.get('view')==='designer'}));return true;}
    if(path==='/api/jobs'&&req.method==='POST'){await json(req);output(res,201,store.create(s));return true;}
    const match=path.match(/^\/api\/jobs\/([a-f0-9]{32})(?:\/(assets|preview|checkout|sync|prepare-proof|production\.pdf|events|reorder))?$/);
    if(match){const [,id,action]=match;

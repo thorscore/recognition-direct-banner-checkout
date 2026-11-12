@@ -9,7 +9,7 @@ async function setup(){const db=new DatabaseSync(':memory:'),mail=[],orders=new 
 
 test('Customers can only access their own jobs, assets and images, while only staff gets originals',async()=>{
  const {db,store,job,photo}=await setup();try{
-  assert.equal(store.list(alice).length,1);assert.equal(store.list(bob).length,0);assert.equal(store.list(staff).length,1);
+  assert.equal(store.list(alice).length,1);assert.equal(store.list(bob).length,0);assert.equal(store.list(staff).length,1);assert.equal(store.list(staff,{ownOnly:true}).length,0);const own=store.create(staff);assert.equal(store.list(staff,{ownOnly:true}).length,1);assert.equal(store.list(staff,{ownOnly:true})[0].id,own.id);assert.equal(store.list(staff).length,2);
   for(const read of [()=>store.read(bob,job.id),()=>store.save(bob,job.id,{expectedRevision:job.revision,document:job.document}),()=>store.image(bob,photo.id)])assert.throws(read,e=>e.code==='BADGE_JOB_NOT_FOUND');
   await assert.rejects(()=>store.preview(bob,job.id,job.document),e=>e.code==='BADGE_JOB_NOT_FOUND');assert.throws(()=>store.original(alice,photo.id),e=>e.code==='PHOTO_STAFF_REQUIRED');assert.ok(store.original(staff,photo.id).bytes.length>0);
  }finally{db.close();}
