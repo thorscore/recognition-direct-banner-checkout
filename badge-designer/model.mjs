@@ -10,7 +10,7 @@ export function validateSize(size){
  return size;
 }
 export function normalizeDraft(input,{sizes=FIXED_SIZES,duetsColors=DUETS_COLORS}={}){
- if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!['family','size','stockColor','frame','fastener','dome','quantity','expressOne','organization','people','notes','delivery','textColor','layout','textAlignment','cornerRadius','textSize'].includes(k)))reject('UNEXPECTED_FIELDS');
+ if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!['family','size','stockColor','frame','fastener','dome','quantity','expressOne','organization','people','notes','delivery','textColor','layout','textAlignment','cornerRadius','textSize','textVerticalPosition'].includes(k)))reject('UNEXPECTED_FIELDS');
  if(typeof input.family!=='string'||!Object.hasOwn(FAMILIES,input.family))reject('BADGE_FAMILY_REQUIRED');
  const family=FAMILIES[input.family];
  const size=sizes.find(s=>s.id===input.size);if(!size)reject('OFFERED_FIXED_SIZE_REQUIRED');validateSize(size);
@@ -34,6 +34,7 @@ export function normalizeDraft(input,{sizes=FIXED_SIZES,duetsColors=DUETS_COLORS
  if (Object.hasOwn(input, 'textSize') && (!Number.isInteger(input.textSize) ||
      input.textSize < TEXT_SIZE.min || input.textSize > TEXT_SIZE.max ||
      (input.textSize - TEXT_SIZE.min) % TEXT_SIZE.step !== 0)) reject('TEXT_SIZE_INVALID');
+ if (Object.hasOwn(input, 'textVerticalPosition') && (!Number.isInteger(input.textVerticalPosition) || input.textVerticalPosition < -100 || input.textVerticalPosition > 100)) reject('TEXT_POSITION_INVALID');
  return {schema:CATALOG_VERSION,...input,textAlignment,organization:Object.hasOwn(input,'organization')?text(input.organization,100):'',notes:text(input.notes,2000),people,material:family.substrate,glossClearCoatIncluded:family.glossIncluded,namedQuantity:named,heldForLater:input.expressOne?input.quantity-named:0};
 }
 export function priceDraft(input,config){
@@ -50,6 +51,7 @@ export function draftInput(d) {
   // Omitting the default keeps earlier snapshots and retry fingerprints valid.
   if (Object.hasOwn(d, 'textAlignment') && d.textAlignment !== 'left') fields.push('textAlignment');
   if (Object.hasOwn(d, 'textSize') && d.textSize !== TEXT_SIZE.default) fields.push('textSize');
+  if (Object.hasOwn(d, 'textVerticalPosition') && d.textVerticalPosition !== 0) fields.push('textVerticalPosition');
   // Older orders did not record a corner choice. Keep their snapshots intact.
   if (Object.hasOwn(d, 'cornerRadius')) fields.push('cornerRadius');
   return Object.fromEntries(fields.map(k => [k, d[k]]));

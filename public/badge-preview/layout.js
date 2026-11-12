@@ -94,6 +94,37 @@ export function badgeTextLayout(width, height, logoPosition, { hasLogo, alignmen
   };
 }
 
+export function fitBadgeText(layout, measure, textVerticalPosition = 0, face) {
+  const lines = layout.lines.map(line => {
+    const fit = fitText((value, size) => measure(value, size, line.weight), line.value,
+      {width: layout.clip.width, above: line.above, below: line.below}, line.max, line.min);
+    return {...line, ...fit};
+  });
+  if (!textVerticalPosition || !lines.length || lines.some(line => !line.fits)) return lines;
+  let higher = -Infinity, lower = Infinity;
+  for (const line of lines) {
+    const metrics = measure(line.value, line.size, line.weight);
+    const ascent = metrics.actualBoundingBoxAscent ?? line.size / 2;
+    const descent = metrics.actualBoundingBoxDescent ?? line.size / 2;
+    let safeTop = layout.clip.y + 1, safeBottom = layout.clip.y + layout.clip.height - 1;
+    if (face) {
+      const left = layout.x - (face.alignment === 'center' ? metrics.width / 2 : 0);
+      const edge = Math.min(left, face.width - left - metrics.width);
+      const radius = face.radius;
+      const inset = radius > logoPadding && edge < radius
+        ? radius - Math.sqrt(Math.max(0, (radius - logoPadding) ** 2 - (radius - edge) ** 2))
+        : logoPadding;
+      safeTop = Math.max(safeTop, inset);
+      safeBottom = Math.min(safeBottom, face.height - inset);
+    }
+    higher = Math.max(higher, safeTop - (line.y - ascent));
+    lower = Math.min(lower, safeBottom - (line.y + descent));
+  }
+  const value = Math.min(100, Math.max(-100, Number(textVerticalPosition) || 0));
+  const movement = value < 0 ? Math.min(0, higher) * -value / 100 : Math.max(0, lower) * value / 100;
+  return lines.map(line => ({...line, y: line.y + movement}));
+}
+
 const metalFaces = {
   'brushed-gold': ['#d8c0a3', '#ceb598', '#e3cbb0', '#c5ab90', '#e3c9ac'],
   'brushed-silver': ['#c7c9cb', '#b7b9bc', '#cfd0d2', '#bfc0c3', '#d2d3d5'],

@@ -69,7 +69,7 @@ test('guest designs create verified shipping and native pickup checkouts and pre
   const shop = shopify();
   const orders = createBadgeDesignerOrders({ db, graphql: shop.graphql, base, previewEmail: owner });
   const standard = order('standard');
-  const duets = order('duets');
+  const duets = order('duets', {textVerticalPosition: 64});
   await assert.rejects(orders.checkout({ ...standard, email: 'other@example.test' }), /PREVIEW_EMAIL_REQUIRED/);
   await assert.rejects(orders.checkout({ ...standard, subtotalCents: 1 }), /ORDER_OPTIONS_CHANGED/);
   await assert.rejects(orders.checkout(order('standard', { people: [{ name: '', copies: 1 }] })), /ORDER_NAMES_REQUIRED/);
@@ -97,6 +97,7 @@ test('guest designs create verified shipping and native pickup checkouts and pre
   assert.equal(details.configuration.design.people[0].name, 'Sample Name');
   assert.deepEqual(details.logo, duets.logo);
   assert.equal(details.configuration.design.cornerRadius, '1/4');
+  assert.equal(details.configuration.design.textVerticalPosition, 64);
 });
 
 test('checkout endpoint requires no customer session and production details require one', async t => {

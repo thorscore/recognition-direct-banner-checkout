@@ -10,7 +10,7 @@ const SESSION_AGE = 7 * 24 * 60 * 60_000;
 const MAX_LOGO = 5 * 1024 * 1024;
 const MAX_BODY = Math.ceil(MAX_LOGO / 3) * 4 + 8192;
 const REQUIRED_OPTIONS = ['family', 'size', 'stockColor', 'frame', 'fastener', 'dome', 'organization', 'textColor', 'layout'];
-const OPTIONAL_OPTIONS = ['textAlignment', 'cornerRadius', 'textSize'];
+const OPTIONAL_OPTIONS = ['textAlignment', 'cornerRadius', 'textSize', 'textVerticalPosition'];
 const LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'application/pdf']);
 const token = () => randomBytes(32).toString('hex');
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -67,6 +67,7 @@ function checkedDesign(input) {
       reject(422, 'DESIGN_INVALID');
     }
   }
+  if (Object.hasOwn(options, 'textVerticalPosition') && (!Number.isInteger(options.textVerticalPosition) || Math.abs(options.textVerticalPosition) > 100)) reject(422, 'DESIGN_INVALID');
   if (logo !== null) {
     if (!object(logo) || !LOGO_TYPES.has(logo.type) || typeof logo.base64 !== 'string') {
       reject(422, 'LOGO_INVALID');

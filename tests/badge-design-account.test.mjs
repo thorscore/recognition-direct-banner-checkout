@@ -13,7 +13,7 @@ const sample = {
   options: {
     family: 'standard', size: '3x1', stockColor: 'white', frame: 'none', fastener: 'magnet',
     dome: false, organization: 'Sample office', textColor: '#000000', layout: 'left',
-    cornerRadius: '1/4', textAlignment: 'center', textSize: 112,
+    cornerRadius: '1/4', textAlignment: 'center', textSize: 112, textVerticalPosition: 42,
   },
   logo: { type: 'image/svg+xml', base64: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64') },
   logoScale: 0.75,

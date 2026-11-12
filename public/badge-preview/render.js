@@ -1,5 +1,5 @@
 import {FIXED_SIZES, STANDARD_COLORS, DUETS_COLORS} from './catalog.js';
-import {PREVIEW_PIXELS_PER_INCH as PPI, badgeCornerPixels, badgeTextLayout, containImage, engravableBadgeSurface, fitText} from './layout.js';
+import {PREVIEW_PIXELS_PER_INCH as PPI, badgeCornerPixels, badgeTextLayout, containImage, engravableBadgeSurface, fitBadgeText} from './layout.js';
 import {badgeLogoPreview} from './logo-preview.js';
 import {BADGE_LOGO_MAX_PIXELS, validateBadgeLogo} from './logo-validation.js';
 
@@ -21,11 +21,8 @@ export function productionPlan(configuration, index, logo, measure) {
     ...person, hasLogo: Boolean(logo), alignment, organization: design.organization, textSize: design.textSize,
   });
   const logoRect = logo ? containImage(logo.width, logo.height, layout.logo, configuration.logoScale, {width, height, radius}) : null;
-  const lines = layout.lines.map(line => {
-    const fit = fitText((value, fontSize) => measure(value, fontSize, line.weight, alignment), line.value,
-      {width: layout.clip.width, above: line.above, below: line.below}, line.max, line.min);
-    return {...line, ...fit, x: layout.x, fontPoints: fit.size / PPI * 72};
-  });
+  const lines = fitBadgeText(layout, (value, size, weight) => measure(value, size, weight, alignment), design.textVerticalPosition, {width, height, radius, alignment})
+    .map(line => ({...line, x: layout.x, fontPoints: line.size / PPI * 72}));
   return {width, height, size, standard, surface, radius, alignment, clip: layout.clip, logoRect, lines, person,
     stock: (standard ? STANDARD_COLORS : DUETS_COLORS).find(color => color.id === design.stockColor),
     warnings: lines.filter(line => !line.fits).map(line => 'The ' + line.key + ' does not fit the saved text area. Adjust it when preparing the final proof.')};

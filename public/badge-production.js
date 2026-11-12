@@ -81,6 +81,7 @@ async function showOrder() {
     ['Badge names now', configuration.namedQuantity], ['Hold for later', configuration.heldForLater],
     ['Organization', design.organization], ['Text color', design.family === 'standard' ? 'Black (#111111)' : design.textColor],
     ['Text alignment', design.textAlignment ?? 'left'], ['Text size', (design.textSize ?? 100) + '%'],
+    ['Text vertical position', (design.textVerticalPosition ?? 0) === 0 ? 'Default' : Math.abs(design.textVerticalPosition) + '% ' + (design.textVerticalPosition > 0 ? 'lower' : 'higher')],
     ['Logo position', logo ? design.layout.replace('logo-', 'Logo ') : 'No logo'], ['Logo size', logo ? Math.round(configuration.logoScale * 100) + '%' : '—'],
     ['Delivery', design.delivery === 'troy' ? 'Troy Street pickup' : 'Ship'],
     ['Proof email', configuration.email], ['Layout notes', design.notes],
