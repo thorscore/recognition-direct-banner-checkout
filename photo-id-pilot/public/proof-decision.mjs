@@ -1,12 +1,24 @@
 import {paymentFeedback} from './payment-status.mjs';
 const running=new WeakSet();
 
-export function showProofOutcome({proof,feedback,production}){
+export function showProofOutcome({proof,feedback,production,confirmation}){
  const approved=!proof.superseded&&proof.decision==='approved';
  production.hidden=!approved;
+ if(confirmation){
+  confirmation.screen.hidden=!approved;
+  confirmation.review.hidden=approved;
+  confirmation.toolbar.hidden=approved;
+ }
  if(approved){
   production.href='/photo-id-pilot/api/jobs/'+proof.jobId+'/production.pdf';
-  paymentFeedback(feedback,'Approval saved. Your test proof is approved. Download the production artwork PDF below, or return to the badge order. This pilot does not release fulfillment.');
+  if(confirmation){
+   feedback.hidden=true;feedback.textContent='';
+   confirmation.details.textContent='Your approval of proof version '+proof.revision+' has been received and saved.';
+   confirmation.order.href='#job='+proof.jobId;
+   confirmation.proof.href=proof.pdfUrl;
+   confirmation.screen.scrollIntoView?.({block:'start',behavior:'smooth'});
+   confirmation.title.focus?.({preventScroll:true});
+  }else paymentFeedback(feedback,'Approval saved. Your test proof is approved. Download the production artwork PDF below, or return to the badge order. This pilot does not release fulfillment.');
  }else if(proof.decision==='changes-requested'&&!proof.superseded){
   paymentFeedback(feedback,'Your change request is saved. Return to the badge order to edit the design and prepare a new proof.');
  }else{feedback.hidden=true;feedback.textContent='';}
