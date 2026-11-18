@@ -9,7 +9,7 @@ export const CASES=[
  {id:'badges',title:'Name badges',sample:'name-badges-small'},
  {id:'id-badges',title:'Photo ID badges',sample:'photo-id-small'},
  {id:'native',title:'Parking sign + magnetic plate',sample:'native-mixed-seattle'},
- {id:'review',title:'Shipping approval practice',sample:'normal-coroplast',reviewPractice:true},
+ {id:'review',title:'Shipping approval practice · Pine Valley only',sample:'normal-coroplast',reviewPractice:true},
  {id:'large48',title:'48 × 36 sign · quote only',sample:'normal-coroplast',large:true},
  {id:'oversize',title:'60 × 24 sign · pickup only',sample:'rigid-oversize'},
  {id:'pickup',title:'Troy Street pickup',sample:'troy-pickup'}

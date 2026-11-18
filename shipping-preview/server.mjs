@@ -46,7 +46,7 @@ export function createPreview({snapshot,key,dataDir,expiresAt,now=Date.now,secur
    const url=new URL(req.url,'https://preview.invalid'),path=url.pathname;
    if(req.method==='GET'&&path==='/health')return send(200,{ok:true,mode:'private-shipping-preview',createsOrders:false,chargesPayments:false,markupBasisPoints:0,handlingCents:0});
    if(req.method==='GET'&&path==='/robots.txt')return send(200,'User-agent: *\nDisallow: /\n','text/plain');
-   if(req.method==='GET'&&['/','/app.mjs','/style.css'].includes(path)){const file=path==='/'?'index.html':path.slice(1);return send(200,readFileSync(new URL('public/'+file,import.meta.url)),path==='/'?'text/html; charset=utf-8':path.endsWith('mjs')?'text/javascript; charset=utf-8':'text/css; charset=utf-8');}
+   if(req.method==='GET'&&['/','/app.mjs','/delivery-form.mjs','/style.css'].includes(path)){const file=path==='/'?'index.html':path.slice(1);return send(200,readFileSync(new URL('public/'+file,import.meta.url)),path==='/'?'text/html; charset=utf-8':path.endsWith('mjs')?'text/javascript; charset=utf-8':'text/css; charset=utf-8');}
    if(now()>=expiresAt)fail(410,'This private preview has expired. Ask Roth for a refreshed test link.','PREVIEW_EXPIRED');
    let body={};if(req.method==='POST'){
     const origin=req.headers.origin;if(origin&&origin!==`${secure?'https':'http'}://${req.headers.host}`)fail(403,'Open the private preview directly.','ORIGIN_INVALID');
