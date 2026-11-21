@@ -1,5 +1,9 @@
 import {createHash,createHmac,timingSafeEqual,randomUUID} from 'node:crypto';
 import {estimateCart,RATE_ORIGIN} from './estimate-engine.mjs';
+import {planDrinkware} from './drinkware-planner.mjs';
+import drinkwareCatalog from './drinkware-catalog.json' with {type:'json'};
+const drinkwareVariants=new Map(drinkwareCatalog.map(p=>[p.variantId,p]));
+const drinkwareSkus=new Map(drinkwareCatalog.map(p=>[p.sku,p]));
 const catalog=new Set(['coroplast','foamcore','aluminum-sign','13oz-vinyl-banner','adhesive-window-perf','etched-printable-frosted-vinyl','canvas-roll','tension-fabric','dry-erase-magnet','styrene','gatorfoam','pvc-board','aluminum-sandwich-board','in-house/name-badges','in-house/photo-id','in-house/solar-placards']);
 const inHouseTags={'name-badges':'in-house/name-badges','photo-id-badges':'in-house/photo-id','solar-placards':'in-house/solar-placards'};
 export const POLICY='shopify-spring-valley-origin-zero-fees-2026-11-17';
@@ -23,7 +27,7 @@ function canonical(x){if(Array.isArray(x))return x.map(canonical);if(x&&typeof x
 export const digest=x=>createHash('sha256').update(JSON.stringify(canonical(x))).digest('hex');
 const hold=(code,message)=>{throw Object.assign(new Error(message),{code,status:409,cartPreserved:true});};
 export function localDate(stamp){const a=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(stamp)).map(p=>[p.type,p.value]));return `${a.year}-${a.month}-${a.day}`;}
-const legacy=a=>/^Shipping Handling |^(Shipping Snapshot|Shipping Policy|Shipping Reserve|Shipping Handling|Shipping Quote|Shipping Rate Origin)$/i.test(a.key??'');
+const legacy=a=>/^Shipping Handling |^(Shipping Snapshot|Shipping Policy|Shipping Reserve|Shipping Handling|Shipping Quote|Shipping Rate Origin|Shipping Delivery)$/i.test(a.key??'');
 const size=text=>{
   const m=String(text??'').trim().replace(/\s*\(w\s*x\s*h\)\s*$/i,'').match(/^(\d+(?:\.\d+)?|\.\d+)\s*(inches|inch|in|ft|feet|foot|["″'])\s*[x×]\s*(\d+(?:\.\d+)?|\.\d+)\s*(inches|inch|in|ft|feet|foot|["″'])$/i);
   const scale=u=>/^(ft|feet|foot|')$/i.test(u)?12:1;return m?[Number(m[1])*scale(m[2]),Number(m[3])*scale(m[4])]:null;
@@ -39,9 +43,10 @@ function contact(raw){
   if(!c.name||!/^\S+@\S+\.\S+$/.test(c.email))hold('CONTACT_REQUIRED','Enter a contact name and email. Company and phone are optional.');return c;
 }
 export function cartContent(cart){return {id:cart.id,version:cart.version??0,status:cart.status,items:cart.items};}
+export function recipientName(fullName){const words=String(fullName??'').trim().split(/\s+/).filter(Boolean);return words.length>1?{firstName:words.shift(),lastName:words.join(' ')}:{firstName:'',lastName:words[0]??''};}
 export function normalizeSavedCart(cart,destination){
   if(!cart?.id||cart.status!=='open'||!Array.isArray(cart.items)||!cart.items.length||cart.items.length>80)hold('CART_INVALID','Reopen this saved cart before calculating shipping.');
-  const deliveries=new Set(),lines=[],native=[];let heldStock=false;
+  const deliveries=new Set(),lines=[],native=[],drinkware=[];let heldStock=false;
   for(const item of cart.items){
     if(!item.id||!Array.isArray(item.draftInput?.lineItems)||!item.draftInput.lineItems.length)hold('CART_INVALID','A saved product is incomplete.');
     const tags=item.draftInput.tags??[],methods=[...new Set(tags.filter(t=>['ship','pickup-spring-valley','pickup-la-mesa','pickup-pine-valley'].includes(t)))];
@@ -59,6 +64,8 @@ export function normalizeSavedCart(cart,destination){
       const deliveryAttr=attrs.find(a=>a.key==='Delivery Method')?.value;
       if(deliveryAttr&&((method==='ship'&&deliveryAttr!=='Ship')||(method!=='ship'&&deliveryAttr==='Ship')))hold('DELIVERY_CONFLICT','The saved delivery details conflict.');
       const id=`${item.id}:${i}`;
+      const drinkwareSpec=line.variantId?drinkwareVariants.get(line.variantId):tags.includes('polar-camel')?drinkwareSkus.get(attrs.find(a=>a.key==='SKU')?.value):null;
+      if(drinkwareSpec){drinkware.push({id,handle:drinkwareSpec.handle,quantity:line.quantity});continue;}
       if(line.variantId){if(!NATIVE_SPECS[line.variantId])hold('NATIVE_PACKAGE_UNSUPPORTED','This product needs a supported package before automatic shipping.');native.push({id,variantId:line.variantId,quantity:line.quantity});continue;}
       if(!handle)hold('FAMILY_UNSUPPORTED','This saved product needs a shipping quote before payment.');
       const sizeAttribute=attrs.find(a=>['Product Size','Size','Banner Size','Badge Size'].includes(a.key));
@@ -68,7 +75,7 @@ export function normalizeSavedCart(cart,destination){
     }
   }
   if(deliveries.size!==1)hold('MIXED_DELIVERY','Use separate carts for shipping and each pickup location.');
-  return {id:cart.id,delivery:[...deliveries][0],destination,lines,native,heldStock};
+  return {id:cart.id,delivery:[...deliveries][0],destination,lines,native,drinkware,heldStock};
 }
 function nativeAddressSupported(d,evidence){
   const zip=d.zip.slice(0,5);
@@ -76,11 +83,11 @@ function nativeAddressSupported(d,evidence){
   // exact-address restriction for legacy evidence lacking that reviewed scope.
   return evidence.some(q=>q.scope==='representative-zip-estimate'&&q.destinationZip===zip&&q.destinationState===d.provinceCode)||Object.values(DESTINATIONS).some(a=>['91977','98104','19114'].includes(a.zip)&&a.zip===zip&&a.provinceCode===d.provinceCode&&normStreet(a.address1)===normStreet(d.address1)&&!d.address2);
 }
-export function createCheckoutShipping({rateTable,nativeEvidence,key,now=Date.now,quoteTtlMs=300000,buildDraftInput,operations=null}={}){
+export function createCheckoutShipping({rateTable,nativeEvidence,drinkwareEvidence=[],key,now=Date.now,quoteTtlMs=300000,buildDraftInput,operations=null}={}){
   if(!Array.isArray(rateTable)||!Array.isArray(nativeEvidence)||typeof key!=='string'||key.length<32||typeof now!=='function'||typeof buildDraftInput!=='function')throw Error('Private shipping configuration required.');
   if(rateTable.some(r=>r.origin!==RATE_ORIGIN.id))throw Error('All private shipping rates must originate in Spring Valley.');
   if(nativeEvidence.some(r=>r.origin!==RATE_ORIGIN.id))throw Error('Native parcel quotes must also originate in Spring Valley.');
-  const evidenceHash=digest({rateTable,nativeEvidence,rateOrigin:RATE_ORIGIN});
+  const evidenceHash=digest({rateTable,nativeEvidence,drinkwareEvidence,rateOrigin:RATE_ORIGIN});
   const sign=b=>createHmac('sha256',key).update(JSON.stringify(canonical(b))).digest('hex');
   function calculate(cart,destination){
     const c=normalizeSavedCart(cart,destination),date=localDate(now());
@@ -100,12 +107,13 @@ export function createCheckoutShipping({rateTable,nativeEvidence,key,now=Date.no
         for(let i=0;i<line.quantity;i++)parcels.push({origin:'rd-troy',family:'native-parking',packageIn:NATIVE_SPECS[line.variantId].packageIn,unitCount:1,lineIds:[line.id],baseCents:cents,carrier:'UPS',service:'Ground',rateId:`native-${line.variantId.split('/').at(-1)}-${destination.zip.slice(0,5)}`,evidenceIds:[evidence.id||'Shopify read-only single-parcel quote'],packingBasis:'Independent single-item parcel; do not reuse inflated native mixed-profile total'+(evidence.scope==='representative-zip-estimate'?'. Recorded ZIP estimate; street-specific carrier classification may vary.':'')});
       }
     }
+    if(c.drinkware.length){const result=planDrinkware(c.drinkware,destination,drinkwareEvidence,{now:date});if(result.state!=='estimated')hold('DRINKWARE_QUOTE_REQUIRED','This drinkware cart needs a current shipping quote before payment.');parcels.push(...result.parcels);}
     const shippingCents=parcels.reduce((n,p)=>n+p.baseCents,0);if(!Number.isSafeInteger(shippingCents)||shippingCents<=0)hold('SHIPPING_RATE_INCOMPLETE','A complete shipping amount is required.');
     return {state:'estimated',delivery:'ship',shippingCents,markupBasisPoints:0,handlingCents:0,rateOrigin:RATE_ORIGIN,parcels};
   }
-  const reviewable=new Set(['SHIPPING_QUOTE_REQUIRED','NATIVE_DESTINATION_QUOTE_REQUIRED','NATIVE_BULK_QUOTE_REQUIRED','NATIVE_RATE_MISSING','NATIVE_RATE_EXPIRED']);
+  const reviewable=new Set(['SHIPPING_QUOTE_REQUIRED','NATIVE_DESTINATION_QUOTE_REQUIRED','NATIVE_BULK_QUOTE_REQUIRED','NATIVE_RATE_MISSING','NATIVE_RATE_EXPIRED','DRINKWARE_QUOTE_REQUIRED']);
   function resolve(cart,d,c,{record=false}={}){
-    const normalized=normalizeSavedCart(cart,d),context=operations?.context(cart,d,c,[...normalized.lines,...normalized.native]);
+    const normalized=normalizeSavedCart(cart,d),context=operations?.context(cart,d,c,[...normalized.lines,...normalized.native,...normalized.drinkware]);
     if(record&&context)operations.supersede(context);
     try{return calculate(cart,d);}catch(e){if(!operations||!reviewable.has(e.code))throw e;
       const approved=operations.approved(context);if(approved)return structuredClone(approved.approval.result);
@@ -138,11 +146,12 @@ export function createCheckoutShipping({rateTable,nativeEvidence,key,now=Date.no
     const input=structuredClone(buildDraftInput(cart));
     input.lineItems=input.lineItems.map(l=>({...l,customAttributes:(l.customAttributes??[]).filter(a=>!legacy(a))}));
     input.email=s.contact.email;input.phone=s.contact.phone||undefined;input.useCustomerDefaultAddress=false;
-    if(s.result.delivery==='ship')input.shippingAddress={...s.destination,firstName:s.contact.name,lastName:'',company:s.contact.company,phone:s.contact.phone};
+    if(s.result.delivery==='ship')input.shippingAddress={...s.destination,...recipientName(s.contact.name),company:s.contact.company,phone:s.contact.phone};
     input.shippingLine=shippingLine(cart); // Always replaces old fixed lines and opaque native mixed-profile handles.
-    input.customAttributes=[...(input.customAttributes??[]).filter(a=>!legacy(a)),{key:'Shipping Policy',value:POLICY},{key:'Shipping Rate Origin',value:'8680 Troy St., Spring Valley, CA 91977'},{key:'Shipping Reserve',value:'0%'},{key:'Shipping Handling',value:'0.00'},{key:'Shipping Quote',value:s.id}];
+    input.customAttributes=[...(input.customAttributes??[]).filter(a=>!legacy(a)),{key:'Shipping Policy',value:POLICY},{key:'Shipping Rate Origin',value:'8680 Troy St., Spring Valley, CA 91977'},{key:'Shipping Reserve',value:'0%'},{key:'Shipping Handling',value:'0.00'},{key:'Shipping Quote',value:s.id},{key:'Shipping Delivery',value:s.result.delivery}];
     for(const [key,value]of [['Order contact name',s.contact.name],['Order company',s.contact.company],['Order phone',s.contact.phone]]){input.customAttributes=input.customAttributes.filter(a=>a.key!==key);input.customAttributes.push({key,value});}
     return {input,snapshot:s,createsDraft:false,createsOrder:false,chargesPayment:false};
   }
   return Object.freeze({quote,checked,verifyAccepted,shippingLine,prepare,calculate,operations});
 }
+

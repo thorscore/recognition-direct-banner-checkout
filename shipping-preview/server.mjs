@@ -26,14 +26,14 @@ export function createPreview({snapshot,key,dataDir,expiresAt,now=Date.now,secur
  const save=(cart,owner)=>db.prepare('INSERT INTO carts VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body').run(cart.id,owner,JSON.stringify(cart));
  const buildDraftInput=cart=>({lineItems:cart.items.flatMap(i=>i.draftInput.lineItems)});
  const engines=new Map();
- function engine(cart){const practice=cart.previewCase==='review';const k=practice?'practice':'normal';if(!engines.has(k))engines.set(k,createCheckoutShipping({rateTable:practice?[]:snapshot.rateTable,nativeEvidence:snapshot.nativeEvidence,key,operations:ops,now,buildDraftInput}));return engines.get(k);}
+ function engine(cart){const practice=cart.previewCase==='review';const k=practice?'practice':'normal';if(!engines.has(k))engines.set(k,createCheckoutShipping({rateTable:practice?[]:snapshot.rateTable,nativeEvidence:snapshot.nativeEvidence,drinkwareEvidence:snapshot.drinkwareEvidence??[],key,operations:ops,now,buildDraftInput}));return engines.get(k);}
  function view(cart){const subtotalCents=cart.items.reduce((n,i)=>n+i.draftInput.lineItems.reduce((s,l)=>s+Math.round(Number(l.originalUnitPriceWithCurrency?.amount??0)*100)*l.quantity,0),0);let quote=null;try{quote=engine(cart).checked(cart);}catch{}
   return {id:cart.id,caseId:cart.previewCase,title:CASES.find(c=>c.id===cart.previewCase)?.title,items:cart.items.map(i=>({title:i.summary.title,quantity:i.draftInput.lineItems.reduce((n,l)=>n+l.quantity,0)})),subtotalCents,quote,reviewId:cart.reviewId??null,shippingStatus:cart.shippingStatus??'',checkout:cart.checkout??null,destination:cart.lastDestination??null,contact:cart.lastContact??null};}
  function evidence(r){
   const entry=read(r.target);if(entry?.cart.previewCase!=='review'||r.context.destination.zip!=='91962'||r.context.destination.provinceCode!=='CA'||r.context.destination.address1!==PLACES.pinevalley.address1)return null;
   // Deliberately held supported package, so approval uses an actual recorded quote.
   // Midnight PT is a conservative timestamp: never pretend a quote was refreshed.
-  const observation=snapshot.observations.find(q=>q.id==='T051');
+  const observation=snapshot.observations.filter(q=>q.id==='T051'||q.previewApprovalPractice===true).sort((a,b)=>b.observedOn.localeCompare(a.observedOn))[0];
   if(!observation||observation.destinationZip!=='91962'||observation.originZip!=='91977')return null;
   const observedAt=Date.parse(observation.observedOn+'T00:00:00-08:00');if(now()-observedAt>86400000||observedAt>now())return null;
   return {source:'Shopify Shipping calculator',originZip:'91977',observedAt,parcels:[{packageIn:observation.packageIn,packedWeightLb:observation.packedWeightLb,allocations:r.context.lines.map(l=>({lineId:l.id,quantity:l.quantity})),quotes:observation.rates}],reference:observation.id};
@@ -76,7 +76,7 @@ export function createPreview({snapshot,key,dataDir,expiresAt,now=Date.now,secur
     }
     if(req.method==='POST'&&match[2]==='checkout'){
      const prepared=engine(cart).prepare(cart,body.quoteId);
-     cart.checkout={id:randomUUID(),shippingCents:prepared.snapshot.result.shippingCents,subtotalCents:view(cart).subtotalCents,createsDraft:false,createsOrder:false,chargesPayment:false,markupBasisPoints:0,handlingCents:0,checkedAt:now()};save(cart,cartOwner);return send(200,view(cart));
+     cart.checkout={id:randomUUID(),shippingCents:prepared.snapshot.result.shippingCents,subtotalCents:view(cart).subtotalCents,shopifyInputPrepared:true,lineItemsCount:prepared.input.lineItems.length,recipientNameComplete:!!prepared.input.shippingAddress?.lastName||prepared.snapshot.result.delivery!=='ship',createsDraft:false,createsOrder:false,chargesPayment:false,markupBasisPoints:0,handlingCents:0,checkedAt:now()};save(cart,cartOwner);return send(200,view(cart));
     }
    }
    if(req.method==='GET'&&path==='/api/reviews'){owner();return send(200,{reviews:ops.list().map(r=>({id:r.id,target:r.target,status:r.status,revision:r.revision,reason:r.reason,destination:r.context.destination,items:read(r.target)?view(read(r.target).cart).items:[],evidence:evidence(r),approval:r.approval}))});}
@@ -92,3 +92,4 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const app=createPreview({snapshot,key:process.env.PREVIEW_ACCESS_KEY,dataDir:process.env.PREVIEW_DATA_DIR??'/tmp/rd-shipping-preview',expiresAt:Number(process.env.PREVIEW_EXPIRES_AT),secure:process.env.PREVIEW_LOCAL!=='1'});
  app.server.listen(Number(process.env.PORT??10000),'0.0.0.0',()=>console.log('Private shipping preview ready; order and payment transports absent.'));
 }
+

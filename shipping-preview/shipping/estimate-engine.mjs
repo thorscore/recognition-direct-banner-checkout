@@ -160,7 +160,7 @@ export function estimateCart(cart,table,{now='2026-11-17',requireValidated=true}
       r.observedOn<=now&&r.expiresOn>=now&&r.rateSource==='Shopify Shipping'&&r.currency==='USD'&&int(r.baseCents)&&
       r.evidenceIds?.length&&(!requireValidated||r.validation==='passed'));
     const specificity=r=>Math.max(0,...(r.destinationZipPrefixes??[]).map(p=>p.length))*10+(r.destinationStates?.length?1:0);
-    candidates.sort((a,b)=>specificity(b)-specificity(a)||a.maxWeightLb-b.maxWeightLb||a.baseCents-b.baseCents);
+    candidates.sort((a,b)=>specificity(b)-specificity(a)||a.maxWeightLb-b.maxWeightLb||b.observedOn.localeCompare(a.observedOn)||a.baseCents-b.baseCents);
     const row=candidates[0];
     if(!row){reasons.push('SHOPIFY_RATE_BAND_NOT_VALIDATED:'+parcel.origin+':'+parcel.packageKey+':'+parcel.region);continue;}
     // No reserve, handling, arbitrary multiplier, or line-count multiplication.
@@ -171,3 +171,4 @@ export function estimateCart(cart,table,{now='2026-11-17',requireValidated=true}
   if(!int(shippingCents)||shippingCents>10000000)return exception('INVALID_SHIPPING_TOTAL');
   return {state:requireValidated?'estimated':'candidate',shippingCents,markupBasisPoints:0,handlingCents:0,parcels:rated,rateBasis:'Unmodified Shopify Shipping representative-package quotes',productionEnabled:false};
 }
+

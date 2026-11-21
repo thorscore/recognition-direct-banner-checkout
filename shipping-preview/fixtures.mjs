@@ -9,6 +9,9 @@ export const CASES=[
  {id:'badges',title:'Name badges',sample:'name-badges-small'},
  {id:'id-badges',title:'Photo ID badges',sample:'photo-id-small'},
  {id:'native',title:'Parking sign + magnetic plate',sample:'native-mixed-seattle'},
+ {id:'drinkware-one',title:'One 32 oz water bottle',sample:'normal-coroplast',drinkware:1},
+ {id:'drinkware-twelve',title:'12 water bottles',sample:'normal-coroplast',drinkware:12},
+ {id:'drinkware-mixed',title:'25 signs + bottle + tumbler',sample:'normal-coroplast',quantity:25,drinkwareMixed:true},
  {id:'review',title:'Shipping approval practice · Pine Valley only',sample:'normal-coroplast',reviewPractice:true},
  {id:'large48',title:'48 × 36 sign · quote only',sample:'normal-coroplast',large:true},
  {id:'oversize',title:'60 × 24 sign · pickup only',sample:'rigid-oversize'},
@@ -17,6 +20,9 @@ export const CASES=[
 export const PLACES={
  springvalley:{label:'Spring Valley, CA',...DESTINATIONS.troy},
  seattle:{label:'Seattle, WA',...DESTINATIONS.seattle},
+ dallas:{label:'Dallas, TX',...DESTINATIONS.dallas},
+ denver:{label:'Denver, CO',...DESTINATIONS.denver},
+ chicago:{label:'Chicago, IL',...DESTINATIONS.chicago},
  newyork:{label:'New York, NY',...DESTINATIONS.newyork},
  raleigh:{label:'Raleigh, NC',...DESTINATIONS.northcarolina},
  pinevalley:{label:'Pine Valley, CA · remote',address1:'28804 Old Highway 80',city:'Pine Valley',provinceCode:'CA',zip:'91962',countryCode:'US',address2:''},
@@ -32,5 +38,9 @@ export function fixture(caseId){
  if(c.badges){const b=SAMPLES.find(s=>s.id==='name-badges-small').items()[0];b.summary.quantity=c.badges;b.summary.subtotal=10.25*c.badges;b.draftInput.lineItems[0].quantity=c.badges;cart.items.push(b);}
  if(c.foam){first.draftInput.tags=first.draftInput.tags.map(t=>t==='coroplast'?'foamcore':t);first.summary.title=first.draftInput.lineItems[0].title='Foam board · 24 × 18 in';first.draftInput.lineItems[0].customAttributes.find(a=>a.key==='Material').value='3/16" White Foamcore';}
  if(c.large){first.summary.title=first.draftInput.lineItems[0].title='Coroplast sign · 48 × 36 in';first.draftInput.lineItems[0].customAttributes.find(a=>a.key==='Product Size').value='48 in x 36 in';}
+ const drink=(sku,quantity,title,unitPrice)=>({id:'fictional-'+sku,summary:{title,quantity,subtotal:quantity*unitPrice},draftInput:{tags:['polar-camel','ship','proof-required'],lineItems:[{title,quantity,requiresShipping:true,taxable:true,originalUnitPriceWithCurrency:{amount:unitPrice.toFixed(2),currencyCode:'USD'},customAttributes:[{key:'SKU',value:sku},{key:'Engraving',value:'FICTIONAL SAMPLE'},{key:'Proof Required',value:'Yes'}]}]}});
+ if(c.drinkware)cart.items=[drink('LWB202',c.drinkware,'32 oz water bottle — sample',29.75)];
+ if(c.drinkwareMixed)cart.items.push(drink('LWB202',1,'32 oz water bottle — sample',29.75),drink('LTM7252',1,'20 oz tumbler — sample',23));
  cart.previewCase=caseId;return cart;
 }
+
