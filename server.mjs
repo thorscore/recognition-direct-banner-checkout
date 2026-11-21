@@ -1,4 +1,10 @@
 import { createServer } from "node:http";
+import {shippingReleaseConfig} from "./shipping/release-config.mjs";
+import {createQuotedCartDraft} from "./shipping/pickup-checkout.mjs";
+import {cartStorage} from "./shipping/cart-storage.mjs";
+import {cartCheckout} from "./shipping/cart-checkout.mjs";
+import {syncCartRecords} from "./shipping/cart-records.mjs";
+import {verifyQuotedCheckout} from "./shipping/verify-checkout.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -22,10 +28,14 @@ const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET || "";
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 const MOCK_SHOPIFY = process.env.MOCK_SHOPIFY === "true";
+const SHIPPING_ESTIMATES = process.env.SHOPIFY_SHIPPING_ESTIMATES === 'true';
+const SHIPPING_INTEGRATION_PREVIEW = process.env.SHIPPING_INTEGRATION_PREVIEW === 'true';
+if(SHIPPING_INTEGRATION_PREVIEW&&(!MOCK_SHOPIFY||!SHIPPING_ESTIMATES||SHOPIFY_CLIENT_SECRET||SHOPIFY_ACCESS_TOKEN))throw Error('Integration preview requires mock mode, shipping estimates and no Shopify credentials');
+shippingReleaseConfig(process.env);
 const expressOnePortal = process.env.EXPRESS_ONE_ENABLED === "true"
   ? await (await import("./express-one-portal.mjs")).createExpressOneHandler({shopify:MOCK_SHOPIFY ? undefined:{graphql:shopifyGraphql,shop:SHOPIFY_SHOP}})
   : null;
-const DATA_DIR = join(import.meta.dirname, "data");
+const DATA_DIR = SHIPPING_INTEGRATION_PREVIEW ? process.env.SHIPPING_INTEGRATION_DATA_DIR : join(import.meta.dirname, "data");
 const PUBLIC_DIR = join(import.meta.dirname, "public");
 const CATALOG_FILE = join(import.meta.dirname, "catalog", "catalog-inventory.json");
 const PREMIER_AWARDS_FILE = join(import.meta.dirname, "catalog", "premier-baseball-softball-resin-trophies.json");
@@ -1715,8 +1725,8 @@ async function createDraftOrder(input) {
 
   const data = await shopifyGraphql(mutation, { input });
   const result = data.draftOrderCreate;
-  if (result.userErrors?.length) throw new Error(result.userErrors.map((error) => error.message).join(" "));
-  if (!result.draftOrder?.invoiceUrl) throw new Error("Shopify did not return a secure checkout URL.");
+  if(result.userErrors?.length){const error=new Error(result.userErrors.map(e=>e.message).join(' '));error.code=result.draftOrder?.id?'CREATE_RESULT_UNCERTAIN':'DRAFT_REJECTED';error.draftId=result.draftOrder?.id;error.definitive=!result.draftOrder?.id;throw error;}
+  if(!result.draftOrder?.invoiceUrl){const error=new Error('Shopify did not return a secure checkout URL.');error.code='CREATE_RESULT_UNCERTAIN';error.draftId=result.draftOrder?.id;throw error;}
   return result.draftOrder;
 }
 
@@ -1776,7 +1786,9 @@ function customCartPath(cartId) {
   return join(CUSTOM_CART_DIR, `${cartId}.json`);
 }
 
+const stagedCartStorage=SHIPPING_ESTIMATES?cartStorage({fileFor:customCartPath}):null;
 async function readCustomOrderCart(cartId) {
+  if(stagedCartStorage){if(!validCustomCartId(cartId))return null;const c=await stagedCartStorage.read(cartId);return c?.status==='open'?c:null;}
   if (!validCustomCartId(cartId)) return null;
   try {
     const cart = JSON.parse(await readFile(customCartPath(cartId), "utf8"));
@@ -1787,6 +1799,7 @@ async function readCustomOrderCart(cartId) {
 }
 
 async function writeCustomOrderCart(cart) {
+  if(stagedCartStorage)return stagedCartStorage.write(cart);
   cart.updatedAt = new Date().toISOString();
   await writeFile(customCartPath(cart.id), JSON.stringify(cart, null, 2));
 }
@@ -1853,7 +1866,9 @@ function draftShippingAmount(draftInput) {
   return moneyNumber(draftInput.shippingLine?.priceWithCurrency?.amount);
 }
 
+const stagedShipping=SHIPPING_ESTIMATES?cartCheckout({opsPath:join(DATA_DIR,'shipping-ops.sqlite'),base:APP_BASE_URL,key:process.env.SHIPPING_QUOTE_SIGNING_KEY,read:id=>validCustomCartId(id)?stagedCartStorage.read(id):null,write:stagedCartStorage.write,buildDraftInput:combineCustomCartDraftInput,transport:input=>createQuotedCartDraft(input,{graphql:shopifyGraphql,createDraft:createDraftOrder}),verifyPrepared:SHIPPING_INTEGRATION_PREVIEW?undefined:(prepared,cart)=>prepared.snapshot.result.delivery==='ship'?verifyQuotedCheckout(prepared.input,{graphql:shopifyGraphql,expectedProductSubtotalCents:Math.round(cartProductSubtotal(cart)*100)}):null,previewOnly:SHIPPING_INTEGRATION_PREVIEW,onReady:async(id,result)=>syncCartRecords(await stagedCartStorage.read(id),result,{readRecord:async orderId=>{if(!validCustomCartId(orderId))throw Error('Invalid saved order reference');return JSON.parse(await readFile(join(ORDER_DIR,orderId+'.json'),'utf8'));},writeRecord:persistOrderRecord})}):null;
 function combinedCartShippingLine(cart) {
+  if(stagedShipping)return stagedShipping.line(cart);
   const shippingLines = (cart.items || []).map((item) => item.draftInput?.shippingLine).filter(Boolean);
   if (!shippingLines.length) return null;
   return shippingLines.reduce((highest, line) => {
@@ -2136,6 +2151,7 @@ function combineCustomCartDraftInput(cart) {
 }
 
 async function handleCustomOrderCartCheckout(req, res) {
+  if(stagedShipping)return stagedShipping.checkout(req,res,new URL(req.url,APP_BASE_URL));
   const url = new URL(req.url, APP_BASE_URL);
   const cart = await getOrCreateCustomOrderCart(req, url);
   if (parseCookies(req)[ATTRIBUTION_CONSENT_COOKIE] !== "allowed" || !readOrderAttribution(cart.attribution)) clearOrderAttribution(cart);
@@ -2225,7 +2241,7 @@ function renderCustomCartReview(item) {
 
 async function handleCustomOrderCartPage(req, res, url) {
   const cart = await getOrCreateCustomOrderCart(req, url);
-  await writeCustomOrderCart(cart);
+  if(!cart.checkoutAttempt||cart.checkoutAttempt.state==='not-created')await writeCustomOrderCart(cart);
 
   const items = cart.items || [];
   const productSubtotal = cartProductSubtotal(cart);
@@ -2322,6 +2338,7 @@ async function handleCustomOrderCartPage(req, res, url) {
           [hidden] { display: none !important; }
           .email-signup { margin: 18px 0 0; font-size: 14px; }
           .email-signup a { color: var(--blue); font-weight: 700; text-underline-offset: 3px; }
+          ${stagedShipping?.css??""}
           .shop-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 26px; }
           @media (max-width: 700px) {
             .wrap { width: min(100% - 24px, 1040px); margin: 20px auto 32px; }
@@ -2362,19 +2379,21 @@ async function handleCustomOrderCartPage(req, res, url) {
             <a href="https://recognition-direct.com">Return to website</a>
           </div>
           <h1>Custom Order Cart</h1>
+          ${SHIPPING_INTEGRATION_PREVIEW?'<p class="notice">Private integration test: no order or payment will be submitted.</p>':""}
           ${noticeHtml}
           <table>
             <thead><tr><th>Item</th><th>Quantity</th><th>Subtotal</th><th>Action</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
+          ${stagedShipping?.panel(cart)??""}
           <section class="totals" aria-label="Cart totals">
             <div><span>Products</span><span>${formatMoney(productSubtotal)}</span></div>
-            <div><span>Shipping & handling</span><span>${shippingSubtotal ? formatMoney(shippingSubtotal) : pickupCart ? "Not applicable (pickup)" : "Calculated at checkout"}</span></div>
+            <div><span>${stagedShipping?"Shipping":"Shipping & handling"}</span><span>${shippingSubtotal ? formatMoney(shippingSubtotal) : pickupCart ? "Not applicable (pickup)" : "Calculated at checkout"}</span></div>
             <div><strong>Total before tax</strong><strong>${formatMoney(total)}</strong></div>
           </section>
           <div class="actions">
             <form method="post" action="${APP_BASE_URL}/api/custom-order-cart/checkout?cart=${encodeURIComponent(cart.id)}">
-              <button class="button primary" type="submit" ${items.length ? "" : "disabled"}>Checkout all items</button>
+              ${stagedShipping?.fields(cart)??""}<button class="button primary" type="submit" ${items.length&&(!stagedShipping||stagedShipping.checked(cart))?"":"disabled"}>Continue to secure checkout</button>
             </form>
             <a class="button" href="${storeCartLink("/products/13oz-vinyl-banner", cart.id)}">Add a banner</a>
             <a class="button" href="${storeCartLink("/pages/solar-placards", cart.id)}">Add solar placards</a>
@@ -5944,6 +5963,11 @@ async function handleMockCheckout(res, url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", APP_BASE_URL);
   try {
+    if(SHIPPING_INTEGRATION_PREVIEW){
+      if(url.pathname==='/health'){return json(res,200,{ok:true,integrationPreview:true,ordersEnabled:false,paymentsEnabled:false});}
+      res.setHeader('X-Robots-Tag','noindex, nofollow');
+      if(req.method==='POST'&&!['/api/custom-order-cart/shipping-estimate','/api/custom-order-cart/checkout','/api/custom-order-cart/remove'].includes(url.pathname))return json(res,403,{error:'ORDER_PLACEMENT_DISABLED'});
+    }
     if(url.pathname==='/photo-id'||url.pathname.startsWith('/photo-id/')){
       if(photoIdOrders)await photoIdOrders.handle(req,res,url);
       else {res.writeHead(503,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});res.end('Photo ID ordering is temporarily unavailable. Please call (619) 465-0055.');}
@@ -5974,6 +5998,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/polar-camel-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/express-one-")) return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/jamul-ayso-")) return json(res, 204, {}, corsHeaders(req));
+    if(stagedShipping&&req.method==='POST'&&url.pathname==='/api/custom-order-cart/shipping-estimate')return await stagedShipping.estimate(req,res,url);
     if (req.method === "OPTIONS" && url.pathname === "/api/custom-order-cart/checkout") return json(res, 204, {}, corsHeaders(req));
     if (req.method === "OPTIONS" && url.pathname === "/api/custom-order-cart/remove") return json(res, 204, {}, corsHeaders(req));
     if (req.method === "GET" && url.pathname === "/api/catalog-product") return await handleCatalogProduct(req, res, url);
@@ -6049,11 +6074,11 @@ const server = createServer(async (req, res) => {
     return json(res, 404, { error: "Not found." });
   } catch (error) {
     console.error(error);
-    return json(res, 400, { error: error.message || "Unable to create checkout." }, corsHeaders(req));
+    return json(res, error.status??400, { error: error.message || "Unable to create checkout.", code:error.code }, corsHeaders(req));
   }
 });
 
-server.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, SHIPPING_INTEGRATION_PREVIEW ? "127.0.0.1" : "0.0.0.0", () => {
   console.log(`Recognition Direct banner checkout listening on ${APP_BASE_URL}`);
 });
 

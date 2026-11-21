@@ -25,14 +25,14 @@ const CREATE = `mutation DesignerCheckout($input: DraftOrderInput!) {
 const CHECKOUT = `query DesignerDraft($id: ID!) {
   draftOrder(id:$id) {
     id status invoiceUrl subtotalPriceSet ${MONEY} totalShippingPriceSet ${MONEY}
-    shippingLine { title code source custom deliveryCategory }
+    shippingAddress { address1 address2 city provinceCode countryCodeV2 zip } shippingLine { title code source custom deliveryCategory }
     lineItems(first:2) { nodes { ${LINE} } pageInfo { hasNextPage } }
   }
 }`;
 const PAID = `query DesignerPaid($id: ID!) {
   draftOrder(id:$id) {
     id status order {
-      id test email fullyPaid displayFinancialStatus cancelledAt
+      id test email fullyPaid displayFinancialStatus cancelledAt totalShippingPriceSet ${MONEY} shippingAddress { address1 address2 city provinceCode countryCodeV2 zip }
       lineItems(first:2) { nodes { ${LINE} currentQuantity } pageInfo { hasNextPage } }
     }
   }
@@ -103,6 +103,7 @@ function lineItem(order) {
     requiresShipping: true, taxable: true, customAttributes: [{ key: REFERENCE, value: order.key }],
   };
 }
+const sameShippingAddress=(a,b)=>{const n=x=>String(x??'').toUpperCase().replace(/\bSTREET\b/g,'ST').replace(/\bROAD\b/g,'RD').replace(/\bAVENUE\b/g,'AVE').replace(/[.,]/g,'').replace(/\s+/g,' ').trim();return a&&['address1','address2','city','provinceCode'].every(k=>n(a[k])===n(b[k]))&&a.countryCodeV2===b.countryCode&&a.zip?.slice(0,5)===b.zip.slice(0,5);};
 function moneyMatches(actual, cents) {
   const money = actual?.shopMoney;
   return money?.currencyCode === 'USD' && /^\d{1,8}(?:\.\d{1,2})?$/.test(money.amount) &&
@@ -117,7 +118,7 @@ function matchesLine(actual, order) {
     moneyMatches(line.originalUnitPriceSet, order.price.unitCents);
 }
 
-export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, now = Date.now }) {
+export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, shippingPolicy, now = Date.now }) {
   if (typeof graphql !== 'function') throw new Error('Badge checkout requires the shop connection.');
   db.exec(`
     CREATE TABLE IF NOT EXISTS badge_designer_orders (
@@ -128,9 +129,15 @@ export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, now
     CREATE INDEX IF NOT EXISTS badge_designer_orders_started ON badge_designer_orders(started);
   `);
   const find = db.prepare('SELECT * FROM badge_designer_orders WHERE id=?');
+  db.exec('CREATE TABLE IF NOT EXISTS badge_shipping_quotes(id TEXT PRIMARY KEY,quote TEXT NOT NULL)');
+  const shippingCall=fn=>{try{return fn();}catch(e){fail(e.status??409,e.code??'SHIPPING_REQUIRED');}};
   return {
+    quote(body){if(!shippingPolicy)fail(404,'SHIPPING_ESTIMATES_DISABLED');const order=orderInput(body,previewEmail);if(find.get(order.key))fail(409,'ORDER_REVIEW_REQUIRED');db.prepare('DELETE FROM badge_shipping_quotes WHERE id=?').run(order.key);const q=shippingCall(()=>shippingPolicy.quote(order,body.destination));db.prepare('INSERT INTO badge_shipping_quotes VALUES(?,?)').run(order.key,JSON.stringify(q));return {id:q.id,cents:q.result.shippingCents,expiresAt:q.expiresAt,destination:q.destination};},
     async checkout(body) {
       const order = orderInput(body, previewEmail);
+      if(shippingPolicy){const existing=find.get(order.key),saved=existing?JSON.parse(existing.configuration).shippingEstimate:null;
+        if(saved){if(body.shippingQuoteId!==saved.id)fail(409,'SHIPPING_CHANGED');order.shippingEstimate=saved;shippingCall(()=>shippingPolicy.retained(order,body.destination));}
+        else if(!existing){const q=db.prepare('SELECT quote FROM badge_shipping_quotes WHERE id=?').get(order.key);order.shippingEstimate=shippingCall(()=>shippingPolicy.accept(order,q?JSON.parse(q.quote):null,body.shippingQuoteId,body.destination));}}
       const { logo, ...details } = order;
       const payload = JSON.stringify(details);
       const artwork = logo ? JSON.stringify(logo) : null;
@@ -138,7 +145,8 @@ export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, now
       let row = find.get(order.key);
       if (row && row.fingerprint !== fingerprint) fail(409, 'ORDER_REQUEST_CHANGED');
       const pickup = order.design.delivery === 'troy';
-      const rate = pickup ? { cents: 0 } : shipping(order.design.quantity);
+      const accepted=order.shippingEstimate?shippingCall(()=>shippingPolicy.fields(order)):null;
+      const rate = pickup ? { cents: 0 } : accepted??shipping(order.design.quantity);
       if (!row) {
         const emailHash = digest(order.email);
         const recent = db.prepare('SELECT COUNT(*) AS count FROM badge_designer_orders WHERE email_hash=? AND started>?').get(emailHash, now() - 900000);
@@ -183,6 +191,7 @@ export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, now
           input: {
             lineItems: [line], email: order.email, shippingLine, ...badgeContactShopifyFields(order.contact),
             ...(pickup ? { shippingAddress: PICKUP_ADDRESS } : {}),
+            ...(accepted?{shippingAddress:accepted.destination,customAttributes:[...(badgeContactShopifyFields(order.contact).customAttributes??[]),...accepted.attributes]}:{}),
             presentmentCurrencyCode: 'USD', taxExempt: false,
             acceptAutomaticDiscounts: false, allowDiscountCodesInCheckout: false, useCustomerDefaultAddress: false,
             tags: ['name-badges', 'proof-required', 'rd-badge-designer', pickup ? 'pickup-spring-valley' : 'ship',
@@ -200,6 +209,7 @@ export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, now
       }
       if (!validDraft(row.draft_id)) fail(409, 'ORDER_REVIEW_REQUIRED');
       const { draftOrder: draft } = await graphql(CHECKOUT, { id: row.draft_id });
+      if(accepted&&!pickup&&!sameShippingAddress(draft?.shippingAddress,accepted.destination))fail(409,'ORDER_REVIEW_REQUIRED');
       const delivery = draft?.shippingLine;
       const deliveryMatches = pickup
         ? delivery?.custom === false && delivery.deliveryCategory === 'pick-up' &&
@@ -224,6 +234,7 @@ export function createBadgeDesignerOrders({ db, graphql, previewEmail, base, now
           typeof order.email !== 'string' || !order.email.includes('@') ||
           !matchesLine(order.lineItems, configuration) ||
           order.lineItems.nodes[0].currentQuantity !== configuration.design.quantity) fail(409, 'ORDER_PAYMENT_PENDING');
+      if(configuration.shippingEstimate){const bound={...configuration,logo:row.logo?JSON.parse(row.logo):null},accepted=shippingCall(()=>shippingPolicy.fields(bound));if(!moneyMatches(order.totalShippingPriceSet,accepted.cents)||configuration.design.delivery!=='troy'&&!sameShippingAddress(order.shippingAddress,accepted.destination))fail(409,'ORDER_PAYMENT_PENDING');}
       const design = configuration.design;
       const colors = design.family === 'standard' ? STANDARD_COLORS : DUETS_COLORS;
       return {

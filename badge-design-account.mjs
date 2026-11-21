@@ -1,6 +1,8 @@
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { BADGE_ORDER_BODY_LIMIT, BadgeOrderError, createBadgeDesignerOrders } from './badge-designer/orders.mjs';
+import {shippingRuntime,designerShippingPolicy} from './shipping/runtime.mjs';
+import {dirname,join} from 'node:path';
 
 export const BADGE_DESIGN_PATH = '/api/badge-design-account';
 const COOKIE = '__Secure-rd_badge_design';
@@ -83,7 +85,7 @@ function checkedDesign(input) {
   };
 }
 
-export function createBadgeDesignAccount({ databasePath, origins, sendCode, previewEmail, production, now = Date.now }) {
+export function createBadgeDesignAccount({ databasePath, origins, sendCode, previewEmail, production, now = Date.now,shippingPolicy }) {
   if (!databasePath || typeof sendCode !== 'function' || !origins.length) throw new Error('Badge design account setup is incomplete.');
   const allowedOrigins = new Set(origins);
   const db = new DatabaseSync(databasePath);
@@ -106,8 +108,9 @@ export function createBadgeDesignAccount({ databasePath, origins, sendCode, prev
   db.prepare('INSERT OR IGNORE INTO badge_library_key VALUES (1, ?)').run(token());
   const key = db.prepare('SELECT secret FROM badge_library_key WHERE id = 1').get().secret;
   const mac = value => createHmac('sha256', key).update(value).digest('hex');
+  const shipping=production&&!shippingPolicy&&process.env.SHOPIFY_SHIPPING_ESTIMATES==='true'?shippingRuntime({key:process.env.SHIPPING_QUOTE_SIGNING_KEY,now,opsPath:databasePath===':memory:'?':memory:':join(dirname(databasePath),'shipping-ops.sqlite')}):null;
   const orderService = production && createBadgeDesignerOrders({
-    db, graphql: production.graphql, base: production.base, previewEmail, now,
+    db, graphql: production.graphql, base: production.base, previewEmail, now,shippingPolicy:shippingPolicy??(shipping?designerShippingPolicy(shipping):null),
   });
   const productionOwner = production && mac('email:' + production.owner);
   const saveCookie = (value, age) => `${COOKIE}=${value}; Path=${BADGE_DESIGN_PATH}; Max-Age=${age}; Secure; HttpOnly; SameSite=Strict`;
@@ -219,6 +222,7 @@ export function createBadgeDesignAccount({ databasePath, origins, sendCode, prev
       if (path === '/checkout' && orderService) {
         return reply(200, await orderService.checkout(await readJson(req, BADGE_ORDER_BODY_LIMIT)));
       }
+      if(path==='/shipping-quote'&&orderService)return reply(200,orderService.quote(await readJson(req,BADGE_ORDER_BODY_LIMIT)));
       if (!active || req.headers['x-badge-session'] !== sessionKey(active)) reject(401, 'SIGN_IN_REQUIRED');
       if (path === '/production' && orderService) {
         if (origin !== production.base || active.owner !== productionOwner) reject(403, 'ORDER_OWNER_REQUIRED');
@@ -257,7 +261,7 @@ export function createBadgeDesignAccount({ databasePath, origins, sendCode, prev
     }
   }
 
-  return { handle, close: () => db.close() };
+  return { handle, close: () => {shipping?.operations?.close();db.close();} };
 }
 
 export async function configureBadgeDesignAccount({ databasePath, mode, graphql, base, env = process.env }) {
