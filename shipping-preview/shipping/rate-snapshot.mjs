@@ -19,7 +19,7 @@ export function validateRateSnapshot(s,{now=Date.now(),allowExpired=false}={}){
   if(!Array.isArray(s.drinkwareEvidence))fail('DRINKWARE_EVIDENCE_INVALID');
   const packing={1:[[14,6,6],3],2:[[14,10,6],4],4:[[14,10,10],7],12:[[20,16,14],20]};
   const seen=new Set();for(const q of s.drinkwareEvidence){
-   if(seen.has(q.id)||q.originZip!=='91977'||q.source!=='Shopify Shipping calculator'||!/^[0-9]{5}$/.test(q.destinationZip)||!['CA','NY','ME','WA','TX','CO','IL','PA','NC','UT'].includes(q.destinationState)||![1,2,4,12].includes(q.quantity)||!Array.isArray(q.packageIn)||q.packageIn.length!==3||!q.packageIn.every(n=>Number.isFinite(n)&&n>0)||!Number.isFinite(q.packedWeightLb)||q.packedWeightLb<=0||![q.upsGroundCents,q.fedexHomeDeliveryCents].every(n=>Number.isSafeInteger(n)&&n>0)||q.selectedShippingCents!==Math.min(q.upsGroundCents,q.fedexHomeDeliveryCents)||q.markupBasisPoints!==0||q.handlingCents!==0)fail('DRINKWARE_EVIDENCE_INVALID');
+   if(seen.has(q.id)||q.originZip!=='91977'||q.source!=='Shopify Shipping calculator'||!/^[0-9]{5}$/.test(q.destinationZip)||!['CA','NY','ME','WA','TX','CO','IL','PA','NC','UT','NV','NH'].includes(q.destinationState)||![1,2,4,12].includes(q.quantity)||!Array.isArray(q.packageIn)||q.packageIn.length!==3||!q.packageIn.every(n=>Number.isFinite(n)&&n>0)||!Number.isFinite(q.packedWeightLb)||q.packedWeightLb<=0||![q.upsGroundCents,q.fedexHomeDeliveryCents].every(n=>Number.isSafeInteger(n)&&n>0)||q.selectedShippingCents!==Math.min(q.upsGroundCents,q.fedexHomeDeliveryCents)||q.markupBasisPoints!==0||q.handlingCents!==0)fail('DRINKWARE_EVIDENCE_INVALID');
    if(JSON.stringify(q.packageIn)!==JSON.stringify(packing[q.quantity][0])||q.packedWeightLb!==packing[q.quantity][1])fail('DRINKWARE_PACKING_MISMATCH');
    if(!/^\d{4}-\d{2}-\d{2}$/.test(q.observedOn)||!/^\d{4}-\d{2}-\d{2}$/.test(q.expiresOn)||q.observedOn>localDate(now)||q.expiresOn<q.observedOn||Date.parse(q.expiresOn)-Date.parse(q.observedOn)>7*86400000||!allowExpired&&q.expiresOn<localDate(now))fail('DRINKWARE_FRESH_EVIDENCE_REQUIRED');seen.add(q.id);
   }
@@ -32,4 +32,3 @@ export function decodeRateSnapshot(encoded,options){
  let s;try{s=JSON.parse(gunzipSync(Buffer.from(encoded,'base64'),{maxOutputLength:2*1024*1024}).toString('utf8'));}catch{fail('PRIVATE_RATE_SNAPSHOT_ENCODING_INVALID');}
  validateRateSnapshot(s,options);return s;
 }
-
