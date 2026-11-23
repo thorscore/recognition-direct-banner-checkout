@@ -4,7 +4,7 @@ import {planDrinkware} from './drinkware-planner.mjs';
 import drinkwareCatalog from './drinkware-catalog.json' with {type:'json'};
 const drinkwareVariants=new Map(drinkwareCatalog.map(p=>[p.variantId,p]));
 const drinkwareSkus=new Map(drinkwareCatalog.map(p=>[p.sku,p]));
-const catalog=new Set(['coroplast','foamcore','aluminum-sign','13oz-vinyl-banner','adhesive-window-perf','etched-printable-frosted-vinyl','canvas-roll','tension-fabric','dry-erase-magnet','styrene','gatorfoam','pvc-board','aluminum-sandwich-board','in-house/name-badges','in-house/photo-id','in-house/solar-placards']);
+const catalog=new Set(['coroplast','foamcore','aluminum-sign','yard-sign-and-h-stake','13oz-vinyl-banner','adhesive-window-perf','etched-printable-frosted-vinyl','canvas-roll','tension-fabric','dry-erase-magnet','styrene','gatorfoam','pvc-board','aluminum-sandwich-board','in-house/name-badges','in-house/photo-id','in-house/solar-placards']);
 const inHouseTags={'name-badges':'in-house/name-badges','photo-id-badges':'in-house/photo-id','solar-placards':'in-house/solar-placards'};
 export const POLICY='shopify-spring-valley-origin-zero-fees-2026-11-17';
 export const NATIVE_SPECS=Object.freeze({

@@ -9,7 +9,7 @@ export const REGIONS = Object.freeze({
   central: ['TX','OK','NM','CO','KS','NE','SD','ND','UT','ID','MT','WY'],
   east: ['AL','AR','CT','DE','DC','FL','GA','IA','IL','IN','KY','LA','MA','MD','ME','MI','MN','MO','MS','NC','NH','NJ','NY','OH','PA','RI','SC','TN','VA','VT','WI','WV']
 });
-const rigid = new Set(['coroplast','foamcore','aluminum-sign','gatorfoam','styrene','pvc-board','aluminum-sandwich-board','reflective-coroplast','reflective-aluminum-sandwich-board','dry-erase-coroplast','dry-erase-foamcore','dry-erase-pvc-board','dry-erase-aluminum-sandwich-board']);
+const rigid = new Set(['coroplast','foamcore','aluminum-sign','yard-sign-and-h-stake','gatorfoam','styrene','pvc-board','aluminum-sandwich-board','reflective-coroplast','reflective-aluminum-sandwich-board','dry-erase-coroplast','dry-erase-foamcore','dry-erase-pvc-board','dry-erase-aluminum-sandwich-board']);
 const families = {
   coroplast: {kind:'panel', densityLbPerSqFt:0.20, capacity:12, allowedMaterial:/^4mm white coroplast$/i},
   foamcore: {kind:'panel', densityLbPerSqFt:0.16, capacity:6, allowedMaterial:/^3\/16["″]? white foamcore$/i},
