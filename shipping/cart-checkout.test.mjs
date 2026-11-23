@@ -4,6 +4,7 @@ import {createServer} from 'node:http';
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {runInNewContext} from 'node:vm';
 import {cartCheckout} from './cart-checkout.mjs';
 import {localDate} from './checkout-shipping.mjs';
 
@@ -37,8 +38,8 @@ test('shipping form keeps unsupported products and delivery errors in the saved 
   async function calculate(c,extra={},origin=base){const p=await page(c.id);return fetch(base+'/api/custom-order-cart/shipping-estimate?cart='+c.id,{method:'POST',redirect:'manual',headers:{origin,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({...contact,...destination,shipping_csrf:p.csrf,...extra})});}
 
   await t.test('bulk yard-sign kits enter one whole-cart review without losing quantity',async()=>{
-    const c=fixture();for(let i=0;i<2;i++){const r=await calculate(c);assert.equal(r.status,303);assert.equal(r.headers.get('location'),base+'/custom-order-cart?cart='+c.id);}
-    const saved=carts.get(c.id),p=await page(c.id);assert.equal(saved.items[0].draftInput.lineItems[0].quantity,50);assert.ok(saved.shippingReview.id);assert.equal(saved.shippingEstimatePreview,undefined);assert.match(p.html,/shipping request is saved for review/i);assert.match(p.html,/tel:\+16194650055/);assert.doesNotMatch(p.html,/FAMILY_UNSUPPORTED/);
+    const c=fixture();for(let i=0;i<2;i++){const r=await calculate(c);assert.equal(r.status,303);assert.equal(r.headers.get('location'),base+'/custom-order-cart?cart='+c.id+'#rd-shipping-result');}
+    const saved=carts.get(c.id),p=await page(c.id);assert.equal(saved.items[0].draftInput.lineItems[0].quantity,50);assert.ok(saved.shippingReview.id);assert.equal(saved.shippingEstimatePreview,undefined);assert.match(p.html,/Shipping quote requested/);assert.match(p.html,/Your cart and shipping request are saved/);assert.match(p.html,/Recheck shipping quote/);assert.match(p.html,/tel:\+16194650055/);assert.doesNotMatch(p.html,/FAMILY_UNSUPPORTED/);assert.ok(p.html.indexOf('id="rd-shipping-result"')>p.html.indexOf('</form>'));
     const reviews=service.shipping.operations.list().filter(r=>r.target===c.id);assert.equal(reviews.length,1);assert.equal(reviews[0].context.lines[0].quantity,50);
     await assert.rejects(service.coordinator.checkout(c.id,'forged-quote'),e=>e.code==='SHIPPING_REQUIRED');
   });
@@ -49,7 +50,7 @@ test('shipping form keeps unsupported products and delivery errors in the saved 
     const c=fixture('synthetic-unmapped-product');assert.equal((await calculate(c)).status,303);const saved=carts.get(c.id);assert.equal(saved.shippingReview.code,'FAMILY_UNSUPPORTED');assert.equal(saved.shippingReview.id,undefined);const p=await page(c.id);assert.match(p.html,/role="alert"/);assert.match(p.html,/contact us for help/);assert.equal(saved.items[0].draftInput.lineItems[0].quantity,50);
   });
   await t.test('invalid address clears an existing quote and preserves entered details',async()=>{
-    const c=fixture('coroplast',1,'18 in x 12 in');assert.equal((await calculate(c)).status,303);assert.equal(carts.get(c.id).shippingEstimatePreview.result.shippingCents,1200);assert.equal((await calculate(c,{zip:'bad'})).status,303);const saved=carts.get(c.id);assert.equal(saved.shippingEstimatePreview,undefined);assert.equal(saved.shippingAddressEntry.zip,'bad');assert.equal(saved.shippingReview.code,'ADDRESS_OUTSIDE_SCOPE');
+    const c=fixture('coroplast',1,'18 in x 12 in');assert.equal((await calculate(c)).status,303);assert.equal(carts.get(c.id).shippingEstimatePreview.result.shippingCents,1200);assert.match((await page(c.id)).html,/Shipping calculated/);assert.equal((await calculate(c,{zip:'bad'})).status,303);const saved=carts.get(c.id);assert.equal(saved.shippingEstimatePreview,undefined);assert.equal(saved.shippingAddressEntry.zip,'bad');assert.equal(saved.shippingReview.code,'ADDRESS_OUTSIDE_SCOPE');
   });
   await t.test('oversized yard-sign kits stay pickup-only and outside approval bypass',async()=>{
     const c=fixture('yard-sign-and-h-stake',1,'60 in x 40 in');assert.equal((await calculate(c)).status,303);const saved=carts.get(c.id);assert.equal(saved.shippingReview.code,'RIGID_PICKUP_ONLY');assert.equal(saved.shippingReview.id,undefined);assert.equal(saved.shippingEstimatePreview,undefined);assert.equal(service.shipping.operations.list().filter(r=>r.target===c.id).length,0);
@@ -59,6 +60,19 @@ test('shipping form keeps unsupported products and delivery errors in the saved 
   });
   await t.test('Troy Street pickup remains free for yard-sign kits',async()=>{
     const c=fixture('yard-sign-and-h-stake',50,'18 in x 24 in','pickup-spring-valley');assert.equal((await calculate(c)).status,303);assert.equal(carts.get(c.id).shippingEstimatePreview.result.shippingCents,0);assert.equal(carts.get(c.id).shippingEstimatePreview.result.handlingCents,0);assert.equal(carts.get(c.id).shippingEstimatePreview.result.markupBasisPoints,0);
+  });
+  await t.test('pending submissions give feedback, prevent double submissions and recover on Back',async()=>{
+    const c=fixture(),p=await page(c.id),script=p.html.match(/<script>([\s\S]*?)<\/script>/)[1],events={},windowEvents={},attributes={};
+    const button={textContent:'Calculate shipping',disabled:false,dataset:{}},checkoutButton={disabled:false},quoteField={value:'old-quote'};
+    const form={querySelector:()=>button,addEventListener:(name,handler)=>events[name]=handler,setAttribute:(k,v)=>attributes[k]=v,removeAttribute:k=>delete attributes[k]};
+    const result={dataset:{shippingState:'ready'},setAttribute(){},textContent:'Old rate'};
+    const document={addEventListener:(name,fn)=>fn(),getElementById:id=>id==='rd-shipping-form'?form:result,querySelectorAll:()=>[{querySelector:()=>quoteField,querySelectorAll:()=>[checkoutButton]}]};
+    runInNewContext(script,{document,location:{hash:''},window:{addEventListener:(name,fn)=>windowEvents[name]=fn}});
+    let duplicateBlocked=false;events.submit({preventDefault(){throw Error('First valid submission should proceed');}});
+    assert.equal(button.textContent,'Checking shipping…');assert.equal(button.disabled,true);assert.equal(attributes['aria-busy'],'true');
+    events.submit({preventDefault(){duplicateBlocked=true;}});assert.equal(duplicateBlocked,true);
+    windowEvents.pageshow();assert.equal(button.disabled,false);assert.equal(button.textContent,'Calculate shipping');assert.equal(attributes['aria-busy'],undefined);
+    events.change();assert.equal(quoteField.value,'');assert.equal(checkoutButton.disabled,true);assert.match(result.textContent,/Delivery details changed/);
   });
   await t.test('cross-origin shipping submissions remain blocked',async()=>{const c=fixture();assert.equal((await calculate(c,{},'https://other.example')).status,403);assert.equal(carts.get(c.id).shippingReview,undefined);});
   assert.equal(transportCalls,0);for(const c of carts.values()){assert.equal(c.shopifyDraftOrderId,undefined);assert.equal(c.checkoutAttempt?.state==='ready',false);}
