@@ -11,7 +11,9 @@ export function sourceReader({dataDir,base,cacheDir,fetcher=fetch}){
   const r=await recordJson(id);if(r.id!==id||r.type!=='polar-camel-order'||!r.notes?.includes('PRIVATE SHIPPING PREVIEW — DO NOT PAY OR PRODUCE.'))fail('PRIVATE_SAVED_RECORD_REQUIRED');
   if(!Number.isSafeInteger(r.quantity)||r.quantity<1||r.quantity>4||!Number.isFinite(r.unitPrice)||r.unitPrice<=0)fail('PRIVATE_SAVED_RECORD_INVALID');
   const originals=[];for(const [role,url] of [['logo',r.artworkUrl],['name-list',r.personalizationFileUrl]])if(url)originals.push({role,bytes:await original(url)});
-  return {id:r.id,cartId:r.cartId,type:r.type,sku:r.sku,color:r.optionValue,quantity:r.quantity,unitCents:Math.round(r.unitPrice*100),personalizationText:r.personalizationText||'',notes:r.notes.replace(/\nPRIVATE SHIPPING PREVIEW — DO NOT PAY OR PRODUCE\.$/,''),originals};
+  // Multipart form text uses CRLF; browser textarea/archive text uses LF.
+  // Normalize only text for comparison. Uploaded original bytes remain untouched.
+  return {id:r.id,cartId:r.cartId,type:r.type,sku:r.sku,color:r.optionValue,quantity:r.quantity,unitCents:Math.round(r.unitPrice*100),personalizationText:(r.personalizationText||'').replace(/\r\n/g,'\n'),notes:r.notes.replace(/\r\n/g,'\n').replace(/(?:^|\n)PRIVATE SHIPPING PREVIEW — DO NOT PAY OR PRODUCE\.$/,''),originals};
  }
  async function archive(url){
   if(!/^https:\/\/cdn\.shopify\.com\/s\/files\/1\/0865\/5762\/2568\/uploads\/[a-f0-9]{32}\.zip$/.test(url??''))fail('ARCHIVE_LOCATION_INVALID');
