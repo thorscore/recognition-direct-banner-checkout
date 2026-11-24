@@ -13,7 +13,7 @@ test("real multipart requests carry consented capture through an isolated mock c
   let child;
   try {
     for (const entry of await readdir(root, { withFileTypes: true })) {
-      if (entry.isFile() && entry.name.endsWith(".mjs") || ["catalog", "public"].includes(entry.name)) await cp(new URL(entry.name, root), join(directory, entry.name), { recursive: true });
+      if (entry.isFile() && entry.name.endsWith(".mjs") || ["catalog", "public", "shipping"].includes(entry.name)) await cp(new URL(entry.name, root), join(directory, entry.name), { recursive: true });
     }
     const portServer = createServer();
     portServer.listen(0, "127.0.0.1");
@@ -23,7 +23,7 @@ test("real multipart requests carry consented capture through an isolated mock c
     const base = `http://127.0.0.1:${port}`;
     child = spawn(process.execPath, [join(directory, "server.mjs")], {
       cwd: directory,
-      env: { ...process.env, PORT: String(port), APP_BASE_URL: base, MOCK_SHOPIFY: "true", SHOPIFY_CLIENT_ID: "", SHOPIFY_CLIENT_SECRET: "", SHOPIFY_ACCESS_TOKEN: "" },
+      env: { ...process.env, NODE_NO_WARNINGS: "1", PORT: String(port), APP_BASE_URL: base, MOCK_SHOPIFY: "true", SHOPIFY_CLIENT_ID: "", SHOPIFY_CLIENT_SECRET: "", SHOPIFY_ACCESS_TOKEN: "" },
       windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     });
     await new Promise((resolve, reject) => {

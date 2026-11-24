@@ -41,6 +41,7 @@ test("metadata is returned only after the custom cart has been persisted", async
   const cart = { id: "test-cart", items: [] };
   const context = vm.createContext({ assertCartDelivery,
     customCartAnalyticsItem,
+    isBannerDrinkwareAddition: () => false,
     clearOrderAttribution, mergeOrderAttribution, orderAttributionAttributes,
     getOrCreateCustomOrderCart: async () => cart,
     URL, APP_BASE_URL: "https://checkout.example.invalid",
@@ -60,6 +61,11 @@ test("metadata is returned only after the custom cart has been persisted", async
   assert.equal(result.status, 200);
   assert.equal(result.payload.analyticsItem.value, 75);
   assert.deepEqual(events, ["order", "cart", "response"]);
+  const privateRecord = { ...banner, id: '00000000-0000-4000-8000-000000000030', type: 'polar-camel-order', notes: 'PRIVATE SHIPPING PREVIEW — DO NOT PAY OR PRODUCE.' };
+  const privateResult = await context.add({ url: '/api/polar-camel-checkout' }, {}, privateRecord, { lineItems: [{ title: 'Private tumbler' }] }, { quantity: 2 });
+  assert.equal(privateResult.payload.savedRecordId, privateRecord.id);
+  assert.equal(privateResult.payload.savedCartItemId, 'test-item');
+  assert.equal(result.payload.savedRecordId, undefined);
   events.length = 0;
   context.writeCustomOrderCart = async () => { throw new Error("disk unavailable"); };
   await assert.rejects(context.add({ url: "/api/catalog-checkout" }, {}, { ...banner }, {}, {}), /disk unavailable/);
