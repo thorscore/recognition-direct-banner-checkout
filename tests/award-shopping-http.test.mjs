@@ -13,10 +13,10 @@ test('award price and cart integration preserve selected SKU, volume price, pers
   const dir=await mkdtemp(join(tmpdir(),'rd-award-test-'));
   let child;
   try{
-    for(const entry of await readdir(root,{withFileTypes:true})) if(entry.isFile()&&entry.name.endsWith('.mjs')||['catalog','public'].includes(entry.name)) await cp(new URL(entry.name,root),join(dir,entry.name),{recursive:true});
+    for(const entry of await readdir(root,{withFileTypes:true})) if(entry.isFile()&&entry.name.endsWith('.mjs')||['catalog','public','shipping'].includes(entry.name)) await cp(new URL(entry.name,root),join(dir,entry.name),{recursive:true});
     const listener=createServer();listener.listen(0,'127.0.0.1');await once(listener,'listening');const port=listener.address().port;await new Promise(r=>listener.close(r));
     const base=`http://127.0.0.1:${port}`;
-    child=spawn(process.execPath,[join(dir,'server.mjs')],{cwd:dir,env:{...process.env,PORT:String(port),APP_BASE_URL:base,MOCK_SHOPIFY:'true',EXPRESS_ONE_ENABLED:'false',SHOPIFY_CLIENT_ID:'',SHOPIFY_CLIENT_SECRET:'',SHOPIFY_ACCESS_TOKEN:''},windowsHide:true,stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,[join(dir,'server.mjs')],{cwd:dir,env:{...process.env,NODE_NO_WARNINGS:'1',PORT:String(port),APP_BASE_URL:base,MOCK_SHOPIFY:'true',EXPRESS_ONE_ENABLED:'false',SHOPIFY_CLIENT_ID:'',SHOPIFY_CLIENT_SECRET:'',SHOPIFY_ACCESS_TOKEN:''},windowsHide:true,stdio:['ignore','pipe','pipe']});
     await new Promise((resolve,reject)=>{child.stdout.on('data',c=>{if(String(c).includes('listening on'))resolve();});child.on('error',reject);child.on('exit',c=>reject(new Error('Mock exited '+c)));});
     const sitemapResponse=await fetch(base+'/awards-sitemap.xml');const sitemap=await sitemapResponse.text();
     assert.equal(sitemapResponse.status,200);assert.equal(sitemapResponse.headers.get('content-type'),'application/xml; charset=utf-8');assert.equal(sitemapResponse.headers.get('x-robots-tag'),null);assert.equal((sitemap.match(/<loc>/g)||[]).length,9);

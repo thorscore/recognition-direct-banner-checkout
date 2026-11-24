@@ -181,6 +181,9 @@ const photoIdOrders = APP_BASE_URL.startsWith('https://') && !MOCK_SHOPIFY && SH
     .then(({configurePhotoOrders})=>configurePhotoOrders({databasePath:join(DATA_DIR,'photo-id-orders.sqlite'),base:APP_BASE_URL,graphql:shopifyGraphql,shop:SHOPIFY_SHOP}))
     .catch(()=>{console.error('Photo ID ordering is unavailable. Check its private storage and existing email/store connection.');return null;})
   : null;
+const tumblerPrivate = process.env.TUMBLER_PRIVATE_PREVIEW_ENABLED === 'true' && !MOCK_SHOPIFY && SHOPIFY_SHOP === 'f375fe-2d'
+  ? await import('./tumbler-private/index.mjs').then(({configureTumblerPrivate})=>configureTumblerPrivate({dataDir:DATA_DIR,base:APP_BASE_URL,graphql:shopifyGraphql,webhookSecret:SHOPIFY_CLIENT_SECRET})).catch(()=>{console.error('Private tumbler preview is unavailable. Check its existing storage, email and store connection.');return null;})
+  : null;
 const catalogData = JSON.parse((await readFile(CATALOG_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierAwardsData = JSON.parse((await readFile(PREMIER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
 const premierSoccerAwardsData = JSON.parse((await readFile(PREMIER_SOCCER_AWARDS_FILE, "utf8")).replace(/^\uFEFF/, ""));
@@ -2095,6 +2098,7 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
     return json(res, 200, {
       ok: true,
       cartId: cart.id,
+      ...(orderRecord.type==='polar-camel-order'&&orderRecord.notes?.includes('PRIVATE SHIPPING PREVIEW — DO NOT PAY OR PRODUCE.') ? {savedRecordId:orderRecord.id,savedCartItemId:cartItemId} : {}),
       cartUrl,
       checkoutUrl: cartUrl,
       addedCartUrl,
@@ -5967,6 +5971,11 @@ const server = createServer(async (req, res) => {
       if(url.pathname==='/health'){return json(res,200,{ok:true,integrationPreview:true,ordersEnabled:false,paymentsEnabled:false});}
       res.setHeader('X-Robots-Tag','noindex, nofollow');
       if(req.method==='POST'&&!['/api/custom-order-cart/shipping-estimate','/api/custom-order-cart/checkout','/api/custom-order-cart/remove'].includes(url.pathname))return json(res,403,{error:'ORDER_PLACEMENT_DISABLED'});
+    }
+    if(url.pathname==='/private-tumbler'||url.pathname.startsWith('/private-tumbler/')){
+      if(tumblerPrivate)await tumblerPrivate.handle(req,res,url);
+      else json(res,503,{error:'PRIVATE_TUMBLER_PREVIEW_UNAVAILABLE'});
+      return;
     }
     if(url.pathname==='/photo-id'||url.pathname.startsWith('/photo-id/')){
       if(photoIdOrders)await photoIdOrders.handle(req,res,url);
