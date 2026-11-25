@@ -25,14 +25,14 @@ export function storedZip(entries) {
   if(blob.size>20*1024*1024)throw Error('Combined original files must be under 20 MB for this private test.');
   return blob;
 }
-export async function buildProductionPack({configurationId,variantId,sku,color,quantity,unitCents,personalization='',notes='',artwork,nameList}) {
+export async function buildProductionPack({configurationId,variantId,sku,color,quantity,unitCents,personalization='',notes='',artwork,nameList,limitedLaunch=false}) {
   if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(configurationId)||!/^\d+$/.test(String(variantId))||!Number.isSafeInteger(quantity)||quantity<1||quantity>4||!Number.isSafeInteger(unitCents)||unitCents<=0)throw Error('Invalid private production configuration.');
   const entries=[],files=[];
   for(const [role,file] of [['logo',artwork],['name-list',nameList]])if(file?.size>0) {
     const bytes=new Uint8Array(await file.arrayBuffer()),path='originals/'+role+'/'+productionFilename(file.name);
     entries.push({path,bytes});files.push({role,path,originalName:file.name,bytes:bytes.length,sha256:await sha256(bytes)});
   }
-  const manifest={schema:'rd-private-tumbler-production-v1',privatePreview:true,proofRequired:true,productionReleaseAllowed:false,configurationId,savedConfiguration:APP+'/custom-order-cart?cart='+configurationId,productId:PRODUCT,variantId:String(variantId),sku,color,quantity,unitCents,personalization,notes,files};
+  const manifest={schema:limitedLaunch?'rd-tumbler-production-v1':'rd-private-tumbler-production-v1',privatePreview:!limitedLaunch,...(limitedLaunch?{limitedLaunch:'20oz-v1'}:{}),proofRequired:true,productionReleaseAllowed:false,configurationId,savedConfiguration:APP+'/custom-order-cart?cart='+configurationId,productId:PRODUCT,variantId:String(variantId),sku,color,quantity,unitCents,personalization,notes,files};
   entries.push({path:'production-manifest.json',bytes:utf8.encode(JSON.stringify(manifest,null,2)+'\n')});
   entries.push({path:'READ-ME.txt',bytes:utf8.encode('PRIVATE TEST — DO NOT PRODUCE.\nOriginal artwork is inside originals/. Individual Shopify image attachments may be re-encoded.\nCheck payment and proof approval in Shopify before any real production.\nThis package does not approve a proof, release production, or confirm payment.\n')});
   const zip=storedZip(entries),file=new File([zip],'RD-private-production-originals.zip',{type:'application/zip'});
