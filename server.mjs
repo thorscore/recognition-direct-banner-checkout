@@ -2098,7 +2098,7 @@ async function addCustomOrderToCart(req, res, orderRecord, draftInput, summary =
     return json(res, 200, {
       ok: true,
       cartId: cart.id,
-      ...(orderRecord.type==='polar-camel-order'&&orderRecord.notes?.includes('PRIVATE SHIPPING PREVIEW — DO NOT PAY OR PRODUCE.') ? {savedRecordId:orderRecord.id,savedCartItemId:cartItemId} : {}),
+      ...(orderRecord.type==='polar-camel-order'&&(orderRecord.nativeTumblerLaunch||orderRecord.notes?.includes('PRIVATE SHIPPING PREVIEW — DO NOT PAY OR PRODUCE.')) ? {savedRecordId:orderRecord.id,savedCartItemId:cartItemId} : {}),
       cartUrl,
       checkoutUrl: cartUrl,
       addedCartUrl,
@@ -3546,6 +3546,9 @@ async function handlePolarCamelCheckout(req, res) {
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
   const input = buildPolarCamelInput(formData);
   const { product, variant, quantity, tier, unitPrice, totalPrice } = input;
+  const nativeLaunchRequested=field(formData,'rd_tumbler_flow')==='20oz-v1';
+  const nativeTumblerLaunch=nativeLaunchRequested?tumblerPrivate?.authorizeLaunchSave({sku:variant.sku,quantity,email}):null;
+  if(nativeLaunchRequested&&!nativeTumblerLaunch)return json(res,409,{error:'This checkout is paused. Use regular ordering.'},corsHeaders(req));
   const artworkUrl = await saveUpload(formData.get("artwork"));
   const personalizationFileUrl = await saveUpload(formData.get("personalization_file"));
   const deliveryMethod = deliveryMethodLabel(defaultedDeliveryMethodValue(formData));
@@ -3575,6 +3578,7 @@ async function handlePolarCamelCheckout(req, res) {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
     type: "polar-camel-order",
+    ...(nativeTumblerLaunch?{nativeTumblerLaunch}:{}),
     sku: variant.sku,
     productTitle: product.title,
     optionValue: variant.optionValue,
@@ -6015,6 +6019,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/name-badge-price") return await handleNameBadgePrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/solar-placard-price") return await handleSolarPlacardPrice(req, res);
     if (req.method === "POST" && url.pathname === "/api/premier-award-price") return await handlePremierAwardPrice(req, res);
+    if(req.method==='GET'&&url.pathname==='/api/tumbler-native-status')return json(res,200,tumblerPrivate?.launchStatus()||{enabled:false},corsHeaders(req));
+    if(url.pathname.startsWith('/tumbler-proof/')){if(tumblerPrivate)return await tumblerPrivate.handle(req,res,url);return json(res,404,{error:'Proof unavailable.'});}
     if (req.method === "POST" && url.pathname === "/api/polar-camel-price") return await handlePolarCamelPrice(req, res);
     if (req.method === "GET") {
       const localSeoPage = getLocalSeoPageByPath(url.pathname);

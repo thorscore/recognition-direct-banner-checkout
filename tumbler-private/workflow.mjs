@@ -3,6 +3,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {createHash,createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {crc32,MARKER,PRODUCT} from './archive.mjs';
+import {LAUNCH_VERSION,emailAddress} from './launch.mjs';
 export const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const clone=structuredClone, hash=value=>sha(JSON.stringify(value));
 const uuid=value=>/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value??'');
@@ -33,10 +34,10 @@ export function readStoredArchive(bytes){
  need(files.size>=2&&p+4<=bytes.length&&bytes.readUInt32LE(p)===0x02014b50&&bytes.readUInt32LE(bytes.length-22)===0x06054b50,'ARCHIVE_FORMAT_INVALID');
  return files;
 }
-export function checkOriginals(bytes,props,record,line){
+export function checkOriginals(bytes,props,record,line,customerLaunch=false){
  need(sha(bytes)===props._rd_original_pack_sha256,'ARCHIVE_HASH_MISMATCH');
  const entries=readStoredArchive(bytes);let m;try{m=JSON.parse(entries.get('production-manifest.json').toString());}catch{fail('MANIFEST_INVALID');}
- need(m.schema==='rd-private-tumbler-production-v1'&&m.privatePreview===true&&m.proofRequired===true&&m.productionReleaseAllowed===false,'MANIFEST_PRIVATE_REQUIRED');
+ need(m.schema===(customerLaunch?'rd-tumbler-production-v1':'rd-private-tumbler-production-v1')&&m.privatePreview===!customerLaunch&&(!customerLaunch||m.limitedLaunch===LAUNCH_VERSION)&&m.proofRequired===true&&m.productionReleaseAllowed===false,'MANIFEST_PRIVATE_REQUIRED');
  need(m.configurationId===record.cartId&&m.productId===PRODUCT&&m.variantId===String(line.variant_id)&&m.sku===record.sku&&m.quantity===record.quantity&&m.unitCents===record.unitCents&&m.personalization===record.personalizationText&&m.notes===record.notes&&m.color===record.color,'MANIFEST_DESIGN_MISMATCH');
  need(Array.isArray(m.files)&&m.files.length===record.originals.length,'ORIGINALS_INCOMPLETE');
  const seen=new Set();for(const f of m.files){
@@ -48,10 +49,10 @@ export function checkOriginals(bytes,props,record,line){
  return {manifest:m,archiveSha256:sha(bytes),files:m.files.map(f=>({role:f.role,name:f.originalName,sha256:f.sha256,bytes:f.bytes}))};
 }
 export class NativeTumblerWorkflow {
- constructor({executionMode,databasePath,shop,secret,readOrder,readCart,readRecord,readArchive,ownerEmail,messageBuilder,now=Date.now}){
+ constructor({executionMode,databasePath,shop,secret,readOrder,readCart,readRecord,readArchive,ownerEmail,messageBuilder,customerLaunch=false,now=Date.now}){
   need(((executionMode==='simulation'&&shop==='rd-tumbler-simulation.myshopify.com')||(executionMode==='private-preview'&&shop==='f375fe-2d.myshopify.com'))&&typeof secret==='string'&&secret.length>=24,'PRIVATE_CONFIGURATION_REQUIRED');
   need([readOrder,readCart,readRecord,readArchive].every(x=>typeof x==='function'),'READ_ADAPTERS_REQUIRED');
-  Object.assign(this,{shop,secret,readOrder,readCart,readRecord,readArchive,now,mode:executionMode,ownerEmail,messageBuilder});this.db=new DatabaseSync(databasePath);this.tail=Promise.resolve();
+  Object.assign(this,{shop,secret,readOrder,readCart,readRecord,readArchive,now,mode:executionMode,ownerEmail,messageBuilder});this.customerLaunch=customerLaunch;this.db=new DatabaseSync(databasePath);this.tail=Promise.resolve();
   this.db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
    CREATE TABLE IF NOT EXISTS receipts(id TEXT PRIMARY KEY,body_hash TEXT NOT NULL,result TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,line_id TEXT NOT NULL,record_id TEXT UNIQUE NOT NULL,record TEXT NOT NULL,UNIQUE(order_id,line_id));
@@ -111,18 +112,20 @@ export class NativeTumblerWorkflow {
   need((this.mode!=='simulation'||event.test===true)&&event.financial_status==='paid'&&Number.isFinite(Date.parse(event.updated_at))&&Date.parse(event.updated_at)<=Date.parse(order.updated_at)&&isDeepStrictEqual(eventLines(event.line_items).map(lineIdentity),order.line_items.map(lineIdentity)),'ORDER_EVENT_READ_MISMATCH');
   const marked=order.line_items.filter(line=>properties(line)._rd_tumbler_preview===MARKER);
   if(!marked.length){const result={status:'ignored',jobIds:[],simulated:this.mode==='simulation'};this.transaction(()=>this.db.prepare('INSERT INTO receipts VALUES(?,?,?)').run(id,digest,JSON.stringify(result)));return result;}
-  this.paid(order);need(marked.length===order.line_items.length&&marked.reduce((n,l)=>n+l.quantity,0)<=4,'PRIVATE_CART_SCOPE_INVALID');
+  this.paid(order);if(this.customerLaunch)need(!!emailAddress(order.email),'CUSTOMER_EMAIL_REQUIRED');need(marked.length===order.line_items.length&&marked.reduce((n,l)=>n+l.quantity,0)<=4,'PRIVATE_CART_SCOPE_INVALID');
   const pending=[],used=new Set();let subtotal=0;
   for(const line of marked){
    const props=properties(line);
+   need(this.customerLaunch?props._rd_tumbler_release===LAUNCH_VERSION:!props._rd_tumbler_release,'TUMBLER_CHANNEL_MISMATCH');
    need(String(line.product_id)===PRODUCT&&Number.isSafeInteger(line.quantity)&&line.quantity>0&&Number.isSafeInteger(line.unitCents)&&line.unitCents>0&&props['Proof Required']==='Yes','PRIVATE_LINE_INVALID');
    need(uuid(props._rd_preview_submission)&&/^[a-f0-9]{64}$/.test(props._rd_original_pack_sha256),'PRIVATE_LINE_REFERENCE_INVALID');
    need(/^https:\/\/cdn\.shopify\.com\/s\/files\/1\/0865\/5762\/2568\/uploads\/[a-f0-9]{32}\.zip$/.test(props['Production originals']||''),'ARCHIVE_LOCATION_INVALID');
    const record=await this.matchingRecord(props,line);need(!used.has(record.id),'SOURCE_RECORD_REUSED');used.add(record.id);
-   const pack=checkOriginals(await this.readArchive(props['Production originals']),props,record,line);
+   need(this.customerLaunch?record.launchAuthorized===true:!record.launchAuthorized,'SAVED_LAUNCH_ADMISSION_REQUIRED');
+   const pack=checkOriginals(await this.readArchive(props['Production originals']),props,record,line,this.customerLaunch);
    const priorRow=this.db.prepare('SELECT record FROM jobs WHERE record_id=? OR (order_id=? AND line_id=?)').all(record.id,orderId,String(line.id));
    need(priorRow.every(r=>{const j=JSON.parse(r.record);return j.recordId===record.id&&j.orderId===orderId&&j.lineId===String(line.id)&&j.sourceHash===hash(record)&&j.archiveSha256===pack.archiveSha256;}),'SOURCE_RECORD_ALREADY_CLAIMED');
-   const job={id:`${this.mode==='simulation'?'sim':'private'}-${orderId}-${line.id}`,simulation:this.mode==='simulation',orderId,orderName:order.name,lineId:String(line.id),recordId:record.id,cartId:record.cartId,sourceHash:hash(record),design:clone(pack.manifest),originals:pack.files,archiveUrl:props['Production originals'],archiveSha256:pack.archiveSha256,payment:{verified:true,simulated:this.mode==='simulation',totalCents:order.totalCents},delivery:clone(order.delivery),shippingCents:order.shippingCents,taxCents:order.taxCents,markupCents:0,handlingCents:0,state:'awaiting_staff_proof',proof:null,productionEligible:false,productionReleaseAllowed:false};
+   const job={id:`${this.mode==='simulation'?'sim':'private'}-${orderId}-${line.id}`,simulation:this.mode==='simulation',customerLaunch:this.customerLaunch,customerEmail:emailAddress(order.email),orderId,orderName:order.name,lineId:String(line.id),recordId:record.id,cartId:record.cartId,sourceHash:hash(record),design:clone(pack.manifest),originals:pack.files,archiveUrl:props['Production originals'],archiveSha256:pack.archiveSha256,payment:{verified:true,simulated:this.mode==='simulation',totalCents:order.totalCents},delivery:clone(order.delivery),shippingCents:order.shippingCents,taxCents:order.taxCents,markupCents:0,handlingCents:0,state:'awaiting_staff_proof',proof:null,productionEligible:false,productionReleaseAllowed:false};
    if(!priorRow.length)pending.push(job);subtotal+=line.quantity*line.unitCents;
   }
   need(subtotal===order.subtotalCents,'SUBTOTAL_MISMATCH');
@@ -130,12 +133,12 @@ export class NativeTumblerWorkflow {
   this.transaction(()=>{for(const j of pending)this.db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?)').run(j.id,j.orderId,j.lineId,j.recordId,JSON.stringify(j));this.db.prepare('INSERT INTO receipts VALUES(?,?,?)').run(id,digest,JSON.stringify(result));this.audit('paid-linked',{orderId,jobIds});});return result;
  });}
  async fresh(job){
-  const order=await this.current(job.orderId);this.paid(order);
+  const order=await this.current(job.orderId);this.paid(order);if(this.customerLaunch)need(emailAddress(order.email)===job.customerEmail,'CUSTOMER_EMAIL_CHANGED_REVIEW_REQUIRED');
   const record=await this.readRecord(job.recordId);need(hash(record)===job.sourceHash,'DESIGN_CHANGED_REVIEW_REQUIRED');
   need(order.totalCents===job.payment.totalCents&&order.shippingCents===job.shippingCents&&order.taxCents===job.taxCents&&isDeepStrictEqual(order.delivery,job.delivery),'ORDER_CHANGED_REVIEW_REQUIRED');
   const line=order.line_items.find(l=>String(l.id)===job.lineId);need(line,'ORDER_LINE_MISSING');
   const props=properties(line);need(line.sku===job.design.sku&&line.quantity===job.design.quantity&&line.unitCents===job.design.unitCents&&String(line.variant_id)===job.design.variantId&&props['Personalization Text']===job.design.personalization&&props._rd_original_pack_sha256===job.archiveSha256,'ORDER_LINE_CHANGED_REVIEW_REQUIRED');
-  checkOriginals(await this.readArchive(job.archiveUrl),props,record,line);return order;
+  checkOriginals(await this.readArchive(job.archiveUrl),props,record,line,this.customerLaunch);return order;
  }
  async attachProof(actor,jobId,pdf){return this.serial(async()=>{
   staff(actor);const job=this.job(jobId);need(job.state!=='held','JOB_HELD');await this.fresh(job);
@@ -144,10 +147,10 @@ export class NativeTumblerWorkflow {
   this.transaction(()=>{this.save(job);this.db.prepare('INSERT INTO proof_documents VALUES(?,?,?,?)').run(jobId,job.proof.revision,sha(pdf),pdf);this.audit('proof-prepared',{jobId,revision:job.proof.revision,sha256:job.proof.sha256});});return clone(job.proof);
  });}
  async sendProof(actor,jobId,pdf,recipient){return this.serial(async()=>{
-  staff(actor);need(this.ownerEmail?recipient===this.ownerEmail:/^[a-z0-9._+-]+@example\.com$/i.test(recipient),'PRIVATE_RECIPIENT_REQUIRED');const job=this.job(jobId);await this.fresh(job);
+  staff(actor);const job=this.job(jobId);need(this.customerLaunch?recipient===job.customerEmail&&!!emailAddress(recipient):(this.ownerEmail?recipient===this.ownerEmail:/^[a-z0-9._+-]+@example\.com$/i.test(recipient)),'PRIVATE_RECIPIENT_REQUIRED');await this.fresh(job);
   need(job.proof?.status==='prepared'&&job.proof.sha256===sha(pdf),'CURRENT_PROOF_REQUIRED');
   const token=randomBytes(32).toString('hex');job.proof.status='sent';job.proof.tokenHash=sha(token);job.proof.expiresAt=this.now()+7*86400000;job.state='awaiting_customer_approval';
-  const email={simulation:true,sent:false,recipient,subject:`SIMULATION | ${job.orderName} | PDF proof v${job.proof.revision}`,attachment:{name:`tumbler-proof-v${job.proof.revision}.pdf`,sha256:sha(pdf),bytes:pdf.length},revision:job.proof.revision,jobId,...this.messageBuilder?.({job,token,pdf,recipient})};
+  const email={simulation:this.mode==='simulation',sent:false,recipient,subject:`SIMULATION | ${job.orderName} | PDF proof v${job.proof.revision}`,attachment:{name:`tumbler-proof-v${job.proof.revision}.pdf`,sha256:sha(pdf),bytes:pdf.length},revision:job.proof.revision,jobId,...this.messageBuilder?.({job,token,pdf,recipient})};
   this.transaction(()=>{this.save(job);this.db.prepare('INSERT INTO outbox VALUES(?,?,?,?)').run(`${job.id}-v${job.proof.revision}`,job.id,job.proof.revision,JSON.stringify(email));this.audit('proof-email-simulated',{jobId,revision:job.proof.revision});});return {token,email};
  });}
  proofAccess(jobId,token,revision,digest){
@@ -159,13 +162,13 @@ export class NativeTumblerWorkflow {
   const job=this.proofAccess(jobId,token,revision,digest);need(checked===true,'PROOF_REVIEW_CHECKBOX_REQUIRED');await this.fresh(job);
   if(job.proof.status==='approved')return {status:'approved',duplicate:true,message:'Thank you for your approval. Your test approval has been recorded.',productionReleased:false};
   need(job.proof.status==='sent'&&job.state==='awaiting_customer_approval','PROOF_NOT_AWAITING_APPROVAL');
-  job.proof.status='approved';job.proof.approvedAt=this.now();job.state=this.mode==='simulation'?'approved_simulation_only':'approved_private_hold';job.productionEligible=true;
+  job.proof.status='approved';job.proof.approvedAt=this.now();job.state=this.mode==='simulation'?'approved_simulation_only':this.customerLaunch?'approved_waiting_for_production':'approved_private_hold';job.productionEligible=true;
   this.transaction(()=>{this.save(job);this.audit('proof-approved',{jobId,revision,digest});});return {status:'approved',duplicate:false,message:'Thank you for your approval. Your test approval has been recorded.',productionReleased:false};
  });}
  async requestChanges({jobId,token,revision,digest,note}){return this.serial(async()=>{
   const job=this.proofAccess(jobId,token,revision,digest);await this.fresh(job);need(job.proof.status==='sent'&&typeof note==='string'&&note.trim().length>0&&note.length<=2000,'CHANGE_REQUEST_INVALID');
   job.proof.status='changes_requested';job.proof.changeRequest=note.trim();job.state='changes_requested';job.productionEligible=false;this.transaction(()=>{this.save(job);this.audit('proof-changes-requested',{jobId,revision});});return {status:'changes_requested'};
  });}
- async productionPacket(actor,jobId){staff(actor);const job=this.job(jobId);await this.fresh(job);need(job.state===(this.mode==='simulation'?'approved_simulation_only':'approved_private_hold')&&job.proof?.status==='approved','APPROVED_CURRENT_PROOF_REQUIRED');return {simulation:this.mode==='simulation',privatePreview:true,productionReleaseAllowed:false,jobId,orderName:job.orderName,delivery:job.delivery,design:job.design,originals:job.originals,archiveUrl:job.archiveUrl,archiveSha256:job.archiveSha256,approvedProof:{revision:job.proof.revision,sha256:job.proof.sha256},markupCents:0,handlingCents:0};}
+ async productionPacket(actor,jobId){staff(actor);const job=this.job(jobId);await this.fresh(job);need(job.state===(this.mode==='simulation'?'approved_simulation_only':this.customerLaunch?'approved_waiting_for_production':'approved_private_hold')&&job.proof?.status==='approved','APPROVED_CURRENT_PROOF_REQUIRED');return {simulation:this.mode==='simulation',privatePreview:!this.customerLaunch,productionReady:this.customerLaunch&&this.mode!=='simulation',productionReleaseAllowed:false,jobId,orderName:job.orderName,delivery:job.delivery,design:job.design,originals:job.originals,archiveUrl:job.archiveUrl,archiveSha256:job.archiveSha256,approvedProof:{revision:job.proof.revision,sha256:job.proof.sha256},markupCents:0,handlingCents:0};}
  releaseProduction(){fail('SIMULATION_CANNOT_RELEASE_PRODUCTION');}
 }
